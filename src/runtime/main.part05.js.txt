@@ -1,0 +1,320 @@
+  };
+
+  world.zones.push(zone);
+  if (zoneAffectsTerrain(zone)) {
+    world.terrainDirty = true;
+  }
+  return zone;
+}
+
+function spawnEffect(kind, target, duration) {
+  world.effects.push({
+    id: nextId(),
+    kind,
+    x: target.x,
+    y: target.y,
+    height: target.height,
+    radius: 90,
+    age: 0,
+    duration,
+  });
+}
+
+function nextId() {
+  const id = world.nextId;
+  world.nextId += 1;
+  return id;
+}
+
+function addMessage(text, tone = "info") {
+  world.messages.unshift({
+    id: nextId(),
+    text,
+    tone,
+    ttl: 8,
+  });
+
+  world.messages = world.messages.slice(0, 8);
+  updateEventLog();
+}
+
+function updateEventLog() {
+  eventLogHost.innerHTML = "";
+  for (const message of world.messages.slice(0, 6)) {
+    const entry = document.createElement("div");
+    entry.className = `event-entry ${message.tone}`;
+    entry.textContent = message.text;
+    eventLogHost.append(entry);
+  }
+}
+
+function frame(now) {
+  const dt = Math.min(0.033, (now - lastFrame) / 1000);
+  lastFrame = now;
+
+  update(dt);
+  render();
+
+  requestAnimationFrame(frame);
+}
+
+function update(dt) {
+  world.time += dt;
+
+  updateCooldowns(dt);
+  updateRitual(dt);
+  updateRivalPressure(dt);
+  updateZones(dt);
+  updateVillages(dt);
+  const simulation = updateVillagers(dt);
+  updateGolems(dt);
+  updateEffects(dt);
+  updateMessages(dt);
+
+  world.worship = clamp(world.worship + simulation.worshipGain + 0.65 * dt + simulation.hearthGain * 0.12, 0, world.maxWorship);
+  world.influence = clamp(
+    world.influence + simulation.influenceGain - world.rivalCore.corruption * 0.65 * dt + countZones("beacon") * 0.08 * dt,
+    0,
+    100
+  );
+  world.rivalInfluence = clamp(world.rivalInfluence + simulation.rivalGain + world.rivalCore.corruption * 0.55 * dt - simulation.sanctityGain * 0.55 * dt, 0, 100);
+  world.fear = clamp(
+    world.fear + simulation.fearGain - simulation.sanctityGain * 1.2 * dt - countZones("sanctuary") * 0.5 * dt,
+    0,
+    100
+  );
+  world.faith = clamp((world.worship * 0.42 + world.influence * 0.5) - world.rivalInfluence * 0.18 - world.fear * 0.24, 0, 100);
+
+  for (const trailPoint of pointer.history) {
+    trailPoint.life -= dt * 1.9;
+  }
+  while (pointer.history.length && pointer.history[0].life <= 0) {
+    pointer.history.shift();
+  }
+
+  if (world.terrainDirty && worldView?.terrainMesh) {
+    refreshTerrainVisuals();
+  }
+
+  updateStats();
+  updateMiracleUI();
+  updateWorldView(dt);
+}
+
+function updateCooldowns(dt) {
+  for (const miracle of MIRACLES) {
+    world.miracleCooldowns[miracle.id] = Math.max(0, world.miracleCooldowns[miracle.id] - dt);
+  }
+}
+
+function updateRitual(dt) {
+  if (!world.ritual.armed) {
+    return;
+  }
+
+  world.ritual.timeLeft -= dt;
+  if (world.ritual.timeLeft <= 0) {
+    clearRitual();
+    addMessage("The glowing spiral trace gutters out before the rite is finished.", "info");
+  }
+}
+
+function updateRivalPressure(dt) {
+  world.rivalCore.pulse += dt * 1.3;
+  world.rivalCore.basePressure = clamp(
+    world.rivalCore.basePressure + 0.0018 * dt - countZones("sanctuary") * 0.0007 * dt - countZones("beacon") * 0.00035 * dt,
+    0.08,
+    0.45
+  );
+  world.rivalCore.corruption = clamp(world.rivalCore.basePressure + Math.sin(world.time * 0.35) * 0.03, 0.05, 0.5);
+  world.rivalCore.seedTimer -= dt * (1 + world.rivalCore.basePressure * 0.6);
+
+  if (world.rivalCore.seedTimer <= 0) {
+    spawnRivalBlightSeed();
+    world.rivalCore.seedTimer = 10 + world.rng() * 8;
+  }
+}
+
+function spawnRivalBlightSeed() {
+  const targetVillage = [...world.villages].sort((a, b) => distance(a.x, a.y, world.rivalCore.x, world.rivalCore.y) - distance(b.x, b.y, world.rivalCore.x, world.rivalCore.y))[0];
+  const dx = targetVillage.x - world.rivalCore.x;
+  const dy = targetVillage.y - world.rivalCore.y;
+  const length = Math.hypot(dx, dy) || 1;
+  const travel = 90 + world.rng() * 140;
+  const x = world.rivalCore.x + (dx / length) * travel + (world.rng() - 0.5) * 60;
+  const y = world.rivalCore.y + (dy / length) * travel + (world.rng() - 0.5) * 60;
+
+  addZone({
+    kind: "blight",
+    x,
+    y,
+    radius: 120 + world.rng() * 30,
+    duration: 32 + world.rng() * 8,
+    power: 1,
+    corruption: 0.95,
+    scorch: 0.2,
+    fertility: -0.3,
+  });
+  spawnEffect("blight", { x, y, height: getTerrainHeight(x, y) }, 3.6);
+  addMessage("Rival blight seeps out from the north and stains the frontier.", "rival");
+}
+
+function updateZones(dt) {
+  const nextZones = [];
+
+  for (const zone of world.zones) {
+    zone.age += dt;
+
+    if (zone.kind === "rain") {
+      weakenZonesNear(zone.x, zone.y, zone.radius * 0.9, 0.02 * dt, false);
+    }
+
+    if (zone.kind === "sanctuary") {
+      weakenZonesNear(zone.x, zone.y, zone.radius * 0.8, 0.012 * dt, false);
+    }
+
+    if (zone.kind === "beacon") {
+      world.influence = clamp(world.influence + 0.05 * dt, 0, 100);
+    }
+
+    if (zone.kind === "blight") {
+      world.fear = clamp(world.fear + 0.025 * dt, 0, 100);
+    }
+
+    if (zone.age < zone.duration && zone.power > 0.04) {
+      nextZones.push(zone);
+    } else if (zoneAffectsTerrain(zone)) {
+      world.terrainDirty = true;
+    }
+  }
+
+  if (nextZones.length !== world.zones.length) {
+    world.terrainDirty = true;
+  }
+
+  world.zones = nextZones;
+}
+
+function updateVillages(dt) {
+  for (const village of world.villages) {
+    const fields = getFieldAt(village.x, village.y);
+    village.hearth = clamp(
+      village.hearth +
+        (fields.fertility * 0.028 +
+          fields.sanctity * 0.024 +
+          fields.beacon * 0.018 +
+          fields.rain * 0.01 -
+          fields.corruption * 0.045 -
+          fields.scorch * 0.03) *
+          dt,
+      0.2,
+      1.25
+    );
+
+    village.faith = clamp(
+      village.faith + (fields.sanctity * 0.06 + village.hearth * 0.025 + fields.beacon * 0.03 - fields.corruption * 0.05) * dt,
+      0,
+      1.4
+    );
+    village.rivalry = clamp(
+      village.rivalry + (fields.corruption * 0.07 + fields.scorch * 0.03 - fields.sanctity * 0.05 - fields.shelter * 0.03) * dt,
+      0,
+      1.3
+    );
+  }
+}
+
+function updateVillagers(dt) {
+  let worshipGain = 0;
+  let influenceGain = 0;
+  let rivalGain = 0;
+  let fearGain = 0;
+  let sanctityGain = 0;
+  let hearthGain = 0;
+
+  for (const villager of world.villagers) {
+    const home = world.villages[villager.homeId];
+    const fields = getFieldAt(villager.x, villager.y);
+    const shrine = getNearestShrine(villager.x, villager.y);
+    const shrineDistance = distance(villager.x, villager.y, shrine.x, shrine.y);
+    const danger = clamp(fields.corruption + fields.scorch * 0.9 + home.rivalry * 0.42 - fields.sanctity * 0.55 - fields.shelter * 0.45, 0, 1.5);
+
+    villager.devotion = clamp(villager.devotion + (fields.sanctity * 0.02 + fields.beacon * 0.01 - danger * 0.015) * dt, 0.1, 1.25);
+    villager.courage = clamp(villager.courage + (fields.sanctity * 0.018 + fields.rain * 0.01 - danger * 0.02) * dt, 0.1, 1.25);
+
+    villager.timer -= dt;
+
+    if (danger > 0.74 && villager.state !== "flee") {
+      villager.state = "flee";
+      villager.timer = 2.6;
+      villager.targetX = home.x - Math.sign(world.rivalCore.x - home.x) * 120;
+      villager.targetY = home.y - Math.sign(world.rivalCore.y - home.y) * 100;
+    } else if (villager.timer <= 0) {
+      const wantsPrayer = shrineDistance < 160 || fields.beacon > 0.2 || fields.sanctity > 0.22 || home.faith > 0.74;
+      const wantsHarvest = fields.fertility > 0.28 && home.hearth < 1.05;
+      const wantsShelter = fields.shelter > 0.25 || countZones("sanctuary") > 0;
+
+      if (villager.state === "pray") {
+        villager.state = "wander";
+        pickVillageWander(villager, home, world.rng);
+      } else if (danger > 0.45 && wantsShelter) {
+        villager.state = "shelter";
+        villager.targetX = home.x;
+        villager.targetY = home.y;
+        villager.timer = 1.8 + world.rng() * 1.8;
+      } else if (wantsHarvest && villager.devotion > 0.36) {
+        villager.state = "harvest";
+        villager.targetX = home.x + (world.rng() - 0.5) * 90;
+        villager.targetY = home.y + (world.rng() - 0.5) * 90;
+        villager.timer = 2.2 + world.rng() * 2.2;
+      } else if (wantsPrayer && villager.devotion > 0.42) {
+        villager.state = "pray";
+        villager.targetX = fields.beacon > 0.2 ? villager.x : shrine.x;
+        villager.targetY = fields.beacon > 0.2 ? villager.y : shrine.y;
+        villager.timer = 2 + world.rng() * 2.4;
+      } else {
+        villager.state = "wander";
+        pickVillageWander(villager, home, world.rng);
+      }
+    }
+
+    moveVillager(villager, dt);
+
+    if (villager.state === "pray") {
+      const prayerQuality = 0.75 + home.hearth * 0.45 + fields.sanctity * 0.35 + fields.fertility * 0.15 + fields.beacon * 0.25;
+      worshipGain += prayerQuality * villager.devotion * 0.44 * dt;
+      influenceGain += prayerQuality * villager.devotion * 0.22 * dt;
+      sanctityGain += fields.sanctity * 0.2;
+      hearthGain += home.hearth * 0.06;
+      home.faith = clamp(home.faith + 0.03 * dt, 0, 1.4);
+    }
+
+    if (villager.state === "harvest") {
+      worshipGain += (0.08 + fields.fertility * 0.18) * dt;
+      hearthGain += (0.12 + fields.fertility * 0.18) * dt;
+      home.hearth = clamp(home.hearth + 0.018 * dt, 0.2, 1.25);
+    }
+
+    if (villager.state === "shelter") {
+      fearGain -= 0.09 * dt;
+      home.faith = clamp(home.faith + 0.01 * dt, 0, 1.4);
+    }
+
+    rivalGain += Math.max(0, home.rivalry * 0.05 + fields.corruption * 0.12 - fields.sanctity * 0.08) * dt;
+    fearGain += (danger * (1.08 - villager.courage) - fields.rain * 0.04 - fields.sanctity * 0.05) * dt;
+  }
+
+  return { worshipGain, influenceGain, rivalGain, fearGain, sanctityGain, hearthGain };
+}
+
+function updateGolems(dt) {
+  for (const golem of world.golems) {
+    golem.timer -= dt;
+
+    if (golem.timer <= 0) {
+      assignGolemTask(golem);
+      golem.timer = 1.8;
+    }
+
+    const dx = golem.targetX - golem.x;
+    const dy = golem.targetY - golem.y;
