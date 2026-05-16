@@ -1,0 +1,320 @@
+
+  const villagers = Array.from({ length: VILLAGER_COUNT }, (_, index) => {
+    const home = villages[index % villages.length];
+    return spawnVillager(index, home, rng);
+  });
+
+  const terrainRipples = Array.from({ length: 28 }, () => ({
+    angle: rng() * TAU,
+    distance: 50 + rng() * 620,
+    width: 60 + rng() * 150,
+    height: 32 + rng() * 95,
+    strength: 0.25 + rng() * 1.1,
+  }));
+
+  const propSeeds = Array.from({ length: TREE_COUNT }, (_, index) => {
+    const angle = rng() * TAU;
+    const distance = 110 + rng() * 560;
+    return {
+      id: index,
+      x: Math.cos(angle) * distance,
+      y: Math.sin(angle) * distance * 0.82,
+      scale: 0.7 + rng() * 1.15,
+      twist: rng() * TAU,
+    };
+  }).filter((seedData) => Math.hypot(seedData.x - 360, seedData.y + 250) > 180);
+
+  return {
+    seed,
+    rng,
+    time: 0,
+    nextId: 1,
+    shrines,
+    villages,
+    villagers,
+    terrainRipples,
+    propSeeds,
+    zones: [],
+    effects: [],
+    golems: [],
+    messages: [],
+    selectedMiracleId: "fireball",
+    miracleCooldowns: Object.fromEntries(MIRACLES.map((miracle) => [miracle.id, 0])),
+    terrainDirty: true,
+    worship: 84,
+    influence: 54,
+    rivalInfluence: 21,
+    fear: 12,
+    faith: 58,
+    maxWorship: WORSHIP_CAP,
+    ritual: {
+      armed: false,
+      anchorX: 0,
+      anchorY: 0,
+      anchorHeight: 0,
+      timeLeft: 0,
+      lastGlyph: null,
+      traceZoneId: null,
+    },
+    rivalCore: {
+      x: 360,
+      y: -250,
+      radius: 105,
+      pulse: 0,
+      basePressure: 0.2,
+      corruption: 0.2,
+      seedTimer: 6.5,
+    },
+  };
+}
+
+function spawnVillager(id, home, rng) {
+  const jitterAngle = rng() * TAU;
+  const jitterDistance = rng() * 28;
+  return {
+    id,
+    homeId: home.id,
+    x: home.x + Math.cos(jitterAngle) * jitterDistance,
+    y: home.y + Math.sin(jitterAngle) * jitterDistance,
+    state: "wander",
+    timer: 1.2 + rng() * 3.6,
+    targetX: home.x,
+    targetY: home.y,
+    pace: 18 + rng() * 10,
+    devotion: 0.42 + rng() * 0.4,
+    courage: 0.38 + rng() * 0.4,
+  };
+}
+
+function attachEvents() {
+  window.addEventListener("resize", resizeRenderer);
+  canvas.addEventListener("contextmenu", (event) => event.preventDefault());
+
+  canvas.addEventListener("pointerdown", (event) => {
+    canvas.setPointerCapture(event.pointerId);
+    pointer.active = true;
+    pointer.downX = event.clientX;
+    pointer.downY = event.clientY;
+    updatePointerFromEvent(event);
+
+    const panMode = event.button === 2 || event.shiftKey;
+    pointer.mode = panMode ? "pan" : "draw";
+    cameraRig.dragging = panMode;
+
+    if (!panMode) {
+      pointer.gesturePoints = [];
+      pointer.gestureWorldPoints = [];
+      captureGesturePoint();
+    }
+  });
+
+  canvas.addEventListener("pointermove", (event) => {
+    pointer.active = true;
+    updatePointerFromEvent(event);
+
+    if (pointer.mode === "draw") {
+      captureGesturePoint();
+    }
+
+    if (cameraRig.dragging && pointer.mode === "pan") {
+      const dx = pointer.screenX - pointer.lastScreenX;
+      const dy = pointer.screenY - pointer.lastScreenY;
+      const panScale = cameraRig.zoom * 0.58 / Math.max(canvas.clientHeight, 1);
+      cameraRig.targetX -= dx * panScale;
+      cameraRig.targetZ -= dy * panScale;
+      clampCameraTarget();
+    }
+  });
+
+  const releasePointer = (event) => {
+    if (canvas.hasPointerCapture(event.pointerId)) {
+      canvas.releasePointerCapture(event.pointerId);
+    }
+
+    const gestureMode = pointer.mode === "draw";
+    cameraRig.dragging = false;
+    pointer.mode = "idle";
+
+    if (gestureMode) {
+      finalizeGestureStroke();
+    }
+  };
+
+  canvas.addEventListener("pointerup", releasePointer);
+  canvas.addEventListener("pointercancel", releasePointer);
+  canvas.addEventListener("pointerleave", () => {
+    pointer.active = false;
+    pointer.hoverVillageId = null;
+  });
+
+  canvas.addEventListener(
+    "wheel",
+    (event) => {
+      event.preventDefault();
+      cameraRig.zoom = clamp(cameraRig.zoom + event.deltaY * 0.35, 720, 1280);
+    },
+    { passive: false }
+  );
+
+  window.addEventListener("keydown", (event) => {
+    if (event.repeat) {
+      return;
+    }
+
+    const miracle = MIRACLES.find((entry) => entry.hotkey === event.key);
+    if (miracle) {
+      selectMiracle(miracle.id);
+      return;
+    }
+  });
+
+  restartButton.addEventListener("click", () => {
+    world = createWorld(world.seed + 1);
+    cameraRig.targetX = 0;
+    cameraRig.targetZ = 0;
+    cameraRig.smoothX = 0;
+    cameraRig.smoothZ = 0;
+    cameraRig.zoom = 980;
+    cameraRig.smoothZoom = 980;
+    pointer.history.length = 0;
+    pointer.hoverVillageId = null;
+    pointer.gesturePoints = [];
+    pointer.gestureWorldPoints = [];
+    buildWorldView();
+    addMessage("A new world has been raised. Draw a clockwise spiral to wake the ritual trace.", "blessing");
+    updateMiracleUI();
+  });
+}
+
+function selectMiracle(id) {
+  world.selectedMiracleId = id;
+  const miracle = MIRACLE_MAP[id];
+  addMessage(`${miracle.name} focus. Spiral, then ${miracle.glyph.toLowerCase()}.`, "info");
+  updateMiracleUI();
+}
+
+function updatePointerFromEvent(event) {
+  const rect = canvas.getBoundingClientRect();
+  const x = event.clientX - rect.left;
+  const y = event.clientY - rect.top;
+
+  pointer.lastScreenX = pointer.screenX;
+  pointer.lastScreenY = pointer.screenY;
+  pointer.screenX = x;
+  pointer.screenY = y;
+
+  pointerNdc.set((x / rect.width) * 2 - 1, -(y / rect.height) * 2 + 1);
+  raycaster.setFromCamera(pointerNdc, camera);
+
+  let point = null;
+  if (worldView?.terrainMesh) {
+    const intersections = raycaster.intersectObject(worldView.terrainMesh, false);
+    if (intersections.length > 0) {
+      point = intersections[0].point;
+    }
+  }
+
+  if (!point) {
+    const fallback = -camera.position.y / raycaster.ray.direction.y;
+    point = raycaster.ray.origin.clone().add(raycaster.ray.direction.clone().multiplyScalar(fallback));
+  }
+
+  pointer.worldX = point.x;
+  pointer.worldY = point.z;
+  pointer.worldHeight = point.y;
+  pointer.hoverVillageId = getHoveredVillageId(pointer.worldX, pointer.worldY);
+
+  pointer.history.push({
+    x: pointer.worldX,
+    y: pointer.worldY,
+    h: pointer.worldHeight,
+    life: 1,
+  });
+
+  if (pointer.history.length > 24) {
+    pointer.history.shift();
+  }
+}
+
+function captureGesturePoint() {
+  const last = pointer.gesturePoints[pointer.gesturePoints.length - 1];
+  if (last && Math.hypot(pointer.screenX - last.x, pointer.screenY - last.y) < 5) {
+    return;
+  }
+
+  pointer.gesturePoints.push({ x: pointer.screenX, y: pointer.screenY });
+  pointer.gestureWorldPoints.push({
+    x: pointer.worldX,
+    y: pointer.worldY,
+    height: pointer.worldHeight,
+  });
+}
+
+function finalizeGestureStroke() {
+  if (pointer.gesturePoints.length < GESTURE_MIN_POINTS) {
+    pointer.gesturePoints = [];
+    pointer.gestureWorldPoints = [];
+    return;
+  }
+
+  const stroke = analyzeGesture(pointer.gesturePoints, pointer.gestureWorldPoints);
+  pointer.gesturePoints = [];
+  pointer.gestureWorldPoints = [];
+
+  if (!stroke) {
+    addMessage("The ritual stroke was too faint to read.", "info");
+    return;
+  }
+
+  handleGestureRecognition(stroke);
+}
+
+function handleGestureRecognition(stroke) {
+  if (stroke.type === "spiral") {
+    armRitual(stroke);
+    return;
+  }
+
+  if (!world.ritual.armed) {
+    addMessage(`The land read ${GLYPH_LABELS[stroke.type] ?? "a glyph"}, but no ritual was armed.`, "info");
+    return;
+  }
+
+  const distanceToAnchor = distance(stroke.worldCenter.x, stroke.worldCenter.y, world.ritual.anchorX, world.ritual.anchorY);
+  if (distanceToAnchor > GESTURE_ANCHOR_RADIUS) {
+    addMessage("The second glyph drifted too far from the armed spiral trace.", "info");
+    return;
+  }
+
+  const miracleId = GLYPH_TO_MIRACLE[stroke.type];
+  if (!miracleId) {
+    addMessage("The armed ritual did not recognize that finishing glyph.", "info");
+    return;
+  }
+
+  world.ritual.lastGlyph = stroke.type;
+  world.selectedMiracleId = miracleId;
+  const success = attemptCastMiracle(miracleId, getRitualTarget(), "gesture");
+  if (success) {
+    addMessage(`${MIRACLE_MAP[miracleId].name} answers the ritual chain.`, "blessing");
+    clearRitual();
+  }
+}
+
+function armRitual(stroke) {
+  clearRitual();
+
+  const target = {
+    x: stroke.worldCenter.x,
+    y: stroke.worldCenter.y,
+    height: getTerrainHeight(stroke.worldCenter.x, stroke.worldCenter.y),
+  };
+
+  const traceZone = addZone({
+    kind: "ritual",
+    x: target.x,
+    y: target.y,
+    radius: 96,
+    duration: RITUAL_ARM_TIME,
+    power: 1,
+    sanctity: 0.08,
