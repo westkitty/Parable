@@ -1,0 +1,320 @@
+    const length = Math.hypot(dx, dy);
+
+    if (length > 2) {
+      const step = Math.min(length, golem.pace * dt);
+      golem.x += (dx / length) * step;
+      golem.y += (dy / length) * step;
+      golem.state = "march";
+    } else {
+      golem.state = "work";
+      performGolemTask(golem, dt);
+    }
+  }
+}
+
+function assignGolemTask(golem) {
+  const harmfulZone = [...world.zones]
+    .filter((zone) => HARMFUL_ZONES.has(zone.kind))
+    .sort((a, b) => distance(golem.x, golem.y, a.x, a.y) - distance(golem.x, golem.y, b.x, b.y))[0];
+
+  if (harmfulZone) {
+    golem.taskType = "cleanse";
+    golem.taskTargetId = harmfulZone.id;
+    golem.targetX = harmfulZone.x;
+    golem.targetY = harmfulZone.y;
+    return;
+  }
+
+  const weakVillage = [...world.villages].sort((a, b) => a.hearth - b.hearth)[0];
+  if (weakVillage) {
+    golem.taskType = "mend";
+    golem.taskTargetId = weakVillage.id;
+    golem.targetX = weakVillage.x;
+    golem.targetY = weakVillage.y;
+    return;
+  }
+
+  golem.taskType = "anchor";
+  golem.targetX = world.rivalCore.x - 150;
+  golem.targetY = world.rivalCore.y + 140;
+}
+
+function performGolemTask(golem, dt) {
+  if (golem.taskType === "cleanse") {
+    const zone = world.zones.find((entry) => entry.id === golem.taskTargetId);
+    if (zone) {
+      zone.power = Math.max(0, zone.power - 0.22 * dt);
+      zone.duration = Math.max(zone.age + 0.5, zone.duration - 1.25 * dt);
+      world.influence = clamp(world.influence + 0.12 * dt, 0, 100);
+      world.terrainDirty = true;
+    }
+    return;
+  }
+
+  if (golem.taskType === "mend") {
+    const village = world.villages.find((entry) => entry.id === golem.taskTargetId);
+    if (village) {
+      village.hearth = clamp(village.hearth + 0.035 * dt, 0.2, 1.25);
+      world.worship = clamp(world.worship + 0.08 * dt, 0, world.maxWorship);
+    }
+    return;
+  }
+
+  world.rivalCore.basePressure = clamp(world.rivalCore.basePressure - 0.01 * dt, 0.08, 0.45);
+}
+
+function updateEffects(dt) {
+  world.effects = world.effects.filter((effect) => {
+    effect.age += dt;
+    return effect.age < effect.duration;
+  });
+}
+
+function updateMessages(dt) {
+  world.messages = world.messages.filter((message) => {
+    message.ttl -= dt;
+    return message.ttl > 0;
+  });
+  updateEventLog();
+}
+
+function moveVillager(villager, dt) {
+  const dx = villager.targetX - villager.x;
+  const dy = villager.targetY - villager.y;
+  const len = Math.hypot(dx, dy);
+
+  if (len < 2) {
+    return;
+  }
+
+  const speed = villager.state === "flee" ? villager.pace * 1.75 : villager.pace;
+  const step = Math.min(len, speed * dt);
+  villager.x += (dx / len) * step;
+  villager.y += (dy / len) * step;
+}
+
+function pickVillageWander(villager, home, rng) {
+  const angle = rng() * TAU;
+  const distance = 25 + rng() * 60;
+  villager.targetX = home.x + Math.cos(angle) * distance;
+  villager.targetY = home.y + Math.sin(angle) * distance;
+  villager.timer = 1.8 + rng() * 3.6;
+}
+
+function buildWorldView() {
+  if (worldView) {
+    worldRoot.remove(worldView.root);
+    disposeObject(worldView.root);
+  }
+
+  const root = new THREE.Group();
+  worldRoot.add(root);
+
+  const terrainMesh = createTerrainMesh();
+  root.add(terrainMesh);
+
+  const water = createWaterMeshes();
+  root.add(water.group);
+
+  const propGroup = createPropGroup();
+  root.add(propGroup);
+
+  const shrineViews = world.shrines.map((shrine) => createShrineView(shrine));
+  shrineViews.forEach((view) => root.add(view.group));
+
+  const villageViews = world.villages.map((village) => createVillageView(village));
+  villageViews.forEach((view) => root.add(view.group));
+
+  const villagerViews = world.villagers.map((villager) => createVillagerView(villager));
+  villagerViews.forEach((view) => root.add(view.group));
+
+  const rivalView = createRivalView();
+  root.add(rivalView.group);
+
+  const skyMotes = createSkyMotes();
+  root.add(skyMotes);
+
+  const handView = createHandView();
+  root.add(handView.group);
+
+  const trailView = createTrailView();
+  root.add(trailView.line);
+
+  const zoneLayer = new THREE.Group();
+  const effectLayer = new THREE.Group();
+  const golemLayer = new THREE.Group();
+  root.add(zoneLayer);
+  root.add(effectLayer);
+  root.add(golemLayer);
+
+  worldView = {
+    root,
+    terrainMesh,
+    water,
+    shrineViews,
+    villageViews,
+    villagerViews,
+    rivalView,
+    skyMotes,
+    handView,
+    trailView,
+    zoneLayer,
+    effectLayer,
+    golemLayer,
+    zoneViews: new Map(),
+    effectViews: new Map(),
+    golemViews: new Map(),
+  };
+
+  refreshTerrainVisuals();
+  syncDynamicViews();
+}
+
+function createTerrainMesh() {
+  const geometry = new THREE.PlaneGeometry(2200, 1900, 120, 100);
+  geometry.rotateX(-Math.PI / 2);
+  geometry.setAttribute("color", new THREE.Float32BufferAttribute(new Float32Array(geometry.attributes.position.count * 3), 3));
+
+  const material = new THREE.MeshStandardMaterial({
+    vertexColors: true,
+    roughness: 0.95,
+    metalness: 0.02,
+  });
+
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.position.y = -18;
+  return mesh;
+}
+
+function refreshTerrainVisuals() {
+  const position = worldView.terrainMesh.geometry.attributes.position;
+  const color = worldView.terrainMesh.geometry.attributes.color;
+
+  for (let index = 0; index < position.count; index += 1) {
+    const x = position.getX(index);
+    const z = position.getZ(index);
+    const y = getTerrainHeight(x, z);
+    const fields = getFieldAt(x, z);
+    const radial = Math.hypot(x / 1.05, z / 0.84);
+    const shore = smoothstep(WORLD_RADIUS + 55, WORLD_RADIUS - 30, radial);
+
+    position.setY(index, y);
+
+    const low = new THREE.Color(0x2e4637);
+    const mid = new THREE.Color(0x5f8252);
+    const high = new THREE.Color(0x88a96a);
+
+    scratchColor.copy(low).lerp(mid, clamp((y + 25) / 90, 0, 1));
+    scratchColor.lerp(high, clamp((y - 48) / 95, 0, 1));
+    scratchColor.lerp(new THREE.Color(0x1d2a27), clamp(1 - shore, 0, 1) * 0.7);
+    scratchColor.lerp(new THREE.Color(0x76bc65), clamp(fields.fertility * 0.22, 0, 0.48));
+    scratchColor.lerp(new THREE.Color(0xff7d4f), clamp(fields.scorch * 0.34, 0, 0.7));
+    scratchColor.lerp(new THREE.Color(0xddd49a), clamp(fields.sanctity * 0.2, 0, 0.28));
+    scratchColor.lerp(new THREE.Color(0x5f2323), clamp(fields.corruption * 0.62, 0, 0.76));
+
+    color.setXYZ(index, scratchColor.r, scratchColor.g, scratchColor.b);
+  }
+
+  position.needsUpdate = true;
+  color.needsUpdate = true;
+  worldView.terrainMesh.geometry.computeVertexNormals();
+  world.terrainDirty = false;
+}
+
+function createWaterMeshes() {
+  const group = new THREE.Group();
+
+  const waterGeometry = new THREE.CircleGeometry(1500, 88);
+  waterGeometry.rotateX(-Math.PI / 2);
+  const waterMaterial = new THREE.MeshBasicMaterial({
+    color: 0x18424a,
+    transparent: true,
+    opacity: 0.78,
+  });
+  const waterSurface = new THREE.Mesh(waterGeometry, waterMaterial);
+  waterSurface.position.y = -34;
+  group.add(waterSurface);
+
+  const glowGeometry = new THREE.RingGeometry(WORLD_RADIUS * 0.98, WORLD_RADIUS * 1.18, 96);
+  glowGeometry.rotateX(-Math.PI / 2);
+  const glowMaterial = new THREE.MeshBasicMaterial({
+    color: 0x5fa3a8,
+    transparent: true,
+    opacity: 0.2,
+    side: THREE.DoubleSide,
+  });
+  const shoreGlow = new THREE.Mesh(glowGeometry, glowMaterial);
+  shoreGlow.position.y = -28;
+  group.add(shoreGlow);
+
+  return { group, shoreGlow, waterSurface };
+}
+
+function createPropGroup() {
+  const group = new THREE.Group();
+
+  for (const seedData of world.propSeeds) {
+    if (Math.hypot(seedData.x, seedData.y) > WORLD_RADIUS - 40) {
+      continue;
+    }
+
+    const trunk = new THREE.Mesh(
+      new THREE.CylinderGeometry(4, 6, 28 * seedData.scale, 6),
+      new THREE.MeshStandardMaterial({ color: 0x6a4b34, roughness: 1 })
+    );
+
+    const crown = new THREE.Mesh(
+      new THREE.ConeGeometry(16 * seedData.scale, 46 * seedData.scale, 8),
+      new THREE.MeshStandardMaterial({ color: 0x3f6a41, roughness: 1 })
+    );
+
+    const groupItem = new THREE.Group();
+    groupItem.add(trunk);
+    groupItem.add(crown);
+
+    trunk.position.y = 12 * seedData.scale;
+    crown.position.y = 38 * seedData.scale;
+
+    const height = getTerrainHeight(seedData.x, seedData.y) - 8;
+    groupItem.position.set(seedData.x, height, seedData.y);
+    groupItem.rotation.y = seedData.twist;
+    group.add(groupItem);
+  }
+
+  return group;
+}
+
+function createShrineView(shrine) {
+  const group = new THREE.Group();
+  const baseHeight = getTerrainHeight(shrine.x, shrine.y);
+  group.position.set(shrine.x, baseHeight + 2, shrine.y);
+
+  const plinth = new THREE.Mesh(
+    new THREE.CylinderGeometry(14 * shrine.size, 20 * shrine.size, 18 * shrine.size, 6),
+    new THREE.MeshStandardMaterial({ color: 0x73573d, roughness: 1 })
+  );
+  plinth.position.y = 8;
+  group.add(plinth);
+
+  const crystal = new THREE.Mesh(
+    new THREE.OctahedronGeometry(14 * shrine.size, 0),
+    new THREE.MeshStandardMaterial({
+      color: 0xf4c768,
+      emissive: 0xd09c34,
+      emissiveIntensity: 1.2,
+      roughness: 0.2,
+      metalness: 0.1,
+    })
+  );
+  crystal.position.y = 28;
+  group.add(crystal);
+
+  const aura = new THREE.Mesh(
+    new THREE.RingGeometry(shrine.aura * 0.7, shrine.aura, 32),
+    new THREE.MeshBasicMaterial({
+      color: 0xf4c768,
+      transparent: true,
+      opacity: 0.34,
+      side: THREE.DoubleSide,
+    })
+  );
