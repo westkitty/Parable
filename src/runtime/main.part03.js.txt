@@ -1,0 +1,319 @@
+  });
+
+  world.ritual = {
+    armed: true,
+    anchorX: target.x,
+    anchorY: target.y,
+    anchorHeight: target.height,
+    timeLeft: RITUAL_ARM_TIME,
+    lastGlyph: "spiral",
+    traceZoneId: traceZone.id,
+  };
+
+  spawnEffect("ritualArm", target, RITUAL_ARM_TIME);
+  addMessage("Clockwise spiral recognized. Ritual armed. Finish with a second glyph before it fades.", "blessing");
+}
+
+function clearRitual() {
+  if (world.ritual.traceZoneId) {
+    world.zones = world.zones.filter((zone) => zone.id !== world.ritual.traceZoneId);
+    world.terrainDirty = true;
+  }
+
+  world.ritual.armed = false;
+  world.ritual.timeLeft = 0;
+  world.ritual.traceZoneId = null;
+  world.ritual.lastGlyph = null;
+}
+
+function attemptCastMiracle(miracleId, target, source) {
+  const miracle = MIRACLE_MAP[miracleId];
+
+  if (!isPointInsideIsland(target.x, target.y)) {
+    addMessage("The ritual needs ground within the island's sacred bounds.", "info");
+    return false;
+  }
+
+  if (world.miracleCooldowns[miracle.id] > 0.05) {
+    addMessage(`${miracle.name} is still settling.`, "info");
+    return false;
+  }
+
+  if (world.worship < miracle.cost) {
+    addMessage(`Not enough worship for ${miracle.name}.`, "rival");
+    return false;
+  }
+
+  if (miracle.id === "golemWake" && world.golems.length >= GOLEM_CAP) {
+    addMessage("The island can only sustain three awakened golems at once.", "info");
+    return false;
+  }
+
+  world.worship = clamp(world.worship - miracle.cost, 0, world.maxWorship);
+  world.miracleCooldowns[miracle.id] = miracle.cooldown;
+
+  MIRACLE_CASTERS[miracle.id](target, source);
+  updateMiracleUI();
+  return true;
+}
+
+function getRitualTarget() {
+  const x = world.ritual.armed ? world.ritual.anchorX : pointer.active ? pointer.worldX : cameraRig.smoothX;
+  const y = world.ritual.armed ? world.ritual.anchorY : pointer.active ? pointer.worldY : cameraRig.smoothZ;
+  return {
+    x,
+    y,
+    height: getTerrainHeight(x, y),
+  };
+}
+
+function analyzeGesture(screenPoints, worldPoints) {
+  const points = simplifyGesture(screenPoints);
+  if (points.length < 6) {
+    return null;
+  }
+
+  const box = getBoundingBox(points);
+  const width = Math.max(box.maxX - box.minX, 1);
+  const height = Math.max(box.maxY - box.minY, 1);
+  const pathLength = getPathLength(points);
+  const start = points[0];
+  const end = points[points.length - 1];
+  const endDistance = Math.hypot(end.x - start.x, end.y - start.y);
+  const linearity = endDistance / Math.max(pathLength, 1);
+  const sharpTurns = countSharpTurns(points);
+  const turn = getSignedTurn(points);
+  const xChanges = countAxisChanges(points, "x");
+  const yChanges = countAxisChanges(points, "y");
+  const worldCenter = getWorldCenter(worldPoints);
+  const metrics = { width, height, pathLength, endDistance, linearity, sharpTurns, turn, xChanges, yChanges, start, end };
+
+  if (isClockwiseSpiral(points, metrics)) {
+    return { type: "spiral", worldCenter, metrics };
+  }
+
+  if (isSquare(points, metrics)) {
+    return { type: "square", worldCenter, metrics };
+  }
+
+  if (isCircle(points, metrics)) {
+    return { type: "circle", worldCenter, metrics };
+  }
+
+  if (isVerticalZigzag(metrics)) {
+    return { type: "verticalZigzag", worldCenter, metrics };
+  }
+
+  if (isHorizontalZigzag(metrics)) {
+    return { type: "horizontalZigzag", worldCenter, metrics };
+  }
+
+  if (isVerticalLine(metrics, "up")) {
+    return { type: "upwardLine", worldCenter, metrics };
+  }
+
+  if (isVerticalLine(metrics, "down")) {
+    return { type: "downwardLine", worldCenter, metrics };
+  }
+
+  if (isHorizontalLine(metrics)) {
+    return { type: "horizontalLine", worldCenter, metrics };
+  }
+
+  if (isDome(points, metrics)) {
+    return { type: "dome", worldCenter, metrics };
+  }
+
+  if (isArch(points, metrics)) {
+    return { type: "arch", worldCenter, metrics };
+  }
+
+  if (isCaret(points, metrics)) {
+    return { type: "caret", worldCenter, metrics };
+  }
+
+  return null;
+}
+
+function simplifyGesture(points) {
+  const simplified = [points[0]];
+
+  for (let index = 1; index < points.length; index += 1) {
+    const point = points[index];
+    const last = simplified[simplified.length - 1];
+    if (Math.hypot(point.x - last.x, point.y - last.y) >= 10) {
+      simplified.push(point);
+    }
+  }
+
+  if (simplified[simplified.length - 1] !== points[points.length - 1]) {
+    simplified.push(points[points.length - 1]);
+  }
+
+  return simplified;
+}
+
+function getBoundingBox(points) {
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
+
+  for (const point of points) {
+    minX = Math.min(minX, point.x);
+    maxX = Math.max(maxX, point.x);
+    minY = Math.min(minY, point.y);
+    maxY = Math.max(maxY, point.y);
+  }
+
+  return { minX, maxX, minY, maxY };
+}
+
+function getPathLength(points) {
+  let length = 0;
+  for (let index = 1; index < points.length; index += 1) {
+    length += Math.hypot(points[index].x - points[index - 1].x, points[index].y - points[index - 1].y);
+  }
+  return length;
+}
+
+function getSignedTurn(points) {
+  let total = 0;
+  for (let index = 1; index < points.length - 1; index += 1) {
+    const a = points[index - 1];
+    const b = points[index];
+    const c = points[index + 1];
+    const angle1 = Math.atan2(b.y - a.y, b.x - a.x);
+    const angle2 = Math.atan2(c.y - b.y, c.x - b.x);
+    let delta = angle2 - angle1;
+    if (delta > Math.PI) delta -= TAU;
+    if (delta < -Math.PI) delta += TAU;
+    total += delta;
+  }
+  return total;
+}
+
+function countSharpTurns(points) {
+  let turns = 0;
+  for (let index = 1; index < points.length - 1; index += 1) {
+    const prev = points[index - 1];
+    const current = points[index];
+    const next = points[index + 1];
+    const a = Math.atan2(current.y - prev.y, current.x - prev.x);
+    const b = Math.atan2(next.y - current.y, next.x - current.x);
+    let delta = Math.abs(b - a);
+    if (delta > Math.PI) delta = TAU - delta;
+    if (delta > 0.8) {
+      turns += 1;
+    }
+  }
+  return turns;
+}
+
+function countAxisChanges(points, axis) {
+  let changes = 0;
+  let lastSign = 0;
+
+  for (let index = 1; index < points.length; index += 1) {
+    const delta = points[index][axis] - points[index - 1][axis];
+    if (Math.abs(delta) < 4) {
+      continue;
+    }
+
+    const sign = Math.sign(delta);
+    if (lastSign && sign !== lastSign) {
+      changes += 1;
+    }
+    lastSign = sign;
+  }
+
+  return changes;
+}
+
+function getWorldCenter(points) {
+  let x = 0;
+  let y = 0;
+  let count = 0;
+
+  for (const point of points) {
+    x += point.x;
+    y += point.y;
+    count += 1;
+  }
+
+  return {
+    x: x / Math.max(count, 1),
+    y: y / Math.max(count, 1),
+  };
+}
+
+function isClockwiseSpiral(points, metrics) {
+  if (metrics.pathLength < 220 || Math.abs(metrics.turn) < 5.4 || metrics.endDistance > Math.max(metrics.width, metrics.height) * 0.7) {
+    return false;
+  }
+
+  const center = {
+    x: (points[0].x + points[points.length - 1].x) * 0.5,
+    y: (points[0].y + points[points.length - 1].y) * 0.5,
+  };
+  const radii = points.map((point) => Math.hypot(point.x - center.x, point.y - center.y));
+  const head = average(radii.slice(0, Math.ceil(radii.length / 3)));
+  const tail = average(radii.slice(-Math.ceil(radii.length / 3)));
+  return metrics.turn < 0 && head > tail * 1.18;
+}
+
+function isCircle(points, metrics) {
+  return metrics.endDistance < Math.max(metrics.width, metrics.height) * 0.35 && Math.abs(metrics.turn) > 4.8 && metrics.sharpTurns < 4;
+}
+
+function isSquare(points, metrics) {
+  const ratio = metrics.width / metrics.height;
+  return metrics.endDistance < Math.max(metrics.width, metrics.height) * 0.4 && ratio > 0.6 && ratio < 1.6 && metrics.sharpTurns >= 3;
+}
+
+function isVerticalZigzag(metrics) {
+  return metrics.height > metrics.width * 1.35 && metrics.xChanges >= 3;
+}
+
+function isHorizontalZigzag(metrics) {
+  return metrics.width > metrics.height * 1.35 && metrics.yChanges >= 3;
+}
+
+function isVerticalLine(metrics, direction) {
+  if (!(metrics.linearity > 0.88 && metrics.height > metrics.width * 2.2)) {
+    return false;
+  }
+
+  const delta = metrics.end.y - metrics.start.y;
+  return direction === "up" ? delta < -metrics.height * 0.45 : delta > metrics.height * 0.45;
+}
+
+function isHorizontalLine(metrics) {
+  return metrics.linearity > 0.88 && metrics.width > metrics.height * 2.2;
+}
+
+function isCaret(points, metrics) {
+  if (!(metrics.width > metrics.height * 0.7 && metrics.sharpTurns >= 1)) {
+    return false;
+  }
+
+  const peak = points.reduce((best, point) => (point.y < best.y ? point : best), points[0]);
+  const last = points[points.length - 1];
+  const first = points[0];
+  return first.y > peak.y + metrics.height * 0.35 && last.y > peak.y + metrics.height * 0.35 && Math.abs(first.x - last.x) > metrics.width * 0.35;
+}
+
+function isArch(points, metrics) {
+  if (!(metrics.width > metrics.height * 1.1 && metrics.sharpTurns < 5)) {
+    return false;
+  }
+
+  const first = points[0];
+  const last = points[points.length - 1];
+  const peak = points.reduce((best, point) => (point.y < best.y ? point : best), points[0]);
+  return first.y > peak.y + metrics.height * 0.35 && last.y > peak.y + metrics.height * 0.35 && Math.abs(first.y - last.y) < metrics.height * 0.3;
+}
+
+function isDome(points, metrics) {
+  return isArch(points, metrics) && metrics.width > metrics.height * 1.45;
+}
