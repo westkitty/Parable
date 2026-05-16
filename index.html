@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Parable</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="brand-lockup">
+          <p class="eyebrow">Prototype Milestone 1</p>
+          <h1>Parable</h1>
+        </div>
+        <div class="topbar-actions">
+          <button id="restart-button" type="button">Restart World</button>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <section class="hud-panel overview-panel" aria-label="World status">
+          <p class="section-label">Divine Brief</p>
+          <h2>The world now listens for ritual chains.</h2>
+          <p class="panel-copy">
+            Draw a clockwise spiral on the land to arm a ritual, then complete
+            the matching glyph before the trace fades. The rite now chooses the
+            miracle, and the island answers with real social, territorial, and
+            terrain change.
+          </p>
+
+          <div class="stat-list" id="stat-list" aria-live="polite"></div>
+        </section>
+
+        <section class="play-surface" aria-label="Parable game world">
+          <canvas id="game-canvas" aria-label="Parable world canvas"></canvas>
+          <div class="surface-overlay">
+            <div class="surface-chip">
+              <span class="chip-label">Ritual State</span>
+              <strong id="selected-miracle-name">Dormant</strong>
+              <span class="chip-meta" id="selected-miracle-status">Draw a clockwise spiral to arm a rite</span>
+            </div>
+            <div class="surface-chip">
+              <span class="chip-label">Sacred minimum</span>
+              <strong>Spiral, then vertical zigzag</strong>
+              <span class="chip-meta">That chain must still cast Fireball</span>
+            </div>
+          </div>
+        </section>
+
+        <aside class="hud-panel sidebar-panel" aria-label="Controls and milestone notes">
+          <section class="sidebar-section">
+            <p class="section-label">Controls</p>
+            <ul class="plain-list">
+              <li>Move the pointer or drag a finger across the island to guide the divine hand.</li>
+              <li>Hold and draw a clockwise spiral on the land to arm a ritual.</li>
+              <li>Draw a second glyph before the ritual expires to cast a miracle.</li>
+              <li>Hold Shift while dragging, or use right mouse drag, to pan the camera.</li>
+              <li>Use the mouse wheel or trackpad scroll to zoom the world view.</li>
+              <li>Hotkeys 1 through 0 now highlight gesture vocabulary for learning only.</li>
+              <li>Use Restart World to rebuild the simulation cleanly.</li>
+            </ul>
+          </section>
+
+          <section class="sidebar-section">
+            <p class="section-label">Spellbook</p>
+            <div class="miracle-list" id="miracle-list" aria-live="polite"></div>
+          </section>
+
+          <section class="sidebar-section">
+            <p class="section-label">Ritual Loop</p>
+            <div class="ritual-note" id="cast-hint">
+              <p class="panel-copy compact">
+                Clockwise spiral arms the ritual trace. The second glyph decides
+                which miracle answers from the anchored site.
+              </p>
+            </div>
+          </section>
+
+          <section class="sidebar-section">
+            <p class="section-label">World pulse</p>
+            <div class="event-log" id="event-log" aria-live="polite"></div>
+          </section>
+
+          <section class="sidebar-section">
+            <p class="section-label">Milestone notes</p>
+            <p class="panel-copy compact">
+              Gesture casting is now the primary loop. Secondary spell selection
+              remains only as a learning aid while the roster shifts fully into
+              ritual vocabulary.
+            </p>
+          </section>
+        </aside>
+      </main>
+    </div>
+
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>
