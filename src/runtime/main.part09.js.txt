@@ -1,0 +1,319 @@
+    worldView.handView.group.position.set(pointer.worldX, pointer.worldHeight + 48, pointer.worldY);
+    worldView.handView.group.rotation.y = Math.sin(world.time * 2.5) * 0.22;
+    worldView.handView.halo.scale.setScalar(1 + Math.sin(world.time * 5) * 0.06);
+    worldView.handView.pointerBeam.scale.y = 0.9 + Math.sin(world.time * 4) * 0.05;
+  } else {
+    worldView.handView.group.visible = false;
+  }
+
+  const handColor = world.ritual.armed ? 0xf4c768 : focusedMiracle.color;
+  worldView.handView.palm.material.color.set(handColor);
+  worldView.handView.palm.material.emissive.set(handColor);
+  worldView.handView.halo.material.color.set(handColor);
+  worldView.handView.pointerBeam.material.color.set(handColor);
+
+  updateTrailGeometry();
+  worldView.skyMotes.rotation.y += dt * 0.01;
+}
+
+function updateZoneViews() {
+  for (const zone of world.zones) {
+    const view = worldView.zoneViews.get(zone.id);
+    if (!view) {
+      continue;
+    }
+
+    const life = 1 - zone.age / zone.duration;
+    const ground = getTerrainHeight(zone.x, zone.y);
+    view.group.position.set(zone.x, ground + 1.5, zone.y);
+    view.ring.scale.setScalar(0.95 + (1 - life) * 0.18);
+    view.fill.material.opacity = 0.1 + zone.power * life * 0.18;
+    view.ring.material.opacity = 0.16 + zone.power * life * 0.28;
+
+    if (view.kind === "beacon" && view.accent) {
+      view.accent.material.opacity = 0.14 + life * 0.14;
+    }
+
+    if (view.kind === "rain" && view.accent) {
+      view.accent.material.opacity = 0.08 + life * 0.12;
+    }
+
+    if (view.kind === "sanctuary" && view.accent) {
+      view.accent.material.opacity = 0.08 + life * 0.12;
+    }
+
+    if (view.kind === "ritual" && view.accent) {
+      view.accent.material.opacity = 0.18 + Math.sin(world.time * 6) * 0.1;
+      view.accent.rotation.z += 0.015;
+    }
+  }
+}
+
+function updateEffectViews() {
+  for (const effect of world.effects) {
+    const view = worldView.effectViews.get(effect.id);
+    if (!view) {
+      continue;
+    }
+
+    const t = effect.age / effect.duration;
+    const ground = getTerrainHeight(effect.x, effect.y);
+    view.group.position.set(effect.x, ground + 2, effect.y);
+    view.ring.scale.setScalar(0.4 + t * 4.2);
+    view.ring.material.opacity = 0.75 * (1 - t);
+    view.column.material.opacity = 0.18 * (1 - t);
+    view.orb.material.opacity = 0.62 * (1 - t);
+
+    switch (effect.kind) {
+      case "fireball":
+        view.orb.position.y = 160 * (1 - t) + 18;
+        view.orb.scale.setScalar(1.2 + (1 - t) * 1.5);
+        break;
+      case "rain":
+        view.orb.position.y = 24;
+        view.column.scale.set(1.8, 1.2 + Math.sin(world.time * 10) * 0.1, 1.8);
+        break;
+      case "blessing":
+      case "fertility":
+      case "purge":
+      case "beacon":
+      case "sanctuary":
+      case "ritualArm":
+        view.orb.position.y = 26 + Math.sin(t * Math.PI) * 12;
+        view.orb.scale.setScalar(0.8 + t * 1.5);
+        break;
+      case "windLash":
+        view.orb.scale.set(2.4 + t * 2, 0.35, 2.4 + t * 2);
+        view.column.material.opacity = 0;
+        break;
+      case "golemWake":
+        view.orb.position.y = 12 + t * 36;
+        view.ring.scale.setScalar(0.6 + t * 2.4);
+        break;
+      case "stoneShape":
+        view.orb.position.y = 8 + t * 44;
+        break;
+      case "blight":
+        view.orb.position.y = 18;
+        view.column.material.opacity = 0.12 * (1 - t);
+        break;
+      default:
+        view.orb.position.y = 18;
+        break;
+    }
+  }
+}
+
+function updateGolemViews(dt) {
+  for (const golem of world.golems) {
+    const view = worldView.golemViews.get(golem.id);
+    if (!view) {
+      continue;
+    }
+
+    const ground = getTerrainHeight(golem.x, golem.y);
+    const bob = Math.sin(world.time * 3 + golem.phase) * 1.4;
+    view.group.position.set(golem.x, ground + bob, golem.y);
+    view.group.lookAt(golem.targetX, ground + 10, golem.targetY);
+    view.eye.material.color.set(golem.state === "work" ? 0xf4c768 : 0x9be7ff);
+    view.armLeft.rotation.z = Math.sin(world.time * 6 + golem.phase) * 0.08;
+    view.armRight.rotation.z = -Math.sin(world.time * 6 + golem.phase) * 0.08;
+    view.body.rotation.y += dt * 0.25;
+  }
+}
+
+function updateTrailGeometry() {
+  const attribute = worldView.trailView.geometry.attributes.position;
+  const history = pointer.history;
+
+  if (history.length < 2) {
+    worldView.trailView.line.visible = false;
+    return;
+  }
+
+  worldView.trailView.line.visible = true;
+  const maxCount = Math.min(history.length, 24);
+
+  for (let index = 0; index < maxCount; index += 1) {
+    const point = history[history.length - maxCount + index];
+    attribute.setXYZ(index, point.x, point.h + 10 + index * 0.1, point.y);
+  }
+
+  worldView.trailView.geometry.setDrawRange(0, maxCount);
+  attribute.needsUpdate = true;
+}
+
+function updateStats() {
+  const prayedCount = world.villagers.filter((villager) => villager.state === "pray").length;
+  const fleeingCount = world.villagers.filter((villager) => villager.state === "flee").length;
+  const harvestingCount = world.villagers.filter((villager) => villager.state === "harvest").length;
+  const shelteringCount = world.villagers.filter((villager) => villager.state === "shelter").length;
+  const hoveredVillage = world.villages.find((village) => village.id === pointer.hoverVillageId);
+  const focused = MIRACLE_MAP[world.selectedMiracleId];
+
+  const stats = {
+    villagers: {
+      value: `${world.villagers.length}`,
+      detail: hoveredVillage
+        ? `Village ${hoveredVillage.id + 1}: hearth ${Math.round(hoveredVillage.hearth * 100)}, faith ${Math.round(hoveredVillage.faith * 100)}, rival ${Math.round(hoveredVillage.rivalry * 100)}`
+        : `${prayedCount} praying, ${harvestingCount} harvesting, ${shelteringCount} sheltering, ${fleeingCount} fleeing`,
+    },
+    worship: {
+      value: `${Math.round(world.worship)}`,
+      detail: world.ritual.armed
+        ? `Armed trace: ${Math.max(0, world.ritual.timeLeft).toFixed(1)}s to finish the glyph`
+        : `${focused.name}: spiral then ${focused.glyph.toLowerCase()}`,
+    },
+    influence: {
+      value: `${Math.round(world.influence)}%`,
+      detail: `${countZones("beacon")} beacons, ${countZones("sanctuary")} sanctuaries, ${countZones("fertility")} fertile grounds`,
+    },
+    rival: {
+      value: `${Math.round(world.rivalInfluence)}%`,
+      detail: `${countZones("blight")} blight seeds active, core corruption ${Math.round(world.rivalCore.corruption * 100)}%`,
+    },
+  };
+
+  for (const row of statsHost.querySelectorAll(".stat-row")) {
+    const key = row.dataset.key;
+    row.querySelector(".stat-value").textContent = stats[key].value;
+    row.querySelector(".stat-detail").textContent = stats[key].detail;
+  }
+}
+
+function updateMiracleUI() {
+  const selected = MIRACLE_MAP[world.selectedMiracleId];
+
+  if (world.ritual.armed) {
+    selectedMiracleName.textContent = "Armed";
+    selectedMiracleStatus.textContent = `${Math.max(0, world.ritual.timeLeft).toFixed(1)}s left · finish with a second glyph at the glowing trace`;
+  } else {
+    selectedMiracleName.textContent = "Dormant";
+    selectedMiracleStatus.textContent = `Clockwise spiral arms the rite · focus miracle: ${selected.name}`;
+  }
+
+  for (const miracle of MIRACLES) {
+    const button = miracleButtons.get(miracle.id);
+    const spellCooldown = world.miracleCooldowns[miracle.id];
+    const affordable = world.worship >= miracle.cost;
+    const state = spellCooldown > 0.05 ? `${spellCooldown.toFixed(1)}s cooling` : affordable ? "Ready" : "Need worship";
+
+    button.classList.toggle("selected", miracle.id === world.selectedMiracleId);
+    button.classList.toggle("cooling", spellCooldown > 0.05);
+    button.classList.toggle("locked", !affordable && spellCooldown <= 0.05);
+
+    button.innerHTML = `
+      <span class="miracle-head">
+        <strong class="miracle-name">${miracle.name}</strong>
+        <span class="miracle-hotkey">${miracle.hotkey}</span>
+      </span>
+      <span class="miracle-meta">${miracle.cost} worship · ${miracle.cooldown}s pace · ${state}</span>
+      <span class="miracle-target">Spiral, then ${miracle.glyph.toLowerCase()}</span>
+      <span class="miracle-description">${miracle.description}</span>
+    `;
+  }
+}
+
+function render() {
+  renderer.render(scene, camera);
+}
+
+function resizeRenderer() {
+  const rect = canvas.getBoundingClientRect();
+  camera.aspect = rect.width / Math.max(rect.height, 1);
+  camera.updateProjectionMatrix();
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setSize(rect.width, rect.height, false);
+}
+
+function clampCameraTarget() {
+  cameraRig.targetX = clamp(cameraRig.targetX, -WORLD_MARGIN, WORLD_MARGIN);
+  cameraRig.targetZ = clamp(cameraRig.targetZ, -WORLD_MARGIN, WORLD_MARGIN);
+}
+
+function getHoveredVillageId(x, y) {
+  for (const village of world.villages) {
+    if (distance(x, y, village.x, village.y) < 56) {
+      return village.id;
+    }
+  }
+  return null;
+}
+
+function getNearestShrine(x, y) {
+  let best = world.shrines[0];
+  let bestDistance = distance(x, y, best.x, best.y);
+
+  for (const shrine of world.shrines.slice(1)) {
+    const nextDistance = distance(x, y, shrine.x, shrine.y);
+    if (nextDistance < bestDistance) {
+      best = shrine;
+      bestDistance = nextDistance;
+    }
+  }
+
+  return best;
+}
+
+function getFieldAt(x, y) {
+  const field = {
+    fertility: 0,
+    sanctity: 0,
+    corruption: getBaseCorruptionAt(x, y),
+    scorch: 0,
+    rain: 0,
+    beacon: 0,
+    shelter: 0,
+  };
+
+  for (const zone of world.zones) {
+    const distanceToZone = distance(x, y, zone.x, zone.y);
+    if (distanceToZone > zone.radius) {
+      continue;
+    }
+
+    const influence = zone.power * Math.pow(1 - distanceToZone / zone.radius, 2);
+    field.fertility += zone.fertility * influence;
+    field.sanctity += zone.sanctity * influence;
+    field.corruption += zone.corruption * influence;
+    field.scorch += zone.scorch * influence;
+    field.rain += zone.rain * influence;
+    field.beacon += zone.beacon * influence;
+    field.shelter += zone.shelter * influence;
+  }
+
+  return field;
+}
+
+function getTerrainHeight(x, y) {
+  const radial = Math.hypot(x / 1.02, y / 0.82);
+  const coast = 1 - smoothstep(WORLD_RADIUS - 110, WORLD_RADIUS + 90, radial);
+  let height = -24 + coast * 108;
+
+  for (const ripple of world.terrainRipples) {
+    const centerX = Math.cos(ripple.angle) * ripple.distance;
+    const centerY = Math.sin(ripple.angle) * ripple.distance * 0.82;
+    const dx = x - centerX;
+    const dy = y - centerY;
+    const normalized = Math.exp(-((dx * dx) / (ripple.width * ripple.width) + (dy * dy) / (ripple.height * ripple.height)));
+    height += normalized * ripple.strength * 32;
+  }
+
+  const ridge = Math.sin((x + y) * 0.009) * 5 + Math.cos((x - y) * 0.006) * 8;
+  height += ridge * coast;
+  height -= smoothstep(WORLD_RADIUS - 40, WORLD_RADIUS + 80, radial) * 46;
+
+  for (const zone of world.zones) {
+    if (!zone.terrainLift && !zone.terrainCrater) {
+      continue;
+    }
+
+    const distanceToZone = distance(x, y, zone.x, zone.y);
+    if (distanceToZone > zone.radius) {
+      continue;
+    }
+
+    const influence = zone.power * Math.pow(1 - distanceToZone / zone.radius, 2);
+    height += zone.terrainLift * influence * 42;
+    height -= zone.terrainCrater * influence * 44;
+  }
