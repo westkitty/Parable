@@ -1,0 +1,320 @@
+function average(values) {
+  if (!values.length) {
+    return 0;
+  }
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
+const MIRACLE_CASTERS = {
+  fireball: castFireball,
+  rain: castRain,
+  blessing: castBlessing,
+  purge: castPurge,
+  fertility: castFertility,
+  stoneShape: castStoneShape,
+  beacon: castBeacon,
+  windLash: castWindLash,
+  golemWake: castGolemWake,
+  sanctuary: castSanctuary,
+};
+
+function castFireball(target) {
+  addZone({
+    kind: "crater",
+    x: target.x,
+    y: target.y,
+    radius: 86,
+    duration: 42,
+    power: 1,
+    terrainCrater: 1,
+    scorch: 0.45,
+  });
+  addZone({
+    kind: "scorch",
+    x: target.x,
+    y: target.y,
+    radius: 130,
+    duration: 32,
+    power: 1,
+    scorch: 1,
+    fertility: -0.5,
+  });
+  spawnEffect("fireball", target, 4.2);
+
+  const villagersHit = forEachVillagerInRadius(target.x, target.y, 150, (villager) => {
+    villager.state = "flee";
+    villager.timer = 3.2;
+    villager.targetX = villager.x + Math.sign(villager.x - target.x || 1) * 120;
+    villager.targetY = villager.y + Math.sign(villager.y - target.y || 1) * 120;
+    villager.devotion = clamp(villager.devotion - 0.08, 0.1, 1.2);
+    villager.courage = clamp(villager.courage - 0.06, 0.1, 1.2);
+  });
+
+  forEachVillageInRadius(target.x, target.y, 170, (village) => {
+    village.hearth = clamp(village.hearth - 0.1, 0.2, 1.25);
+  });
+
+  if (distance(target.x, target.y, world.rivalCore.x, world.rivalCore.y) < 220) {
+    world.rivalCore.basePressure = clamp(world.rivalCore.basePressure - 0.09, 0.08, 0.45);
+    world.influence = clamp(world.influence + 6, 0, 100);
+  } else {
+    world.influence = clamp(world.influence + 1.5, 0, 100);
+  }
+
+  world.fear = clamp(world.fear + 5 + villagersHit * 0.2, 0, 100);
+  addMessage(`Fireball lands with force, scorching the land and scattering ${villagersHit} villagers.`, "info");
+}
+
+function castRain(target) {
+  addZone({
+    kind: "rain",
+    x: target.x,
+    y: target.y,
+    radius: 155,
+    duration: 24,
+    power: 1,
+    rain: 1,
+    fertility: 0.4,
+    sanctity: 0.12,
+  });
+  spawnEffect("rain", target, 4.4);
+
+  const quenched = weakenZonesNear(target.x, target.y, 170, 0.28);
+  forEachVillagerInRadius(target.x, target.y, 150, (villager) => {
+    if (villager.state === "flee") {
+      villager.state = "wander";
+      villager.timer = 1.8;
+    }
+    villager.courage = clamp(villager.courage + 0.08, 0.1, 1.25);
+  });
+
+  world.fear = clamp(world.fear - 4, 0, 100);
+  world.worship = clamp(world.worship + 2, 0, world.maxWorship);
+  addMessage(`Rain clears smoke and cools ${quenched} harmful zones.`, "blessing");
+}
+
+function castBlessing(target) {
+  addZone({
+    kind: "blessing",
+    x: target.x,
+    y: target.y,
+    radius: 130,
+    duration: 26,
+    power: 1,
+    sanctity: 0.95,
+    beacon: 0.18,
+    fertility: 0.18,
+  });
+  spawnEffect("blessing", target, 4.1);
+
+  const inspired = forEachVillagerInRadius(target.x, target.y, 150, (villager) => {
+    villager.devotion = clamp(villager.devotion + 0.15, 0.1, 1.25);
+    villager.courage = clamp(villager.courage + 0.15, 0.1, 1.25);
+    villager.state = "pray";
+    villager.timer = 2.8;
+    villager.targetX = target.x;
+    villager.targetY = target.y;
+  });
+
+  forEachVillageInRadius(target.x, target.y, 180, (village) => {
+    village.hearth = clamp(village.hearth + 0.14, 0.2, 1.25);
+  });
+
+  world.influence = clamp(world.influence + 3, 0, 100);
+  world.fear = clamp(world.fear - 3, 0, 100);
+  addMessage(`Blessing settles over the land and turns ${inspired} villagers back toward prayer.`, "blessing");
+}
+
+function castPurge(target) {
+  addZone({
+    kind: "purgeGlow",
+    x: target.x,
+    y: target.y,
+    radius: 130,
+    duration: 14,
+    power: 1,
+    sanctity: 0.55,
+  });
+  spawnEffect("purge", target, 3.8);
+
+  const cleansed = weakenZonesNear(target.x, target.y, 190, 0.75);
+  if (distance(target.x, target.y, world.rivalCore.x, world.rivalCore.y) < 260) {
+    world.rivalCore.basePressure = clamp(world.rivalCore.basePressure - 0.11, 0.08, 0.45);
+  }
+
+  forEachVillagerInRadius(target.x, target.y, 170, (villager) => {
+    villager.state = "wander";
+    villager.timer = 1.6;
+    villager.courage = clamp(villager.courage + 0.16, 0.1, 1.25);
+  });
+
+  world.influence = clamp(world.influence + 5, 0, 100);
+  world.fear = clamp(world.fear - 6, 0, 100);
+  addMessage(`Purge tears through blight and cleanses ${cleansed} corrupted scars.`, "blessing");
+}
+
+function castFertility(target) {
+  addZone({
+    kind: "fertility",
+    x: target.x,
+    y: target.y,
+    radius: 175,
+    duration: 42,
+    power: 1,
+    fertility: 1.05,
+    sanctity: 0.18,
+  });
+  spawnEffect("fertility", target, 4);
+
+  forEachVillageInRadius(target.x, target.y, 210, (village) => {
+    village.hearth = clamp(village.hearth + 0.18, 0.2, 1.25);
+  });
+
+  world.worship = clamp(world.worship + 3, 0, world.maxWorship);
+  addMessage("Fertility ripples outward, strengthening the soil beneath nearby homes.", "blessing");
+}
+
+function castStoneShape(target) {
+  addZone({
+    kind: "uplift",
+    x: target.x,
+    y: target.y,
+    radius: 135,
+    duration: 48,
+    power: 1,
+    terrainLift: 1.15,
+    shelter: 0.9,
+    sanctity: 0.22,
+  });
+  spawnEffect("stoneShape", target, 4.4);
+
+  weakenZonesNear(target.x, target.y, 145, 0.2);
+  world.influence = clamp(world.influence + 6, 0, 100);
+  addMessage("Stone Shape raises a ridge from the earth and hardens the frontier.", "info");
+}
+
+function castBeacon(target) {
+  addZone({
+    kind: "beacon",
+    x: target.x,
+    y: target.y,
+    radius: 215,
+    duration: 52,
+    power: 1,
+    beacon: 1.15,
+    sanctity: 0.45,
+  });
+  spawnEffect("beacon", target, 4.6);
+
+  forEachVillagerInRadius(target.x, target.y, 240, (villager) => {
+    villager.targetX = target.x;
+    villager.targetY = target.y;
+    villager.timer = 2.2;
+  });
+
+  world.influence = clamp(world.influence + 7, 0, 100);
+  addMessage("A holy beacon rises, drawing villagers and pushing your influence deeper into the island.", "blessing");
+}
+
+function castWindLash(target) {
+  spawnEffect("windLash", target, 3.4);
+  const cleared = weakenZonesNear(target.x, target.y, 180, 0.38);
+
+  const pushed = forEachVillagerInRadius(target.x, target.y, 170, (villager) => {
+    const dx = villager.x - target.x || 1;
+    const dy = villager.y - target.y || 1;
+    const length = Math.hypot(dx, dy);
+    villager.x += (dx / length) * 48;
+    villager.y += (dy / length) * 48;
+    villager.targetX = villager.x + (dx / length) * 36;
+    villager.targetY = villager.y + (dy / length) * 36;
+    villager.timer = 1.2;
+    villager.state = villager.state === "pray" ? "wander" : villager.state;
+  });
+
+  if (distance(target.x, target.y, world.rivalCore.x, world.rivalCore.y) < 220) {
+    world.rivalCore.basePressure = clamp(world.rivalCore.basePressure - 0.04, 0.08, 0.45);
+  }
+
+  world.fear = clamp(world.fear - 2, 0, 100);
+  addMessage(`Wind Lash hurls ${pushed} villagers clear and tears open ${cleared} hazardous zones.`, "info");
+}
+
+function castGolemWake(target) {
+  const golem = {
+    id: nextId(),
+    x: target.x,
+    y: target.y,
+    state: "wake",
+    taskType: "none",
+    taskTargetId: null,
+    targetX: target.x,
+    targetY: target.y,
+    pace: 46,
+    timer: 1.8,
+    phase: Math.random() * TAU,
+  };
+
+  world.golems.push(golem);
+  spawnEffect("golemWake", target, 4.8);
+  addZone({
+    kind: "blessing",
+    x: target.x,
+    y: target.y,
+    radius: 85,
+    duration: 12,
+    power: 1,
+    sanctity: 0.3,
+  });
+
+  world.influence = clamp(world.influence + 4, 0, 100);
+  addMessage("A golem wakes from stone and begins searching for damage to mend.", "blessing");
+}
+
+function castSanctuary(target) {
+  addZone({
+    kind: "sanctuary",
+    x: target.x,
+    y: target.y,
+    radius: 185,
+    duration: 38,
+    power: 1,
+    sanctity: 1.35,
+    shelter: 1.1,
+    beacon: 0.35,
+  });
+  spawnEffect("sanctuary", target, 4.8);
+
+  forEachVillageInRadius(target.x, target.y, 220, (village) => {
+    village.hearth = clamp(village.hearth + 0.12, 0.2, 1.25);
+  });
+
+  forEachVillagerInRadius(target.x, target.y, 210, (villager) => {
+    villager.state = "pray";
+    villager.timer = 2.6;
+    villager.targetX = target.x;
+    villager.targetY = target.y;
+    villager.courage = clamp(villager.courage + 0.2, 0.1, 1.25);
+  });
+
+  world.fear = clamp(world.fear - 10, 0, 100);
+  world.influence = clamp(world.influence + 4, 0, 100);
+  addMessage("Sanctuary seals the area in a warding dome and calms the nearby settlements.", "blessing");
+}
+
+function addZone(properties) {
+  const zone = {
+    id: nextId(),
+    age: 0,
+    power: 1,
+    duration: 18,
+    fertility: 0,
+    sanctity: 0,
+    corruption: 0,
+    scorch: 0,
+    rain: 0,
+    beacon: 0,
+    shelter: 0,
+    terrainLift: 0,
+    terrainCrater: 0,
+    ...properties,
