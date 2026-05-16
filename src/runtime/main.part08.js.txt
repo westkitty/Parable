@@ -1,0 +1,320 @@
+          opacity: 0.24,
+          side: THREE.DoubleSide,
+        })
+      );
+      accent.position.y = 110;
+      group.add(accent);
+      fill.material.color.set(0xf4c768);
+      ring.material.color.set(0xffe3a3);
+      break;
+    }
+    case "sanctuary": {
+      accent = new THREE.Mesh(
+        new THREE.SphereGeometry(zone.radius * 0.96, 20, 18),
+        new THREE.MeshBasicMaterial({
+          color: 0xd9f1b7,
+          transparent: true,
+          opacity: 0.12,
+          side: THREE.DoubleSide,
+        })
+      );
+      accent.position.y = zone.radius * 0.42;
+      accent.scale.y = 0.55;
+      group.add(accent);
+      fill.material.color.set(0xb8e8a2);
+      ring.material.color.set(0xe6f4cf);
+      break;
+    }
+    case "uplift": {
+      accent = new THREE.Group();
+      for (let index = 0; index < 6; index += 1) {
+        const pillar = new THREE.Mesh(
+          new THREE.CylinderGeometry(8, 12, 40 + index * 6, 6),
+          new THREE.MeshStandardMaterial({ color: 0x989585, roughness: 1 })
+        );
+        const angle = (TAU / 6) * index;
+        pillar.position.set(Math.cos(angle) * zone.radius * 0.45, 24, Math.sin(angle) * zone.radius * 0.45);
+        pillar.rotation.y = angle;
+        accent.add(pillar);
+      }
+      group.add(accent);
+      fill.material.color.set(0xb5b1a1);
+      ring.material.color.set(0xded8c5);
+      break;
+    }
+    case "scorch":
+    case "crater": {
+      fill.material.color.set(0xff875b);
+      ring.material.color.set(0xffb070);
+      break;
+    }
+    case "rain": {
+      accent = new THREE.Mesh(
+        new THREE.CylinderGeometry(zone.radius * 0.65, zone.radius * 0.65, 110, 24, 1, true),
+        new THREE.MeshBasicMaterial({
+          color: 0x68c0d9,
+          transparent: true,
+          opacity: 0.16,
+          side: THREE.DoubleSide,
+        })
+      );
+      accent.position.y = 56;
+      group.add(accent);
+      fill.material.color.set(0x68c0d9);
+      ring.material.color.set(0x9be7ff);
+      break;
+    }
+    case "fertility": {
+      fill.material.color.set(0x79c46d);
+      ring.material.color.set(0xb5f09a);
+      break;
+    }
+    case "blessing":
+    case "purgeGlow": {
+      fill.material.color.set(0xf4c768);
+      ring.material.color.set(0xfff2cd);
+      break;
+    }
+    case "ritual": {
+      accent = new THREE.Mesh(
+        new THREE.TorusGeometry(zone.radius * 0.42, 2.2, 8, 24),
+        new THREE.MeshBasicMaterial({
+          color: 0xf4c768,
+          transparent: true,
+          opacity: 0.42,
+        })
+      );
+      accent.rotation.x = Math.PI / 2;
+      accent.position.y = 7;
+      group.add(accent);
+      fill.material.color.set(0xf4c768);
+      ring.material.color.set(0xfff2cd);
+      break;
+    }
+    case "blight": {
+      accent = new THREE.Group();
+      for (let index = 0; index < 5; index += 1) {
+        const thorn = new THREE.Mesh(
+          new THREE.ConeGeometry(7, 38, 5),
+          new THREE.MeshStandardMaterial({ color: 0x7b2c2c, roughness: 1 })
+        );
+        const angle = (TAU / 5) * index;
+        thorn.position.set(Math.cos(angle) * zone.radius * 0.35, 18, Math.sin(angle) * zone.radius * 0.35);
+        thorn.rotation.z = 0.28;
+        thorn.rotation.y = angle;
+        accent.add(thorn);
+      }
+      group.add(accent);
+      fill.material.color.set(0x7c2323);
+      ring.material.color.set(0xc85656);
+      break;
+    }
+    default:
+      fill.material.color.set(0x6bc8be);
+      ring.material.color.set(0xb8f5ec);
+      break;
+  }
+
+  return { group, fill, ring, accent, kind: zone.kind };
+}
+
+function createEffectView(effect) {
+  const group = new THREE.Group();
+
+  const ring = new THREE.Mesh(
+    new THREE.RingGeometry(10, 18, 40),
+    new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.8,
+      side: THREE.DoubleSide,
+    })
+  );
+  ring.rotation.x = -Math.PI / 2;
+  group.add(ring);
+
+  const orb = new THREE.Mesh(
+    new THREE.SphereGeometry(10, 16, 16),
+    new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.7,
+    })
+  );
+  orb.position.y = 16;
+  group.add(orb);
+
+  const column = new THREE.Mesh(
+    new THREE.CylinderGeometry(4, 10, 120, 18, 1, true),
+    new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.18,
+      side: THREE.DoubleSide,
+    })
+  );
+  column.position.y = 60;
+  group.add(column);
+
+  const color = getMiracleColorForEffect(effect.kind);
+  ring.material.color.set(color);
+  orb.material.color.set(color);
+  column.material.color.set(color);
+
+  return { group, ring, orb, column, kind: effect.kind };
+}
+
+function createGolemView() {
+  const group = new THREE.Group();
+
+  const body = new THREE.Mesh(
+    new THREE.CylinderGeometry(7, 9, 24, 8),
+    new THREE.MeshStandardMaterial({ color: 0x8d958f, roughness: 1 })
+  );
+  body.position.y = 18;
+  group.add(body);
+
+  const head = new THREE.Mesh(
+    new THREE.SphereGeometry(6, 12, 12),
+    new THREE.MeshStandardMaterial({ color: 0xb5bcb6, roughness: 1 })
+  );
+  head.position.y = 34;
+  group.add(head);
+
+  const eye = new THREE.Mesh(
+    new THREE.SphereGeometry(1.2, 8, 8),
+    new THREE.MeshBasicMaterial({ color: 0x9be7ff })
+  );
+  eye.position.set(0, 34, 6);
+  group.add(eye);
+
+  const armLeft = new THREE.Mesh(
+    new THREE.BoxGeometry(4, 18, 4),
+    new THREE.MeshStandardMaterial({ color: 0x79817b, roughness: 1 })
+  );
+  armLeft.position.set(-10, 18, 0);
+  group.add(armLeft);
+
+  const armRight = armLeft.clone();
+  armRight.position.x = 10;
+  group.add(armRight);
+
+  return { group, body, eye, armLeft, armRight };
+}
+
+function syncDynamicViews() {
+  syncViewMap(world.zones, worldView.zoneViews, worldView.zoneLayer, createZoneView);
+  syncViewMap(world.effects, worldView.effectViews, worldView.effectLayer, createEffectView);
+  syncViewMap(world.golems, worldView.golemViews, worldView.golemLayer, createGolemView);
+}
+
+function syncViewMap(items, map, layer, createView) {
+  const ids = new Set(items.map((item) => item.id));
+
+  for (const [id, view] of map.entries()) {
+    if (!ids.has(id)) {
+      layer.remove(view.group);
+      disposeObject(view.group);
+      map.delete(id);
+    }
+  }
+
+  for (const item of items) {
+    if (!map.has(item.id)) {
+      const view = createView(item);
+      map.set(item.id, view);
+      layer.add(view.group);
+    }
+  }
+}
+
+function updateWorldView(dt) {
+  if (!worldView) {
+    return;
+  }
+
+  syncDynamicViews();
+
+  cameraRig.smoothX = damp(cameraRig.smoothX, cameraRig.targetX, 5.5, dt);
+  cameraRig.smoothZ = damp(cameraRig.smoothZ, cameraRig.targetZ, 5.5, dt);
+  cameraRig.smoothZoom = damp(cameraRig.smoothZoom, cameraRig.zoom, 5.5, dt);
+
+  const desiredCameraPosition = new THREE.Vector3(
+    cameraRig.smoothX,
+    cameraRig.smoothZoom * 0.74,
+    cameraRig.smoothZ + cameraRig.smoothZoom * 0.92
+  );
+  camera.position.lerp(desiredCameraPosition, 1 - Math.exp(-dt * 6));
+  camera.lookAt(cameraRig.smoothX, 80, cameraRig.smoothZ - 40);
+
+  worldView.water.shoreGlow.material.opacity = 0.16 + Math.sin(world.time * 1.5) * 0.03;
+  worldView.water.waterSurface.material.opacity = 0.76 + Math.sin(world.time * 0.7) * 0.04;
+
+  worldView.shrineViews.forEach((view, index) => {
+    const pulse = 1 + Math.sin(world.time * 2 + index) * 0.08;
+    view.aura.scale.setScalar(pulse);
+    view.aura.material.opacity = 0.24 + (pulse - 1) * 0.9;
+    view.crystal.rotation.y += dt * 0.55;
+    view.beam.material.opacity = 0.13 + Math.sin(world.time * 2.4) * 0.04;
+  });
+
+  worldView.villageViews.forEach((view, index) => {
+    const village = world.villages[index];
+    const hovered = village.id === pointer.hoverVillageId;
+    view.group.position.y = getTerrainHeight(village.x, village.y) + 2;
+    view.aura.material.opacity = hovered ? 0.38 : 0.08 + village.hearth * 0.06 + village.faith * 0.08;
+    view.aura.scale.setScalar(0.95 + village.hearth * 0.22);
+    view.aura.material.color.set(
+      scratchColor
+        .set(0xf4c768)
+        .lerp(new THREE.Color(0xb24646), clamp(village.rivalry * 0.7, 0, 0.7))
+    );
+    view.hearth.material.emissiveIntensity = 0.68 + village.hearth * 0.72 + Math.sin(world.time * 4 + index) * 0.08;
+  });
+
+  worldView.villagerViews.forEach((view, index) => {
+    const villager = world.villagers[index];
+    const ground = getTerrainHeight(villager.x, villager.y);
+    const bob = Math.sin(world.time * 4.2 + index) * 0.8;
+
+    view.group.position.set(villager.x, ground + 2 + bob, villager.y);
+    view.group.lookAt(villager.targetX, ground + 5, villager.targetY);
+
+    if (villager.state === "flee") {
+      view.robe.material.color.set(0xff875b);
+      view.halo.material.opacity = 0;
+    } else if (villager.state === "pray") {
+      view.robe.material.color.set(0xf2e2ae);
+      view.halo.material.opacity = 0.75;
+      view.halo.rotation.z += dt * 2.2;
+    } else if (villager.state === "harvest") {
+      view.robe.material.color.set(0x92c877);
+      view.halo.material.opacity = 0.24;
+      view.halo.rotation.z += dt * 1.2;
+    } else if (villager.state === "shelter") {
+      view.robe.material.color.set(0x98b5be);
+      view.halo.material.opacity = 0.18;
+    } else {
+      view.robe.material.color.set(0xdfe7dc);
+      view.halo.material.opacity = 0;
+    }
+  });
+
+  const rivalGround = getTerrainHeight(world.rivalCore.x, world.rivalCore.y);
+  const pulse = 1 + Math.sin(world.rivalCore.pulse * 2.2) * 0.08;
+  worldView.rivalView.group.position.set(world.rivalCore.x, rivalGround + 6, world.rivalCore.y);
+  worldView.rivalView.core.rotation.y += dt * 0.45;
+  worldView.rivalView.core.scale.setScalar(pulse);
+  worldView.rivalView.corruptionRing.scale.setScalar(1 + Math.sin(world.rivalCore.pulse * 2.2) * 0.06);
+  worldView.rivalView.corruptionRing.material.opacity = 0.22 + world.rivalCore.corruption * 0.4;
+  worldView.rivalView.blightField.material.opacity = 0.16 + world.rivalCore.corruption * 0.4;
+  rivalLight.position.set(world.rivalCore.x, rivalGround + 180, world.rivalCore.y);
+  rivalLight.intensity = 1.8 + world.rivalCore.corruption * 3.2;
+
+  updateZoneViews();
+  updateEffectViews();
+  updateGolemViews(dt);
+
+  const focusedMiracle = MIRACLE_MAP[world.selectedMiracleId];
+  if (pointer.active) {
+    worldView.handView.group.visible = true;
