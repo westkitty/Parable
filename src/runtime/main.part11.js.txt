@@ -1,0 +1,132 @@
+    const d = distance2(shrine.x, shrine.z, x, z);
+    if (d < bestDistance) {
+      best = shrine;
+      bestDistance = d;
+    }
+  }
+  return best;
+}
+
+function bestRegionFor(key) {
+  return [...world.regions].sort((a, b) => b[key] - a[key])[0] || world.regions[0];
+}
+
+function mostCorruptRegion() {
+  return [...world.regions].sort((a, b) => (b.corruption + b.rival) - (a.corruption + a.rival))[0];
+}
+
+function averageRegionValue(key) {
+  return world.regions.reduce((sum, region) => sum + region[key], 0) / world.regions.length;
+}
+
+function countOwners() {
+  return world.regions.reduce((counts, region) => {
+    counts[region.owner] = (counts[region.owner] || 0) + 1;
+    return counts;
+  }, { sacred: 0, rival: 0, contested: 0 });
+}
+
+function countVillagerStates() {
+  return world.villagers.reduce((counts, villager) => {
+    counts[villager.state] = (counts[villager.state] || 0) + 1;
+    return counts;
+  }, {});
+}
+
+function stateSummary(states) {
+  return Object.entries(states).sort((a, b) => b[1] - a[1]).map(([state, count]) => `${state}:${count}`).join(" · ");
+}
+
+function ownerColor(owner) {
+  if (owner === "sacred") return COLORS.sacred;
+  if (owner === "rival") return COLORS.rival;
+  return COLORS.contested;
+}
+
+function villagerColor(state) {
+  const color = new THREE.Color();
+  if (state === "pray") color.set("#f4c768");
+  else if (state === "flee") color.set("#ff875b");
+  else if (state === "harvest") color.set("#6fcf71");
+  else if (state === "shelter") color.set("#8dd9ec");
+  else color.set("#6bc8be");
+  return color;
+}
+
+function frightenVillagers(point, radius, amount) {
+  for (const villager of world.villagers) {
+    if (distance2(villager.x, villager.z, point.x, point.z) <= radius) {
+      villager.fear = clamp01(villager.fear + amount);
+      villager.timer = 0;
+    }
+  }
+}
+
+function inspireVillagers(point, radius, amount) {
+  for (const villager of world.villagers) {
+    if (distance2(villager.x, villager.z, point.x, point.z) <= radius) {
+      villager.faith = clamp01(villager.faith + amount);
+      villager.fear = clamp01(villager.fear - amount * 0.5);
+    }
+  }
+}
+
+function shelterVillagers(point, radius) {
+  for (const villager of world.villagers) {
+    if (distance2(villager.x, villager.z, point.x, point.z) <= radius) {
+      villager.state = "shelter";
+      villager.targetX = point.x + (world.rng() - 0.5) * 3.5;
+      villager.targetZ = point.z + (world.rng() - 0.5) * 3.5;
+      villager.fear = clamp01(villager.fear - 0.25);
+      villager.timer = 3;
+    }
+  }
+}
+
+function pushVillagers(point, radius, strength) {
+  for (const villager of world.villagers) {
+    const d = distance2(villager.x, villager.z, point.x, point.z);
+    if (d <= radius) {
+      const away = new THREE.Vector2(villager.x - point.x, villager.z - point.z).normalize();
+      villager.x += away.x * strength * 2.5;
+      villager.z += away.y * strength * 2.5;
+      villager.timer = 0;
+    }
+  }
+}
+
+function simplifyPoints(points) {
+  if (points.length <= 2) return points;
+  const simplified = [points[0]];
+  for (let i = 1; i < points.length - 1; i += 1) {
+    const previous = simplified[simplified.length - 1];
+    const current = points[i];
+    if (Math.hypot(current.x - previous.x, current.y - previous.y) >= 3) simplified.push(current);
+  }
+  simplified.push(points.at(-1));
+  return simplified;
+}
+
+function interpolateScreenPoints(a, b, maxStep) {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const steps = Math.max(1, Math.ceil(Math.hypot(dx, dy) / maxStep));
+  const output = [];
+  for (let i = 1; i <= steps; i += 1) {
+    const t = i / steps;
+    output.push({ x: a.x + dx * t, y: a.y + dy * t, time: b.time });
+  }
+  return output;
+}
+
+function resamplePoints(points, targetCount) {
+  if (points.length <= 1) return points;
+  const total = pathLength(points);
+  if (total <= 0) return points;
+  const spacing = total / (targetCount - 1);
+  const result = [points[0]];
+  let accumulator = 0;
+  let previous = points[0];
+  for (let i = 1; i < points.length; i += 1) {
+    let current = points[i];
+    let segment = Math.hypot(current.x - previous.x, current.y - previous.y);
