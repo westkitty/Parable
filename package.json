@@ -1,0 +1,12 @@
+{
+  "name": "parable-browser-prototype",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Browser-playable Parable prototype with a no-build Three.js ritual loop.",
+  "scripts": {
+    "verify": "node scripts/verify-parable.mjs",
+    "turn:start": "node scripts/parable-turn-guard.mjs start",
+    "turn:finish": "node scripts/parable-turn-guard.mjs finish --summary \"Verified Parable work turn.\""
+  }
+}
