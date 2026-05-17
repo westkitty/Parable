@@ -1,72 +1,48 @@
-# Parable Project Bible
+# Parable Project Bible Notes
 
-## Core fantasy
+`Parable_Bible.md` in the project root is the authoritative append-only ledger. This file is a readable project-state companion for humans and successor tools.
 
-Parable is a god-game prototype where the player is a disembodied god acting through a divine hand, casting miracles by drawing rituals directly onto the world. The experience should feel like stewardship, pressure, and intervention over a living island rather than menu-driven spell selection.
+## Core Fantasy
 
-## Non-negotiable pillars
+Parable is a browser-playable god-game prototype where the player rules by drawing sacred rituals directly onto a living island. The core interaction is not menu casting. The player draws a clockwise spiral to arm a ritual, then draws a finishing glyph to complete a miracle.
 
-1. Gesture-first miracle casting remains the primary fantasy-facing interaction.
-2. A clockwise spiral followed by a vertical zigzag must cast Fireball once the ritual system is in scope.
-3. Villagers, terrain, worship, influence, and rival pressure must matter mechanically, not just cosmetically.
-4. The prototype must stay browser-runnable and easy to restart at every milestone.
+Protected sacred law:
 
-## Current milestone
+- **clockwise spiral → vertical zigzag = Fireball**
 
-**Playable state: Runnable world shell plus live ritual casting**
+## Current Implementation
 
-Live in the current build:
+The current local project is a static no-build Three.js prototype.
 
-- Browser-runnable project with no build step
-- Stylized Three.js terrain and world rendering on a central play surface
-- Divine-hand hover feedback
-- Sacred minimum ritual loop: clockwise spiral arms a ritual and vertical zigzag casts Fireball
-- Living simulation: villagers, shrines, worship, player influence, rival influence, fear, rival corruption, and rival blight seeds
-- Ten meaningful miracles with worship cost, cooldown pacing, visible VFX, gameplay consequences, and ritual glyph vocabulary
-- One useful autonomous golem awakened through miracle casting
-- Restart flow that rebuilds the world cleanly
-- Project structure suitable for further iteration
+Live:
 
-Not yet live:
+- `index.html` shell with HUD, spellbook, event log, restart control, ritual status, and world canvas.
+- `styles.css` responsive dark mythic interface styling.
+- `src/main.js` lightweight runtime loader that fetches `src/runtime/main.partNN.js.txt` chunks and imports the assembled browser module.
+- `src/runtime/main.partNN.js.txt` chunks containing the Three.js renderer, procedural terrain, compound placeholder assets, simulation, gesture recognizer, miracle roster, effects, and restart flow.
+- `scripts/parable-turn-guard.mjs` start/finish regression guard.
+- `scripts/verify-parable.mjs` local verifier.
+- `docs/GENERATED_ASSET_LIST.md` future asset-generation plan.
+- A visible module-load warning in `index.html` that is hidden by the assembled runtime only after the Three.js module starts successfully.
 
-- More robust touch-first gesture recognition and broader multi-stroke ritual grammar
-- More sophisticated territorial ownership and settlement growth
+## Live Systems
 
-## Next milestone
+### Rendering
 
-**Next milestone: Deeper ritual and territory systems**
+- Three.js scene with perspective camera, fog, lighting, shadow-capable renderer, procedural island terrain, shoreline, villages, shrines, trees, standing stones, villagers, rival citadel, golems, and miracle effects.
+- Current prototype assets are intentionally procedural and lightweight. They are better than raw debug cubes/spheres, but still placeholders.
 
-Required outcomes:
+### Gesture Casting
 
-1. Refine the live gesture recognizer for higher reliability on touch and mouse
-2. Expand the ritual vocabulary beyond the current spiral-plus-glyph single-stroke finishers
-3. Push village allegiance and contested territory into longer-lived spatial systems
-4. Grow rival action variety beyond blight seeding
-5. Keep the sacred Fireball chain stable while broadening the rest of the ritual grammar
+- Pointer, mouse, pen, and touch gestures are captured over the world canvas.
+- The gesture path is interpolated and simplified for more reliable recognition.
+- A clockwise spiral arms the ritual for a short timeout.
+- Finishers cast miracles only while the ritual is armed.
+- Fireball is bound to the vertical zigzag finisher.
 
-## Gesture vocabulary
+### Miracles
 
-Reserved gesture chain:
-
-- Clockwise spiral: arms ritual state
-- Vertical zigzag before expiration: casts Fireball
-
-Current live glyph finishers after the spiral:
-
-- Vertical zigzag: Fireball
-- Downward line: Rain
-- Closed circle: Blessing
-- Horizontal line: Purge
-- Sprout caret: Fertility
-- Stone square: Stone Shape
-- Upward line: Beacon
-- Horizontal zigzag: Wind Lash
-- Raising arch: Golem Wake
-- Protective dome: Sanctuary
-
-## Miracle rules
-
-Current roster:
+The live roster contains ten miracles, each with worship cost, cooldown pacing, visible effects, and gameplay consequences:
 
 1. Fireball
 2. Rain
@@ -79,60 +55,49 @@ Current roster:
 9. Golem Wake
 10. Sanctuary
 
-Current policy:
+### Simulation
 
-- Do not count a miracle unless it has a gesture or valid cast rule, visible feedback, world consequence, and pacing cost.
-- Fireball is the first required miracle and must affect terrain, villagers, and contested state together.
-- The current build uses spiral-armed ritual casting as the primary loop.
-- Hotkey-based miracle focus is now a learning aid only, not the main casting path.
+- Regions track sacred influence, rival influence, corruption, fertility, scorch, sanctity, shelter, stone, wetness, and food.
+- Region ownership is long-lived and resolves into sacred, rival, or contested.
+- Villagers can wander, pray, harvest, shelter, or flee.
+- Worship generation responds to villager faith, prayer behavior, food, and fear.
+- Rival pressure spreads from a visible hostile citadel.
+- Golems move toward corrupted/rival regions and cleanse them over time.
 
-## Simulation rules
+## Verification Status
 
-Current simulation pass:
+The project can be locally checked with:
 
-- Villagers are finite-state agents with `wander`, `harvest`, `pray`, `shelter`, and `flee` states.
-- Shrines create worship opportunities.
-- Rival corruption pulses from a hostile core and periodically seeds frontier blight zones.
-- Villages track hearth strength, faith, and rival pressure.
-- Worship and influence rise when villagers pray, settle, harvest fertile ground, and gather near sacred zones.
-- Fear rises near corruption and scorch zones, then falls under rain, blessing, beacon, and sanctuary pressure.
-- Golems automatically cleanse harmful zones or mend weak villages.
+```bash
+node scripts/verify-parable.mjs
+```
 
-Planned extensions:
+The verifier covers:
 
-- More reliable touch-first gesture recognition and broader rune vocabulary
-- Stronger terrain-aware villager pathing
-- Settlement growth and collapse thresholds
-- Additional rival event variety beyond blight seeding
+- required file existence and non-empty status
+- syntax checks for JavaScript modules and scripts
+- expected implementation hooks in the assembled runtime chunks
+- local `index.html` references
+- local static serving
+- HTTP 200 responses for served core files
 
-## Rendering approach
+Known limit:
 
-Current build uses a browser-playable Three.js scene with procedural terrain, structures, villagers, shrine beams, rival blight effects, and no build tooling. The Three.js module is currently loaded from a pinned browser import URL because the environment blocked local package vendoring.
+- Full visual WebGL/browser behavior is not proven by the local verifier because Three.js is loaded from a CDN. A real browser check is still required after extracting the package or checking out the repo. If a runtime chunk or the CDN import fails, the module-load warning remains visible instead of silently leaving the player confused.
 
-Upgrade path:
+## Known Tradeoffs
 
-- Keep the Three.js scene lightweight and code-generated while gesture readability remains the primary interaction requirement.
-- Vendor the library locally later if environment access allows, but do not block milestone work on that packaging concern.
+- Three.js is imported from `https://esm.sh/three@0.164.1`; offline play requires vendoring the dependency.
+- Gesture recognition is conservative and should be tuned through real mouse/touch testing.
+- Procedural assets are readable prototype stand-ins, not final art.
+- The app runtime is chunked as text files so GitHub connector updates stay manageable while preserving a no-build static browser app. Refactor into true ES modules only after the prototype behavior stabilizes.
 
-## Architecture notes
+## Next Recommended Step
 
-Current file layout:
+Run the packaged project in a real browser and manually test the full ritual chain:
 
-- `index.html`: shell markup and HUD layout
-- `styles.css`: responsive presentation and atmosphere
-- `src/main.js`: lightweight runtime loader for the browser entrypoint
-- `src/runtime/main.part*.js.txt`: split local runtime chunks that reconstruct the full game module
-- `docs/PROJECT_BIBLE.md`: durable project direction
-
-Near-term refactor targets after Fireball lands:
-
-- Split configuration from world state
-- Split renderer, input, and simulation systems
-- Isolate gesture recognition into its own module
-
-## Known issues and tradeoffs
-
-- The sacred spiral-to-zigzag Fireball interaction is live, but the recognizer still needs tuning for edge cases and touch reliability.
-- The ritual recognizer is still heuristic and likely needs more tuning for touch reliability and edge cases.
-- Terrain is now modified by miracle zones, but the terrain system is still lightweight and not yet built around durable region ownership.
-- Rival pressure is more active than before, but still centered on blight seeding and pressure waves rather than a wider event catalog.
+1. Serve the project with `python3 -m http.server 8000`.
+2. Open `http://localhost:8000`.
+3. Draw a clockwise spiral over the island.
+4. Draw a vertical zigzag before the ritual expires.
+5. Confirm Fireball fires, costs worship, triggers cooldown, scorches terrain, frightens villagers, and reduces rival/corruption pressure near impact.
