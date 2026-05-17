@@ -10,7 +10,7 @@
     <div class="app-shell">
       <header class="topbar">
         <div class="brand-lockup">
-          <p class="eyebrow">Prototype Milestone 1</p>
+          <p class="eyebrow">Browser-playable prototype</p>
           <h1>Parable</h1>
         </div>
         <div class="topbar-actions">
@@ -21,74 +21,60 @@
       <main class="workspace">
         <section class="hud-panel overview-panel" aria-label="World status">
           <p class="section-label">Divine Brief</p>
-          <h2>The world now listens for ritual chains.</h2>
+          <h2>The island answers gesture, not buttons.</h2>
           <p class="panel-copy">
-            Draw a clockwise spiral on the land to arm a ritual, then complete
-            the matching glyph before the trace fades. The rite now chooses the
-            miracle, and the island answers with real social, territorial, and
-            terrain change.
+            Draw a clockwise spiral over the land to arm a ritual. While the spiral
+            is glowing, draw one of the finishing glyphs to cast a miracle. The
+            sacred law is fixed: clockwise spiral into vertical zigzag casts Fireball.
           </p>
-
+          <div class="ritual-card" aria-live="polite">
+            <span class="chip-label">Ritual state</span>
+            <strong id="ritual-state-label">Unarmed</strong>
+            <span id="ritual-state-detail">Draw a clockwise spiral on the island.</span>
+          </div>
+          <div class="ritual-card" aria-live="polite">
+            <span class="chip-label">Last gesture</span>
+            <strong id="gesture-label">None</strong>
+            <span id="gesture-detail">Gesture analysis will appear here.</span>
+          </div>
           <div class="stat-list" id="stat-list" aria-live="polite"></div>
         </section>
 
         <section class="play-surface" aria-label="Parable game world">
-          <canvas id="game-canvas" aria-label="Parable world canvas"></canvas>
+          <div id="module-load-warning" class="module-load-warning" role="status">
+            Loading the Three.js ritual world. If this message stays visible, the browser could not load the pinned Three.js module. Serve with internet access or vendor Three.js locally.
+          </div>
+          <canvas id="game-canvas" aria-label="Parable Three.js world canvas"></canvas>
           <div class="surface-overlay">
             <div class="surface-chip">
-              <span class="chip-label">Ritual State</span>
-              <strong id="selected-miracle-name">Dormant</strong>
-              <span class="chip-meta" id="selected-miracle-status">Draw a clockwise spiral to arm a rite</span>
+              <span class="chip-label">Core ritual</span>
+              <strong>Spiral → Zigzag = Fireball</strong>
             </div>
             <div class="surface-chip">
-              <span class="chip-label">Sacred minimum</span>
-              <strong>Spiral, then vertical zigzag</strong>
-              <span class="chip-meta">That chain must still cast Fireball</span>
+              <span class="chip-label">World contest</span>
+              <strong>Sacred / Rival / Contested Regions</strong>
             </div>
           </div>
         </section>
 
-        <aside class="hud-panel sidebar-panel" aria-label="Controls and milestone notes">
+        <aside class="hud-panel sidebar-panel" aria-label="Miracles and event log">
+          <section class="sidebar-section">
+            <p class="section-label">Miracle glyphs</p>
+            <div class="miracle-list" id="miracle-list" aria-label="Gesture miracle roster"></div>
+          </section>
+
+          <section class="sidebar-section event-section">
+            <p class="section-label">Event log</p>
+            <ol class="event-log" id="event-log" aria-live="polite"></ol>
+          </section>
+
           <section class="sidebar-section">
             <p class="section-label">Controls</p>
-            <ul class="plain-list">
-              <li>Move the pointer or drag a finger across the island to guide the divine hand.</li>
-              <li>Hold and draw a clockwise spiral on the land to arm a ritual.</li>
-              <li>Draw a second glyph before the ritual expires to cast a miracle.</li>
-              <li>Hold Shift while dragging, or use right mouse drag, to pan the camera.</li>
-              <li>Use the mouse wheel or trackpad scroll to zoom the world view.</li>
-              <li>Hotkeys 1 through 0 now highlight gesture vocabulary for learning only.</li>
-              <li>Use Restart World to rebuild the simulation cleanly.</li>
+            <ul class="plain-list compact-list">
+              <li>Drag on the island to draw a gesture.</li>
+              <li>Mouse, pen, and touch share the same ritual path.</li>
+              <li>Restart World rebuilds terrain, villagers, shrines, and rival pressure.</li>
             </ul>
-          </section>
-
-          <section class="sidebar-section">
-            <p class="section-label">Spellbook</p>
-            <div class="miracle-list" id="miracle-list" aria-live="polite"></div>
-          </section>
-
-          <section class="sidebar-section">
-            <p class="section-label">Ritual Loop</p>
-            <div class="ritual-note" id="cast-hint">
-              <p class="panel-copy compact">
-                Clockwise spiral arms the ritual trace. The second glyph decides
-                which miracle answers from the anchored site.
-              </p>
-            </div>
-          </section>
-
-          <section class="sidebar-section">
-            <p class="section-label">World pulse</p>
-            <div class="event-log" id="event-log" aria-live="polite"></div>
-          </section>
-
-          <section class="sidebar-section">
-            <p class="section-label">Milestone notes</p>
-            <p class="panel-copy compact">
-              Gesture casting is now the primary loop. Secondary spell selection
-              remains only as a learning aid while the roster shifts fully into
-              ritual vocabulary.
-            </p>
           </section>
         </aside>
       </main>
