@@ -1,45 +1,96 @@
 # Parable
 
-Parable is a browser-first god-game prototype about ruling an island as a disembodied divine force. The player acts through a hovering holy hand, eventually drawing rituals directly onto the land to cast miracles.
+Parable is a browser-playable god-game prototype about ruling an island through ritual gesture. The player does not press a miracle button to cast. The player draws a clockwise spiral on the living terrain, arms the ritual, then draws a finishing glyph. The protected core rule is:
 
-This repository currently contains a runnable Three.js prototype with a gesture-first miracle roster:
+**clockwise spiral → vertical zigzag = Fireball**
 
-- a browser-playable shell with a stylized Three.js world view
-- a living island simulation with villagers, shrines, worship, player influence, rival influence, rival blight pressure, and awakened golems
-- ten meaningful miracles with worship cost, cooldown pacing, visual feedback, gameplay consequences, and ritual glyphs
-- a restartable prototype loop with no build step
-- a project bible that tracks the current playable state and next ritual milestone
+The current prototype is a static no-build Three.js app. It uses procedural placeholder assets so the world reads as a miniature island with villages, shrines, villagers, a rival citadel, miracle effects, mutable terrain regions, and long-lived sacred/rival/contested ownership.
 
 ## Run locally
 
-Serve the folder with any static file server from the project root.
+Serve the project root with any static server:
 
 ```bash
 python3 -m http.server 8000
 ```
 
-Then open `http://localhost:8000`.
+Then open:
 
-Note: the current renderer imports a pinned Three.js module URL in the browser because this environment blocked local package download during the build. The game code itself remains local and build-free.
+```text
+http://localhost:8000
+```
+
+A normal internet-connected browser is currently required because the runtime chunks under `src/runtime/` import Three.js from a pinned CDN URL. `src/main.js` is a tiny loader that fetches those chunks and imports the assembled module:
+
+```js
+import * as THREE from "https://esm.sh/three@0.164.1";
+```
+
+If Parable needs offline play, vendor Three.js locally and update the runtime import. The page includes a visible module-load warning that hides only after the assembled Three.js module starts successfully; if that warning remains visible, a runtime chunk or the CDN module did not load.
 
 ## Current controls
 
-- Move the mouse or drag a finger over the world to guide the divine hand.
-- Hold and draw a clockwise spiral on the world to arm a ritual.
-- Finish with a second glyph before the trace fades to cast a miracle from that anchored site.
-- Hold `Shift` while dragging, or use right mouse drag, to pan the camera.
-- Scroll to zoom.
-- Use hotkeys `1` through `0` to highlight miracle vocabulary for learning.
-- Use **Restart World** to rebuild the simulation cleanly.
+- Drag on the island to draw a gesture.
+- Draw a **clockwise spiral** to arm a ritual.
+- While armed, draw a finishing glyph to cast a miracle.
+- Draw a **vertical zigzag** after the spiral to cast **Fireball**.
+- Use **Restart World** to rebuild the terrain, villagers, shrines, and rival pressure.
 
-## Current milestone
+## Current miracle roster
 
-This pass now includes:
+Each miracle has worship cost, cooldown pacing, visual feedback, and gameplay consequences:
 
-1. Runnable world shell
-2. Procedural Three.js terrain and structures
-3. A playable miracle roster using spiral-plus-glyph ritual casting
-4. Ongoing simulation consequences for villagers, mutable terrain, player influence, worship, and rival pressure
-5. A useful autonomous golem awakened by miracle
+1. Fireball — vertical zigzag
+2. Rain — downward line
+3. Blessing — closed circle
+4. Purge — cross stroke
+5. Fertility — upward sprout
+6. Stone Shape — square seal
+7. Beacon — caret peak
+8. Wind Lash — horizontal wave
+9. Golem Wake — hooked stroke
+10. Sanctuary — roof ward
 
-The sacred spiral-to-zigzag Fireball chain is now the core live ritual loop for Fireball, and the rest of the roster extends from that same spiral-armed grammar.
+All finishers require the opening clockwise spiral first. The spellbook cards are informational; they do not cast directly.
+
+## Current simulation
+
+Live systems include:
+
+- procedural Three.js island terrain
+- region values for sacred, rival, corruption, fertility, scorch, sanctity, shelter, stone, wet, and food
+- long-lived region ownership: sacred, rival, contested
+- villagers with wander, pray, harvest, shelter, and flee states
+- worship generation from faith, prayer behavior, food, and fear pressure
+- rival influence spreading from a visible hostile citadel
+- golem helpers that move toward and cleanse corrupted regions
+- procedural prototype assets for huts, shrines, trees, standing stones, villagers, rival structures, beacons, sanctuary domes, glyph traces, and miracle effects
+
+## Verification
+
+Run the project verifier:
+
+```bash
+node scripts/verify-parable.mjs
+```
+
+Run the turn guard at the start of future work:
+
+```bash
+node scripts/parable-turn-guard.mjs start
+```
+
+Finish a work turn with:
+
+```bash
+node scripts/parable-turn-guard.mjs finish --summary "Describe exactly what changed."
+```
+
+The verifier checks local file presence, JavaScript syntax, assembled runtime chunk syntax, expected implementation hooks, local references in `index.html`, static serving, and HTTP 200 responses for core served files plus runtime chunks. It does **not** prove live WebGL execution in this container because Three.js is imported from a browser CDN.
+
+## Project records
+
+- `Parable_Bible.md` is the authoritative append-only project bible.
+- `docs/PROJECT_BIBLE.md` is a readable project-state note.
+- `docs/GENERATED_ASSET_LIST.md` lists future non-placeholder assets to generate or replace.
+- `docs/TURN_START_CHECKLIST.md` and `docs/TURN_FINISH_CHECKLIST.md` are generated by the turn guard.
