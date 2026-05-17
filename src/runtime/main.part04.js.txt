@@ -1,320 +1,132 @@
-function average(values) {
-  if (!values.length) {
-    return 0;
+
+function createShorelineView() {
+  shoreline = new THREE.Mesh(
+    new THREE.TorusGeometry(WORLD_RADIUS * 0.995, 0.26, 8, 140),
+    new THREE.MeshBasicMaterial({ color: "#5aaec1", transparent: true, opacity: 0.42 })
+  );
+  shoreline.rotation.x = Math.PI / 2;
+  shoreline.position.y = -0.18;
+  terrainGroup.add(shoreline);
+}
+
+function createTreeAndStoneScatter() {
+  const rng = world.rng;
+  for (let i = 0; i < 90; i += 1) {
+    const angle = rng() * TAU;
+    const radius = 5 + rng() * (WORLD_RADIUS - 7);
+    const x = Math.cos(angle) * radius;
+    const z = Math.sin(angle) * radius * 0.88;
+    if (world.villages.some((village) => distance2(village.x, village.z, x, z) < 5.5)) continue;
+    if (i % 5 === 0) terrainGroup.add(createStandingStone(x, z, rng));
+    else terrainGroup.add(createTree(x, z, rng));
   }
-  return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
-const MIRACLE_CASTERS = {
-  fireball: castFireball,
-  rain: castRain,
-  blessing: castBlessing,
-  purge: castPurge,
-  fertility: castFertility,
-  stoneShape: castStoneShape,
-  beacon: castBeacon,
-  windLash: castWindLash,
-  golemWake: castGolemWake,
-  sanctuary: castSanctuary,
-};
-
-function castFireball(target) {
-  addZone({
-    kind: "crater",
-    x: target.x,
-    y: target.y,
-    radius: 86,
-    duration: 42,
-    power: 1,
-    terrainCrater: 1,
-    scorch: 0.45,
-  });
-  addZone({
-    kind: "scorch",
-    x: target.x,
-    y: target.y,
-    radius: 130,
-    duration: 32,
-    power: 1,
-    scorch: 1,
-    fertility: -0.5,
-  });
-  spawnEffect("fireball", target, 4.2);
-
-  const villagersHit = forEachVillagerInRadius(target.x, target.y, 150, (villager) => {
-    villager.state = "flee";
-    villager.timer = 3.2;
-    villager.targetX = villager.x + Math.sign(villager.x - target.x || 1) * 120;
-    villager.targetY = villager.y + Math.sign(villager.y - target.y || 1) * 120;
-    villager.devotion = clamp(villager.devotion - 0.08, 0.1, 1.2);
-    villager.courage = clamp(villager.courage - 0.06, 0.1, 1.2);
-  });
-
-  forEachVillageInRadius(target.x, target.y, 170, (village) => {
-    village.hearth = clamp(village.hearth - 0.1, 0.2, 1.25);
-  });
-
-  if (distance(target.x, target.y, world.rivalCore.x, world.rivalCore.y) < 220) {
-    world.rivalCore.basePressure = clamp(world.rivalCore.basePressure - 0.09, 0.08, 0.45);
-    world.influence = clamp(world.influence + 6, 0, 100);
-  } else {
-    world.influence = clamp(world.influence + 1.5, 0, 100);
-  }
-
-  world.fear = clamp(world.fear + 5 + villagersHit * 0.2, 0, 100);
-  addMessage(`Fireball lands with force, scorching the land and scattering ${villagersHit} villagers.`, "info");
+function createTree(x, z, rng) {
+  const group = new THREE.Group();
+  group.position.set(x, 0.2, z);
+  const trunk = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.16, 0.23, 1.1, 6),
+    new THREE.MeshStandardMaterial({ color: "#5c3c25", roughness: 0.9 })
+  );
+  trunk.position.y = 0.55;
+  const crown = new THREE.Mesh(
+    new THREE.ConeGeometry(0.85 + rng() * 0.25, 2.0 + rng() * 0.6, 7),
+    new THREE.MeshStandardMaterial({ color: rng() > 0.12 ? "#2f6b43" : "#554d35", roughness: 0.95 })
+  );
+  crown.position.y = 1.85;
+  group.add(trunk, crown);
+  group.rotation.y = rng() * TAU;
+  return group;
 }
 
-function castRain(target) {
-  addZone({
-    kind: "rain",
-    x: target.x,
-    y: target.y,
-    radius: 155,
-    duration: 24,
-    power: 1,
-    rain: 1,
-    fertility: 0.4,
-    sanctity: 0.12,
-  });
-  spawnEffect("rain", target, 4.4);
-
-  const quenched = weakenZonesNear(target.x, target.y, 170, 0.28);
-  forEachVillagerInRadius(target.x, target.y, 150, (villager) => {
-    if (villager.state === "flee") {
-      villager.state = "wander";
-      villager.timer = 1.8;
-    }
-    villager.courage = clamp(villager.courage + 0.08, 0.1, 1.25);
-  });
-
-  world.fear = clamp(world.fear - 4, 0, 100);
-  world.worship = clamp(world.worship + 2, 0, world.maxWorship);
-  addMessage(`Rain clears smoke and cools ${quenched} harmful zones.`, "blessing");
+function createStandingStone(x, z, rng) {
+  const group = new THREE.Group();
+  group.position.set(x, 0.15, z);
+  const stone = new THREE.Mesh(
+    new THREE.DodecahedronGeometry(0.75 + rng() * 0.35, 0),
+    new THREE.MeshStandardMaterial({ color: "#6f7b75", roughness: 0.94 })
+  );
+  stone.position.y = 0.85;
+  stone.scale.set(0.55, 1.4 + rng() * 0.7, 0.65);
+  const rune = new THREE.Mesh(
+    new THREE.TorusGeometry(0.52, 0.025, 6, 18),
+    new THREE.MeshBasicMaterial({ color: "#6bc8be", transparent: true, opacity: 0.42 })
+  );
+  rune.position.y = 1.15;
+  rune.rotation.x = Math.PI / 2;
+  group.add(stone, rune);
+  return group;
 }
 
-function castBlessing(target) {
-  addZone({
-    kind: "blessing",
-    x: target.x,
-    y: target.y,
-    radius: 130,
-    duration: 26,
-    power: 1,
-    sanctity: 0.95,
-    beacon: 0.18,
-    fertility: 0.18,
-  });
-  spawnEffect("blessing", target, 4.1);
+function createVillageView(village) {
+  const group = new THREE.Group();
+  group.position.set(village.x, 0.3, village.z);
+  const hearth = new THREE.Mesh(
+    new THREE.CylinderGeometry(1.25, 1.45, 0.25, 10),
+    new THREE.MeshStandardMaterial({ color: "#6b4d32", roughness: 0.85 })
+  );
+  hearth.position.y = 0.12;
+  group.add(hearth);
 
-  const inspired = forEachVillagerInRadius(target.x, target.y, 150, (villager) => {
-    villager.devotion = clamp(villager.devotion + 0.15, 0.1, 1.25);
-    villager.courage = clamp(villager.courage + 0.15, 0.1, 1.25);
-    villager.state = "pray";
-    villager.timer = 2.8;
-    villager.targetX = target.x;
-    villager.targetY = target.y;
-  });
-
-  forEachVillageInRadius(target.x, target.y, 180, (village) => {
-    village.hearth = clamp(village.hearth + 0.14, 0.2, 1.25);
-  });
-
-  world.influence = clamp(world.influence + 3, 0, 100);
-  world.fear = clamp(world.fear - 3, 0, 100);
-  addMessage(`Blessing settles over the land and turns ${inspired} villagers back toward prayer.`, "blessing");
-}
-
-function castPurge(target) {
-  addZone({
-    kind: "purgeGlow",
-    x: target.x,
-    y: target.y,
-    radius: 130,
-    duration: 14,
-    power: 1,
-    sanctity: 0.55,
-  });
-  spawnEffect("purge", target, 3.8);
-
-  const cleansed = weakenZonesNear(target.x, target.y, 190, 0.75);
-  if (distance(target.x, target.y, world.rivalCore.x, world.rivalCore.y) < 260) {
-    world.rivalCore.basePressure = clamp(world.rivalCore.basePressure - 0.11, 0.08, 0.45);
+  for (let i = 0; i < 5; i += 1) {
+    const angle = (i / 5) * TAU + 0.25;
+    const hut = new THREE.Group();
+    hut.position.set(Math.cos(angle) * 2.2, 0.1, Math.sin(angle) * 1.8);
+    hut.rotation.y = -angle;
+    const base = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.58, 0.68, 0.9, 8),
+      new THREE.MeshStandardMaterial({ color: "#8a6844", roughness: 0.88 })
+    );
+    base.position.y = 0.45;
+    const roof = new THREE.Mesh(
+      new THREE.ConeGeometry(0.82, 0.82, 8),
+      new THREE.MeshStandardMaterial({ color: "#4d382a", roughness: 0.95 })
+    );
+    roof.position.y = 1.3;
+    const banner = new THREE.Mesh(
+      new THREE.BoxGeometry(0.08, 0.48, 0.34),
+      new THREE.MeshBasicMaterial({ color: COLORS.contested })
+    );
+    banner.name = "banner";
+    banner.position.set(0.62, 0.9, 0);
+    hut.add(base, roof, banner);
+    group.add(hut);
   }
 
-  forEachVillagerInRadius(target.x, target.y, 170, (villager) => {
-    villager.state = "wander";
-    villager.timer = 1.6;
-    villager.courage = clamp(villager.courage + 0.16, 0.1, 1.25);
-  });
-
-  world.influence = clamp(world.influence + 5, 0, 100);
-  world.fear = clamp(world.fear - 6, 0, 100);
-  addMessage(`Purge tears through blight and cleanses ${cleansed} corrupted scars.`, "blessing");
+  const path = new THREE.Mesh(
+    new THREE.TorusGeometry(2.9, 0.035, 6, 42),
+    new THREE.MeshBasicMaterial({ color: "#f4c768", transparent: true, opacity: 0.24 })
+  );
+  path.rotation.x = Math.PI / 2;
+  path.position.y = 0.05;
+  group.add(path);
+  structureGroup.add(group);
+  return group;
 }
 
-function castFertility(target) {
-  addZone({
-    kind: "fertility",
-    x: target.x,
-    y: target.y,
-    radius: 175,
-    duration: 42,
-    power: 1,
-    fertility: 1.05,
-    sanctity: 0.18,
-  });
-  spawnEffect("fertility", target, 4);
-
-  forEachVillageInRadius(target.x, target.y, 210, (village) => {
-    village.hearth = clamp(village.hearth + 0.18, 0.2, 1.25);
-  });
-
-  world.worship = clamp(world.worship + 3, 0, world.maxWorship);
-  addMessage("Fertility ripples outward, strengthening the soil beneath nearby homes.", "blessing");
-}
-
-function castStoneShape(target) {
-  addZone({
-    kind: "uplift",
-    x: target.x,
-    y: target.y,
-    radius: 135,
-    duration: 48,
-    power: 1,
-    terrainLift: 1.15,
-    shelter: 0.9,
-    sanctity: 0.22,
-  });
-  spawnEffect("stoneShape", target, 4.4);
-
-  weakenZonesNear(target.x, target.y, 145, 0.2);
-  world.influence = clamp(world.influence + 6, 0, 100);
-  addMessage("Stone Shape raises a ridge from the earth and hardens the frontier.", "info");
-}
-
-function castBeacon(target) {
-  addZone({
-    kind: "beacon",
-    x: target.x,
-    y: target.y,
-    radius: 215,
-    duration: 52,
-    power: 1,
-    beacon: 1.15,
-    sanctity: 0.45,
-  });
-  spawnEffect("beacon", target, 4.6);
-
-  forEachVillagerInRadius(target.x, target.y, 240, (villager) => {
-    villager.targetX = target.x;
-    villager.targetY = target.y;
-    villager.timer = 2.2;
-  });
-
-  world.influence = clamp(world.influence + 7, 0, 100);
-  addMessage("A holy beacon rises, drawing villagers and pushing your influence deeper into the island.", "blessing");
-}
-
-function castWindLash(target) {
-  spawnEffect("windLash", target, 3.4);
-  const cleared = weakenZonesNear(target.x, target.y, 180, 0.38);
-
-  const pushed = forEachVillagerInRadius(target.x, target.y, 170, (villager) => {
-    const dx = villager.x - target.x || 1;
-    const dy = villager.y - target.y || 1;
-    const length = Math.hypot(dx, dy);
-    villager.x += (dx / length) * 48;
-    villager.y += (dy / length) * 48;
-    villager.targetX = villager.x + (dx / length) * 36;
-    villager.targetY = villager.y + (dy / length) * 36;
-    villager.timer = 1.2;
-    villager.state = villager.state === "pray" ? "wander" : villager.state;
-  });
-
-  if (distance(target.x, target.y, world.rivalCore.x, world.rivalCore.y) < 220) {
-    world.rivalCore.basePressure = clamp(world.rivalCore.basePressure - 0.04, 0.08, 0.45);
-  }
-
-  world.fear = clamp(world.fear - 2, 0, 100);
-  addMessage(`Wind Lash hurls ${pushed} villagers clear and tears open ${cleared} hazardous zones.`, "info");
-}
-
-function castGolemWake(target) {
-  const golem = {
-    id: nextId(),
-    x: target.x,
-    y: target.y,
-    state: "wake",
-    taskType: "none",
-    taskTargetId: null,
-    targetX: target.x,
-    targetY: target.y,
-    pace: 46,
-    timer: 1.8,
-    phase: Math.random() * TAU,
-  };
-
-  world.golems.push(golem);
-  spawnEffect("golemWake", target, 4.8);
-  addZone({
-    kind: "blessing",
-    x: target.x,
-    y: target.y,
-    radius: 85,
-    duration: 12,
-    power: 1,
-    sanctity: 0.3,
-  });
-
-  world.influence = clamp(world.influence + 4, 0, 100);
-  addMessage("A golem wakes from stone and begins searching for damage to mend.", "blessing");
-}
-
-function castSanctuary(target) {
-  addZone({
-    kind: "sanctuary",
-    x: target.x,
-    y: target.y,
-    radius: 185,
-    duration: 38,
-    power: 1,
-    sanctity: 1.35,
-    shelter: 1.1,
-    beacon: 0.35,
-  });
-  spawnEffect("sanctuary", target, 4.8);
-
-  forEachVillageInRadius(target.x, target.y, 220, (village) => {
-    village.hearth = clamp(village.hearth + 0.12, 0.2, 1.25);
-  });
-
-  forEachVillagerInRadius(target.x, target.y, 210, (villager) => {
-    villager.state = "pray";
-    villager.timer = 2.6;
-    villager.targetX = target.x;
-    villager.targetY = target.y;
-    villager.courage = clamp(villager.courage + 0.2, 0.1, 1.25);
-  });
-
-  world.fear = clamp(world.fear - 10, 0, 100);
-  world.influence = clamp(world.influence + 4, 0, 100);
-  addMessage("Sanctuary seals the area in a warding dome and calms the nearby settlements.", "blessing");
-}
-
-function addZone(properties) {
-  const zone = {
-    id: nextId(),
-    age: 0,
-    power: 1,
-    duration: 18,
-    fertility: 0,
-    sanctity: 0,
-    corruption: 0,
-    scorch: 0,
-    rain: 0,
-    beacon: 0,
-    shelter: 0,
-    terrainLift: 0,
-    terrainCrater: 0,
-    ...properties,
+function createShrineView(shrine) {
+  const group = new THREE.Group();
+  group.position.set(shrine.x, 0.3, shrine.z);
+  const base = new THREE.Mesh(
+    new THREE.CylinderGeometry(1.15, 1.35, 0.42, 12),
+    new THREE.MeshStandardMaterial({ color: "#5e6865", roughness: 0.82 })
+  );
+  base.position.y = 0.21;
+  const obelisk = new THREE.Mesh(
+    new THREE.ConeGeometry(0.5, 2.7, 5),
+    new THREE.MeshStandardMaterial({ color: "#9bb2aa", emissive: "#173a38", roughness: 0.72 })
+  );
+  obelisk.position.y = 1.82;
+  const halo = new THREE.Mesh(
+    new THREE.TorusGeometry(1.35, 0.045, 8, 52),
+    new THREE.MeshBasicMaterial({ color: "#f4c768", transparent: true, opacity: 0.72 })
+  );
+  halo.position.y = 2.55;
+  halo.rotation.x = Math.PI / 2;
+  const bowls = new THREE.Group();
+  for (let i = 0; i < 4; i += 1) {
+    const bowl = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.18, 0.24, 0.16, 8),
+      new THREE.MeshStandardMaterial({ color: "#a98652", roughness: 0.78 })
+    );
