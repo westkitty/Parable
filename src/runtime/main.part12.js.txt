@@ -1,0 +1,123 @@
+    while (segment + accumulator >= spacing && result.length < targetCount - 1) {
+      const t = (spacing - accumulator) / segment;
+      const inserted = {
+        x: previous.x + (current.x - previous.x) * t,
+        y: previous.y + (current.y - previous.y) * t,
+        time: current.time,
+      };
+      result.push(inserted);
+      previous = inserted;
+      segment = Math.hypot(current.x - previous.x, current.y - previous.y);
+      accumulator = 0;
+    }
+    accumulator += segment;
+    previous = current;
+  }
+  result.push(points.at(-1));
+  return result;
+}
+
+function boundingBox(points) {
+  return points.reduce((box, point) => ({
+    minX: Math.min(box.minX, point.x),
+    minY: Math.min(box.minY, point.y),
+    maxX: Math.max(box.maxX, point.x),
+    maxY: Math.max(box.maxY, point.y),
+  }), { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity });
+}
+
+function pathLength(points) {
+  let length = 0;
+  for (let i = 1; i < points.length; i += 1) length += Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y);
+  return length;
+}
+
+function totalSignedRotation(points) {
+  let total = 0;
+  for (let i = 2; i < points.length; i += 1) {
+    const a = Math.atan2(points[i - 1].y - points[i - 2].y, points[i - 1].x - points[i - 2].x);
+    const b = Math.atan2(points[i].y - points[i - 1].y, points[i].x - points[i - 1].x);
+    let diff = b - a;
+    while (diff > Math.PI) diff -= TAU;
+    while (diff < -Math.PI) diff += TAU;
+    total += diff;
+  }
+  return total;
+}
+
+function countHorizontalTurns(points) {
+  let turns = 0;
+  let lastSign = 0;
+  for (let i = 1; i < points.length; i += 1) {
+    const dx = points[i].x - points[i - 1].x;
+    const sign = Math.sign(dx);
+    if (Math.abs(dx) < 1.2 || sign === 0) continue;
+    if (lastSign && sign !== lastSign) turns += 1;
+    lastSign = sign;
+  }
+  return turns;
+}
+
+function countCorners(points) {
+  let corners = 0;
+  for (let i = 2; i < points.length; i += 2) {
+    const a = Math.atan2(points[i - 1].y - points[i - 2].y, points[i - 1].x - points[i - 2].x);
+    const b = Math.atan2(points[i].y - points[i - 1].y, points[i].x - points[i - 1].x);
+    let diff = Math.abs(b - a);
+    if (diff > Math.PI) diff = TAU - diff;
+    if (diff > 0.72) corners += 1;
+  }
+  return corners;
+}
+
+function hasCrossingStroke(points) {
+  const box = boundingBox(points);
+  return (box.maxX - box.minX) > 25 && (box.maxY - box.minY) > 25 && countCorners(points) >= 2;
+}
+
+function isCaret(points, box) {
+  const highest = points.reduce((best, point) => point.y < best.y ? point : best, points[0]);
+  return highest.y < box.minY + (box.maxY - box.minY) * 0.25 && countCorners(points) >= 1 && (box.maxX - box.minX) > (box.maxY - box.minY) * 0.8;
+}
+
+function isHook(points, box) {
+  const width = box.maxX - box.minX;
+  const height = box.maxY - box.minY;
+  const end = points.at(-1);
+  return height > width * 1.1 && countCorners(points) >= 1 && end.x > box.minX + width * 0.55;
+}
+
+function isRoofWard(points, box) {
+  const width = box.maxX - box.minX;
+  const height = box.maxY - box.minY;
+  return width > height * 0.9 && height > 20 && countCorners(points) >= 2;
+}
+
+function distance2(ax, az, bx, bz) {
+  return Math.hypot(ax - bx, az - bz);
+}
+
+function average(values) {
+  return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;
+}
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function clamp01(value) {
+  return clamp(value, 0, 1);
+}
+
+function clearGroup(group) {
+  while (group.children.length) {
+    const child = group.children.pop();
+    child.traverse((node) => {
+      if (node.geometry) node.geometry.dispose();
+      if (node.material) {
+        if (Array.isArray(node.material)) node.material.forEach((material) => material.dispose());
+        else node.material.dispose();
+      }
+    });
+  }
+}
