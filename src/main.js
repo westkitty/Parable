@@ -1,20 +1,31 @@
-const runtimeParts = Array.from({ length: 10 }, (_, index) => {
-  const number = String(index + 1).padStart(2, "0");
-  return new URL(`./runtime/main.part${number}.js.txt`, import.meta.url);
+const runtimeParts = Array.from({ length: 12 }, (_, index) => {
+  const part = String(index + 1).padStart(2, "0");
+  return `./runtime/main.part${part}.js.txt`;
 });
 
-const responses = await Promise.all(runtimeParts.map((url) => fetch(url)));
-const missing = responses.find((response) => !response.ok);
+async function bootParable() {
+  const chunks = await Promise.all(runtimeParts.map(async (path) => {
+    const response = await fetch(path, { cache: "no-store" });
+    if (!response.ok) {
+      throw new Error(`Failed to load Parable runtime chunk ${path}: HTTP ${response.status}`);
+    }
+    return response.text();
+  }));
 
-if (missing) {
-  throw new Error(`Parable runtime chunk failed to load: ${missing.url}`);
+  const source = chunks.join("\n");
+  const moduleUrl = URL.createObjectURL(new Blob([source], { type: "text/javascript" }));
+  try {
+    await import(moduleUrl);
+  } finally {
+    URL.revokeObjectURL(moduleUrl);
+  }
 }
 
-const source = (await Promise.all(responses.map((response) => response.text()))).join("");
-const runtimeUrl = URL.createObjectURL(new Blob([source], { type: "text/javascript" }));
-
-try {
-  await import(runtimeUrl);
-} finally {
-  URL.revokeObjectURL(runtimeUrl);
-}
+bootParable().catch((error) => {
+  console.error("Parable failed to boot", error);
+  const warning = document.getElementById("module-load-warning");
+  if (warning) {
+    warning.hidden = false;
+    warning.textContent = `Parable failed to load: ${error.message}`;
+  }
+});
