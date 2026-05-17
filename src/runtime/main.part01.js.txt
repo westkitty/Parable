@@ -1,320 +1,132 @@
-import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js";
+import * as THREE from "https://esm.sh/three@0.164.1";
 
 const canvas = document.getElementById("game-canvas");
 const statsHost = document.getElementById("stat-list");
+const miracleHost = document.getElementById("miracle-list");
+const eventLog = document.getElementById("event-log");
 const restartButton = document.getElementById("restart-button");
-const miracleListHost = document.getElementById("miracle-list");
-const eventLogHost = document.getElementById("event-log");
-const selectedMiracleName = document.getElementById("selected-miracle-name");
-const selectedMiracleStatus = document.getElementById("selected-miracle-status");
+const ritualStateLabel = document.getElementById("ritual-state-label");
+const ritualStateDetail = document.getElementById("ritual-state-detail");
+const gestureLabel = document.getElementById("gesture-label");
+const gestureDetail = document.getElementById("gesture-detail");
+const moduleLoadWarning = document.getElementById("module-load-warning");
 
-const WORLD_RADIUS = 760;
-const WORLD_MARGIN = 240;
-const VILLAGER_COUNT = 18;
-const SHRINE_COUNT = 3;
-const TREE_COUNT = 54;
-const SKY_MOTE_COUNT = 150;
-const GOLEM_CAP = 3;
-const WORSHIP_CAP = 120;
 const TAU = Math.PI * 2;
-const HARMFUL_ZONES = new Set(["blight", "scorch", "crater"]);
-const RITUAL_ARM_TIME = 6.5;
-const GESTURE_MIN_POINTS = 12;
-const GESTURE_ANCHOR_RADIUS = 185;
+const WORLD_RADIUS = 39;
+const REGION_RING_COUNT = 3;
+const VILLAGER_COUNT = 30;
+const RNG_SEED_BASE = 4073;
+const ARM_TIMEOUT = 5600;
+const MAX_EVENTS = 8;
+
+const COLORS = {
+  terrain: new THREE.Color("#243c2e"),
+  fertile: new THREE.Color("#4f7c38"),
+  sacred: new THREE.Color("#6bc8be"),
+  rival: new THREE.Color("#7d2d31"),
+  contested: new THREE.Color("#74613c"),
+  scorch: new THREE.Color("#2a211b"),
+  stone: new THREE.Color("#7c8580"),
+  gold: new THREE.Color("#f4c768"),
+  ember: new THREE.Color("#ff875b"),
+  water: new THREE.Color("#5aaec1"),
+  corruption: new THREE.Color("#b24646"),
+};
+
+const statDefs = [
+  { key: "worship", label: "Worship" },
+  { key: "sacredRegions", label: "Sacred Regions" },
+  { key: "rivalRegions", label: "Rival Regions" },
+  { key: "villagerState", label: "Villagers" },
+  { key: "food", label: "Food" },
+];
 
 const MIRACLES = [
   {
     id: "fireball",
     name: "Fireball",
-    hotkey: "1",
+    finisher: "vertical zigzag",
     cost: 18,
-    cooldown: 10,
-    target: "Ground impact",
-    color: 0xff875b,
-    glyph: "Vertical zigzag",
-    description: "Drops a burning star that scorches land, panics villagers, and can smash rival blight.",
+    cooldown: 6.5,
+    radius: 5.5,
+    purpose: "Burns rival influence, scorches terrain, frightens villagers.",
   },
   {
     id: "rain",
     name: "Rain",
-    hotkey: "2",
-    cost: 12,
-    cooldown: 12,
-    target: "Ground shower",
-    color: 0x68c0d9,
-    glyph: "Downward line",
-    description: "Calls cleansing rain that douses scorch, softens fear, and restores stressed ground.",
+    finisher: "downward line",
+    cost: 10,
+    cooldown: 5,
+    radius: 7.5,
+    purpose: "Restores food, cools scorch, weakens corruption.",
   },
   {
     id: "blessing",
     name: "Blessing",
-    hotkey: "3",
-    cost: 14,
-    cooldown: 16,
-    target: "Village or shrine",
-    color: 0xf4c768,
-    glyph: "Closed circle",
-    description: "Fills a place with courage and devotion, turning shaken villagers back toward prayer.",
+    finisher: "closed circle",
+    cost: 12,
+    cooldown: 5.5,
+    radius: 6.25,
+    purpose: "Raises faith and sacred allegiance near villagers.",
   },
   {
     id: "purge",
     name: "Purge",
-    hotkey: "4",
-    cost: 20,
-    cooldown: 20,
-    target: "Blighted ground",
-    color: 0xe8efe8,
-    glyph: "Horizontal line",
-    description: "Unleashes a white shock that strips corruption and weakens the rival pressure wave.",
+    finisher: "cross stroke",
+    cost: 16,
+    cooldown: 7,
+    radius: 6.75,
+    purpose: "Cuts corruption and rival pressure from a region.",
   },
   {
     id: "fertility",
     name: "Fertility",
-    hotkey: "5",
-    cost: 10,
-    cooldown: 18,
-    target: "Settlement soil",
-    color: 0x79c46d,
-    glyph: "Sprout caret",
-    description: "Coaxes the earth into bloom, lifting hearth strength and future worship around the cast site.",
+    finisher: "upward sprout",
+    cost: 14,
+    cooldown: 7,
+    radius: 7.25,
+    purpose: "Grows food and faith stability over time.",
   },
   {
-    id: "stoneShape",
+    id: "stone-shape",
     name: "Stone Shape",
-    hotkey: "6",
-    cost: 22,
-    cooldown: 24,
-    target: "Open ground",
-    color: 0xbebaa8,
-    glyph: "Stone square",
-    description: "Raises a stony ridge from the earth, changing terrain while giving villages shelter.",
+    finisher: "square seal",
+    cost: 15,
+    cooldown: 8,
+    radius: 5.75,
+    purpose: "Raises sheltering ridges and long-lived terrain memory.",
   },
   {
     id: "beacon",
     name: "Beacon",
-    hotkey: "7",
-    cost: 16,
-    cooldown: 26,
-    target: "Frontier ground",
-    color: 0xffe3a3,
-    glyph: "Upward line",
-    description: "Plants a pillar of holy light that draws villagers, grows influence, and steadies the frontier.",
+    finisher: "caret peak",
+    cost: 20,
+    cooldown: 10,
+    radius: 8.75,
+    purpose: "Projects sacred ownership and draws prayer behavior.",
   },
   {
-    id: "windLash",
+    id: "wind-lash",
     name: "Wind Lash",
-    hotkey: "8",
-    cost: 8,
-    cooldown: 8,
-    target: "Ground gust",
-    color: 0x8ed8db,
-    glyph: "Horizontal zigzag",
-    description: "Whips a pressure wave across the island, pushing villagers and tearing at hazardous zones.",
+    finisher: "horizontal wave",
+    cost: 11,
+    cooldown: 4.5,
+    radius: 6.5,
+    purpose: "Pushes villagers and tears at blight edges.",
   },
   {
-    id: "golemWake",
+    id: "golem-wake",
     name: "Golem Wake",
-    hotkey: "9",
+    finisher: "hooked stroke",
     cost: 24,
-    cooldown: 30,
-    target: "Friendly ground",
-    color: 0x90b0a8,
-    glyph: "Raising arch",
-    description: "Animates a stone servant that autonomously repairs settlements and cleanses nearby harm.",
+    cooldown: 14,
+    radius: 5.5,
+    purpose: "Raises a slow stone helper that mends and cleanses regions.",
   },
   {
     id: "sanctuary",
     name: "Sanctuary",
-    hotkey: "0",
-    cost: 26,
-    cooldown: 28,
-    target: "Village ward",
-    color: 0xd9f1b7,
-    glyph: "Protective dome",
-    description: "Raises a protective dome that lowers fear, blocks corruption, and turns settlements into safe prayer ground.",
-  },
-];
-
-const MIRACLE_MAP = Object.fromEntries(MIRACLES.map((miracle) => [miracle.id, miracle]));
-const GLYPH_TO_MIRACLE = {
-  verticalZigzag: "fireball",
-  downwardLine: "rain",
-  circle: "blessing",
-  horizontalLine: "purge",
-  caret: "fertility",
-  square: "stoneShape",
-  upwardLine: "beacon",
-  horizontalZigzag: "windLash",
-  arch: "golemWake",
-  dome: "sanctuary",
-};
-const GLYPH_LABELS = {
-  spiral: "Clockwise spiral",
-  verticalZigzag: "Vertical zigzag",
-  downwardLine: "Downward line",
-  circle: "Closed circle",
-  horizontalLine: "Horizontal line",
-  caret: "Sprout caret",
-  square: "Stone square",
-  upwardLine: "Upward line",
-  horizontalZigzag: "Horizontal zigzag",
-  arch: "Raising arch",
-  dome: "Protective dome",
-};
-
-const pointer = {
-  active: false,
-  screenX: 0,
-  screenY: 0,
-  lastScreenX: 0,
-  lastScreenY: 0,
-  worldX: 0,
-  worldY: 0,
-  worldHeight: 0,
-  history: [],
-  hoverVillageId: null,
-  downX: 0,
-  downY: 0,
-  mode: "idle",
-  gesturePoints: [],
-  gestureWorldPoints: [],
-};
-
-const cameraRig = {
-  targetX: 0,
-  targetZ: 0,
-  smoothX: 0,
-  smoothZ: 0,
-  zoom: 980,
-  smoothZoom: 980,
-  dragging: false,
-};
-
-const raycaster = new THREE.Raycaster();
-const pointerNdc = new THREE.Vector2();
-const scratchColor = new THREE.Color();
-
-const renderer = new THREE.WebGLRenderer({
-  canvas,
-  antialias: true,
-  alpha: true,
-});
-
-renderer.outputColorSpace = THREE.SRGBColorSpace;
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.15;
-
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x0d1317);
-scene.fog = new THREE.Fog(0x0f171b, 900, 2700);
-
-const camera = new THREE.PerspectiveCamera(42, 1, 1, 5000);
-
-const worldRoot = new THREE.Group();
-scene.add(worldRoot);
-
-const hemiLight = new THREE.HemisphereLight(0xa7d9dd, 0x122220, 1.65);
-scene.add(hemiLight);
-
-const sunLight = new THREE.DirectionalLight(0xfff1cf, 1.65);
-sunLight.position.set(-450, 920, 580);
-scene.add(sunLight);
-
-const rimLight = new THREE.DirectionalLight(0x7bc6ff, 0.42);
-rimLight.position.set(620, 240, -540);
-scene.add(rimLight);
-
-const rivalLight = new THREE.PointLight(0xb24646, 2.2, 900, 2);
-scene.add(rivalLight);
-
-const miracleButtons = new Map();
-
-let world = createWorld(1);
-let worldView = null;
-let lastFrame = performance.now();
-
-const statDefs = [
-  { key: "villagers", label: "Villagers" },
-  { key: "worship", label: "Worship" },
-  { key: "influence", label: "Sacred Influence" },
-  { key: "rival", label: "Rival Pressure" },
-];
-
-initStats();
-initMiracleUI();
-resizeRenderer();
-buildWorldView();
-attachEvents();
-addMessage("Ten miracles are live. Draw a clockwise spiral to arm a rite, then finish with a glyph.", "blessing");
-requestAnimationFrame(frame);
-
-function initStats() {
-  statsHost.innerHTML = "";
-
-  for (const stat of statDefs) {
-    const row = document.createElement("div");
-    row.className = "stat-row";
-    row.dataset.key = stat.key;
-
-    const title = document.createElement("div");
-    title.className = "stat-title";
-    title.textContent = stat.label;
-
-    const value = document.createElement("div");
-    value.className = "stat-value";
-
-    const detail = document.createElement("div");
-    detail.className = "stat-detail";
-
-    row.append(title, value, detail);
-    statsHost.append(row);
-  }
-}
-
-function initMiracleUI() {
-  miracleListHost.innerHTML = "";
-
-  for (const miracle of MIRACLES) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "miracle-card";
-    button.dataset.id = miracle.id;
-    button.addEventListener("click", () => {
-      selectMiracle(miracle.id);
-    });
-
-    miracleButtons.set(miracle.id, button);
-    miracleListHost.append(button);
-  }
-
-  updateMiracleUI();
-}
-
-function createWorld(seed) {
-  const rng = mulberry32(seed);
-
-  const shrines = Array.from({ length: SHRINE_COUNT }, (_, index) => {
-    const angle = (TAU / SHRINE_COUNT) * index + rng() * 0.5;
-    const distance = 210 + rng() * 220;
-    return {
-      id: index,
-      x: Math.cos(angle) * distance,
-      y: Math.sin(angle) * distance * 0.76,
-      aura: 34 + rng() * 16,
-      size: 0.8 + rng() * 0.4,
-    };
-  });
-
-  const villages = Array.from({ length: 4 }, (_, index) => {
-    const angle = (TAU / 4) * index + rng() * 0.38;
-    const distance = 160 + rng() * 220;
-    return {
-      id: index,
-      x: Math.cos(angle) * distance,
-      y: Math.sin(angle) * distance * 0.75,
-      hearth: 0.52 + rng() * 0.28,
-      faith: 0.55 + rng() * 0.18,
-      rivalry: 0.14 + rng() * 0.12,
-      homes: 3 + Math.floor(rng() * 3),
-    };
-  });
+    finisher: "roof ward",
+    cost: 22,
+    cooldown: 12,
+    radius: 8,
