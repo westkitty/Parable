@@ -1,126 +1,132 @@
-  return height;
-}
-
-function getBaseCorruptionAt(x, y) {
-  const distanceToRival = distance(x, y, world.rivalCore.x, world.rivalCore.y);
-  return (1 - smoothstep(world.rivalCore.radius * 0.9, world.rivalCore.radius * 2.4, distanceToRival)) * world.rivalCore.corruption;
-}
-
-function weakenZonesNear(x, y, radius, amount, markDirty = true) {
-  let affected = 0;
-
-  for (const zone of world.zones) {
-    if (!HARMFUL_ZONES.has(zone.kind)) {
-      continue;
-    }
-
-    const d = distance(x, y, zone.x, zone.y);
-    if (d > radius + zone.radius * 0.25) {
-      continue;
-    }
-
-    const strength = Math.max(0.08, 1 - d / (radius + zone.radius));
-    zone.power = Math.max(0, zone.power - amount * strength);
-    zone.duration = Math.max(zone.age + 0.25, zone.duration - amount * 8 * strength);
-    affected += 1;
-
-    if (markDirty && zoneAffectsTerrain(zone)) {
-      world.terrainDirty = true;
-    }
-  }
-
-  return affected;
-}
-
-function forEachVillagerInRadius(x, y, radius, callback) {
-  let count = 0;
   for (const villager of world.villagers) {
-    if (distance(x, y, villager.x, villager.y) <= radius) {
-      callback(villager);
-      count += 1;
+    const view = villager.view;
+    if (!view) continue;
+    view.position.set(villager.x, 0.25, villager.z);
+    view.rotation.y += dt * (villager.state === "pray" ? 0.4 : 1.2);
+    view.userData.hood.material.color.copy(villagerColor(villager.state));
+    const bob = Math.sin(visualClock * 6 + villager.id) * 0.05;
+    view.position.y = 0.25 + bob;
+  }
+
+  for (const golem of world.golems) {
+    if (!golem.view) continue;
+    golem.view.position.set(golem.x, 0.35 + Math.sin(visualClock * 2 + golem.id) * 0.04, golem.z);
+    golem.view.userData.core.rotation.z += dt * 1.8;
+  }
+}
+
+function updateEffects(dt) {
+  for (let i = effectGroup.children.length - 1; i >= 0; i -= 1) {
+    const object = effectGroup.children[i];
+    const effect = object.userData.effect;
+    if (!effect) continue;
+    effect.age += dt;
+    const t = Math.min(1, effect.age / effect.duration);
+    object.traverse((child) => {
+      if (child.material && "opacity" in child.material) child.material.opacity *= Math.max(0.02, 1 - t * 0.12);
+    });
+    if (effect.type === "fade-scale") object.scale.setScalar(1 + t * 0.7);
+    if (effect.type === "fade-spin") object.rotation.y += dt * 2.2;
+    if (effect.age >= effect.duration) effectGroup.remove(object);
+  }
+}
+
+function updateTerrainColorsIfNeeded() {
+  if (!terrainColorDirty) return;
+  terrainColorDirty = false;
+  const colorAttr = terrainMesh.geometry.attributes.color;
+  const positions = terrainMesh.geometry.attributes.position;
+  const temp = new THREE.Color();
+  for (let i = 0; i < positions.count; i += 1) {
+    const x = positions.getX(i);
+    const z = positions.getZ(i);
+    const radial = Math.sqrt(x * x + z * z) / WORLD_RADIUS;
+    if (radial > 1) {
+      temp.set("#0a1a22");
+    } else {
+      const region = nearestRegion(x, z);
+      temp.copy(COLORS.terrain);
+      temp.lerp(COLORS.fertile, region.fertility * 0.34);
+      temp.lerp(COLORS.scorch, region.scorch * 0.58);
+      temp.lerp(COLORS.rival, region.corruption * 0.46 + region.rival * 0.22);
+      temp.lerp(COLORS.sacred, region.sacred * 0.28 + region.sanctity * 0.18);
+      temp.lerp(COLORS.stone, region.stone * 0.24);
+      temp.lerp(COLORS.water, region.wet * 0.2);
     }
+    colorAttr.setXYZ(i, temp.r, temp.g, temp.b);
   }
-  return count;
+  colorAttr.needsUpdate = true;
 }
 
-function forEachVillageInRadius(x, y, radius, callback) {
-  let count = 0;
-  for (const village of world.villages) {
-    if (distance(x, y, village.x, village.y) <= radius) {
-      callback(village);
-      count += 1;
-    }
-  }
-  return count;
-}
-
-function countZones(kind) {
-  return world.zones.filter((zone) => zone.kind === kind).length;
-}
-
-function zoneAffectsTerrain(zone) {
-  return Boolean(zone.terrainLift || zone.terrainCrater || zone.fertility || zone.sanctity || zone.corruption || zone.scorch);
-}
-
-function isPointInsideIsland(x, y) {
-  return Math.hypot(x / 1.02, y / 0.82) <= WORLD_RADIUS + 60;
-}
-
-function getMiracleColorForEffect(kind) {
-  const miracle = MIRACLES.find((entry) => entry.id === kind);
-  if (miracle) {
-    return miracle.color;
-  }
-
-  const fallback = {
-    blight: 0xb24646,
-    purgeGlow: 0xe8efe8,
-    stoneShape: 0xbebaa8,
-    ritualArm: 0xf4c768,
+function updateStats() {
+  const owners = countOwners();
+  const states = countVillagerStates();
+  const values = {
+    worship: [Math.floor(world.worship), "Spend worship through spiral-armed miracles."],
+    sacredRegions: [owners.sacred, "Long-lived regions currently leaning sacred."],
+    rivalRegions: [owners.rival, "Regions owned by hostile pressure."],
+    villagerState: [world.villagers.length, stateSummary(states)],
+    food: [Math.floor(world.food), "Food rises through fertility, rain, and harvesting."],
   };
-
-  return fallback[kind] ?? 0xf4c768;
+  for (const [key, [value, detail]] of Object.entries(values)) {
+    const row = statsHost.querySelector(`[data-key="${key}"]`);
+    if (!row) continue;
+    row.querySelector(".stat-value").textContent = value;
+    row.querySelector(".stat-detail").textContent = detail;
+  }
 }
 
-function disposeObject(object) {
-  object.traverse((child) => {
-    if (child.geometry) {
-      child.geometry.dispose();
+function updateRegionOwnership() {
+  for (const region of world.regions) {
+    const sacredScore = region.sacred + region.sanctity + region.shelter * 0.25;
+    const rivalScore = region.rival + region.corruption * 0.7;
+    const previous = region.owner;
+    if (sacredScore > rivalScore + 0.2) region.owner = "sacred";
+    else if (rivalScore > sacredScore + 0.18) region.owner = "rival";
+    else region.owner = "contested";
+    if (previous !== region.owner) terrainColorDirty = true;
+  }
+}
+
+function resizeRenderer() {
+  const rect = canvas.getBoundingClientRect();
+  const width = Math.max(1, Math.floor(rect.width));
+  const height = Math.max(1, Math.floor(rect.height));
+  renderer.setSize(width, height, false);
+  camera.aspect = width / height;
+  camera.updateProjectionMatrix();
+}
+
+function logEvent(message) {
+  const li = document.createElement("li");
+  li.textContent = message;
+  eventLog.prepend(li);
+  while (eventLog.children.length > MAX_EVENTS) eventLog.lastElementChild.remove();
+}
+
+function updateRitualHud(label, detail) {
+  ritualStateLabel.textContent = label;
+  ritualStateDetail.textContent = detail;
+}
+
+function regionsWithin(x, z, radius) {
+  return world.regions.filter((region) => distance2(region.x, region.z, x, z) <= radius);
+}
+
+function nearestRegion(x, z) {
+  let best = world.regions[0];
+  let bestDistance = Infinity;
+  for (const region of world.regions) {
+    const d = distance2(region.x, region.z, x, z);
+    if (d < bestDistance) {
+      best = region;
+      bestDistance = d;
     }
-
-    if (child.material) {
-      if (Array.isArray(child.material)) {
-        child.material.forEach((material) => material.dispose());
-      } else {
-        child.material.dispose();
-      }
-    }
-  });
+  }
+  return best;
 }
 
-function distance(ax, ay, bx, by) {
-  return Math.hypot(ax - bx, ay - by);
-}
-
-function clamp(value, min, max) {
-  return Math.max(min, Math.min(max, value));
-}
-
-function smoothstep(edge0, edge1, x) {
-  const t = clamp((x - edge0) / (edge1 - edge0), 0, 1);
-  return t * t * (3 - 2 * t);
-}
-
-function damp(current, target, lambda, dt) {
-  return THREE.MathUtils.lerp(current, target, 1 - Math.exp(-lambda * dt));
-}
-
-function mulberry32(seed) {
-  let t = seed;
-  return function next() {
-    t += 0x6d2b79f5;
-    let r = Math.imul(t ^ (t >>> 15), t | 1);
-    r ^= r + Math.imul(r ^ (r >>> 7), r | 61);
-    return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
-  };
-}
+function nearestShrine(x, z) {
+  let best = world.shrines[0];
+  let bestDistance = Infinity;
+  for (const shrine of world.shrines) {
