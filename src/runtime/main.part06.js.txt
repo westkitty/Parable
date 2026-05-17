@@ -1,320 +1,132 @@
-    const length = Math.hypot(dx, dy);
-
-    if (length > 2) {
-      const step = Math.min(length, golem.pace * dt);
-      golem.x += (dx / length) * step;
-      golem.y += (dy / length) * step;
-      golem.state = "march";
-    } else {
-      golem.state = "work";
-      performGolemTask(golem, dt);
+    const worldPoint = getWorldPoint(event);
+    if (worldPoint && worldPoint.length() <= WORLD_RADIUS + 2) {
+      pointer.worldPoints.push(worldPoint.clone());
+      pointer.lastWorld.copy(worldPoint);
+      createGestureTrace(pointer.worldPoints.slice(-18), ritual.armed ? "#ff875b" : "#f4c768", 0.42);
     }
-  }
+  });
+
+  canvas.addEventListener("pointerup", finishPointerGesture);
+  canvas.addEventListener("pointercancel", finishPointerGesture);
 }
 
-function assignGolemTask(golem) {
-  const harmfulZone = [...world.zones]
-    .filter((zone) => HARMFUL_ZONES.has(zone.kind))
-    .sort((a, b) => distance(golem.x, golem.y, a.x, a.y) - distance(golem.x, golem.y, b.x, b.y))[0];
-
-  if (harmfulZone) {
-    golem.taskType = "cleanse";
-    golem.taskTargetId = harmfulZone.id;
-    golem.targetX = harmfulZone.x;
-    golem.targetY = harmfulZone.y;
-    return;
-  }
-
-  const weakVillage = [...world.villages].sort((a, b) => a.hearth - b.hearth)[0];
-  if (weakVillage) {
-    golem.taskType = "mend";
-    golem.taskTargetId = weakVillage.id;
-    golem.targetX = weakVillage.x;
-    golem.targetY = weakVillage.y;
-    return;
-  }
-
-  golem.taskType = "anchor";
-  golem.targetX = world.rivalCore.x - 150;
-  golem.targetY = world.rivalCore.y + 140;
+function finishPointerGesture(event) {
+  if (!pointer.active || pointer.id !== event.pointerId) return;
+  pointer.active = false;
+  const now = performance.now();
+  const screenPoints = simplifyPoints(pointer.points);
+  const worldAnchor = pointer.worldPoints.length ? pointer.worldPoints.at(-1).clone() : pointer.lastWorld.clone();
+  const analysis = analyzeGesture(screenPoints);
+  handleGesture(analysis, worldAnchor, now);
+  pointer.points = [];
+  pointer.worldPoints = [];
+  pointer.id = null;
 }
 
-function performGolemTask(golem, dt) {
-  if (golem.taskType === "cleanse") {
-    const zone = world.zones.find((entry) => entry.id === golem.taskTargetId);
-    if (zone) {
-      zone.power = Math.max(0, zone.power - 0.22 * dt);
-      zone.duration = Math.max(zone.age + 0.5, zone.duration - 1.25 * dt);
-      world.influence = clamp(world.influence + 0.12 * dt, 0, 100);
-      world.terrainDirty = true;
+function screenPointFromEvent(event) {
+  const rect = canvas.getBoundingClientRect();
+  return { x: event.clientX - rect.left, y: event.clientY - rect.top, time: performance.now() };
+}
+
+function getWorldPoint(event) {
+  const rect = canvas.getBoundingClientRect();
+  pointerNdc.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+  pointerNdc.y = -(((event.clientY - rect.top) / rect.height) * 2 - 1);
+  raycaster.setFromCamera(pointerNdc, camera);
+  const target = new THREE.Vector3();
+  const hit = raycaster.ray.intersectPlane(groundPlane, target);
+  return hit ? target : null;
+}
+
+function handleGesture(analysis, worldPoint, now) {
+  gestureLabel.textContent = analysis.label;
+  gestureDetail.textContent = analysis.detail;
+
+  if (ritual.armed && now > ritual.expiresAt) {
+    ritual.armed = false;
+    ritual.anchor = null;
+    updateRitualHud("Expired", "The armed spiral went cold. Draw another clockwise spiral.");
+  }
+
+  if (!ritual.armed) {
+    if (analysis.kind === "clockwise-spiral") {
+      armRitual(worldPoint, now, analysis);
+      return;
     }
+    updateRitualHud("Unarmed", "That was not a clockwise spiral. The ritual did not arm.");
     return;
   }
 
-  if (golem.taskType === "mend") {
-    const village = world.villages.find((entry) => entry.id === golem.taskTargetId);
-    if (village) {
-      village.hearth = clamp(village.hearth + 0.035 * dt, 0.2, 1.25);
-      world.worship = clamp(world.worship + 0.08 * dt, 0, world.maxWorship);
-    }
+  const miracle = miracleById.get(analysis.miracleId || "");
+  if (!miracle) {
+    updateRitualHud("Armed", "The spiral is armed, but that finisher is not recognized.");
     return;
   }
 
-  world.rivalCore.basePressure = clamp(world.rivalCore.basePressure - 0.01 * dt, 0.08, 0.45);
+  const castPoint = ritual.anchor || worldPoint;
+  const result = castMiracle(miracle, castPoint, now);
+  if (result.ok) {
+    ritual.armed = false;
+    ritual.anchor = null;
+    ritual.expiresAt = 0;
+    updateRitualHud("Unarmed", `${miracle.name} completed. Draw a new clockwise spiral.`);
+  } else {
+    updateRitualHud("Armed", result.reason);
+  }
 }
 
-function updateEffects(dt) {
-  world.effects = world.effects.filter((effect) => {
-    effect.age += dt;
-    return effect.age < effect.duration;
-  });
+function armRitual(worldPoint, now, analysis) {
+  ritual.armed = true;
+  ritual.anchor = worldPoint.clone();
+  ritual.expiresAt = now + ARM_TIMEOUT;
+  createRingEffect(worldPoint, 2.2, "#f4c768", 1.2, 1.2);
+  createColumnEffect(worldPoint, "#f4c768", 1.2);
+  updateRitualHud("Armed", "Clockwise spiral accepted. Draw a finisher before the glow dies.");
+  logEvent(`Ritual armed by ${analysis.label}.`);
 }
 
-function updateMessages(dt) {
-  world.messages = world.messages.filter((message) => {
-    message.ttl -= dt;
-    return message.ttl > 0;
-  });
-  updateEventLog();
-}
+function analyzeGesture(points) {
+  if (points.length < 6) {
+    return { kind: "too-short", label: "Too short", detail: "Gesture needs a longer stroke." };
+  }
+  const sampled = resamplePoints(points, 42);
+  const box = boundingBox(sampled);
+  const width = Math.max(1, box.maxX - box.minX);
+  const height = Math.max(1, box.maxY - box.minY);
+  const totalLength = pathLength(sampled);
+  const direct = Math.hypot(sampled.at(-1).x - sampled[0].x, sampled.at(-1).y - sampled[0].y);
+  const aspect = width / height;
+  const turns = countHorizontalTurns(sampled);
+  const verticalTravel = sampled.at(-1).y - sampled[0].y;
+  const horizontalTravel = sampled.at(-1).x - sampled[0].x;
+  const rotation = totalSignedRotation(sampled);
+  const closure = Math.hypot(sampled.at(-1).x - sampled[0].x, sampled.at(-1).y - sampled[0].y) / Math.max(width, height);
 
-function moveVillager(villager, dt) {
-  const dx = villager.targetX - villager.x;
-  const dy = villager.targetY - villager.y;
-  const len = Math.hypot(dx, dy);
-
-  if (len < 2) {
-    return;
+  if (rotation > TAU * 1.05 && totalLength > Math.max(width, height) * 4.2 && closure < 0.85) {
+    return { kind: "clockwise-spiral", label: "Clockwise spiral", detail: "Ritual armed. This is the only accepted opener." };
   }
 
-  const speed = villager.state === "flee" ? villager.pace * 1.75 : villager.pace;
-  const step = Math.min(len, speed * dt);
-  villager.x += (dx / len) * step;
-  villager.y += (dy / len) * step;
-}
-
-function pickVillageWander(villager, home, rng) {
-  const angle = rng() * TAU;
-  const distance = 25 + rng() * 60;
-  villager.targetX = home.x + Math.cos(angle) * distance;
-  villager.targetY = home.y + Math.sin(angle) * distance;
-  villager.timer = 1.8 + rng() * 3.6;
-}
-
-function buildWorldView() {
-  if (worldView) {
-    worldRoot.remove(worldView.root);
-    disposeObject(worldView.root);
+  if (height > width * 1.25 && verticalTravel > height * 0.25 && turns >= 3 && totalLength > height * 1.65) {
+    return { kind: "finisher", miracleId: "fireball", label: "Vertical zigzag", detail: "Fireball finisher recognized." };
   }
 
-  const root = new THREE.Group();
-  worldRoot.add(root);
-
-  const terrainMesh = createTerrainMesh();
-  root.add(terrainMesh);
-
-  const water = createWaterMeshes();
-  root.add(water.group);
-
-  const propGroup = createPropGroup();
-  root.add(propGroup);
-
-  const shrineViews = world.shrines.map((shrine) => createShrineView(shrine));
-  shrineViews.forEach((view) => root.add(view.group));
-
-  const villageViews = world.villages.map((village) => createVillageView(village));
-  villageViews.forEach((view) => root.add(view.group));
-
-  const villagerViews = world.villagers.map((villager) => createVillagerView(villager));
-  villagerViews.forEach((view) => root.add(view.group));
-
-  const rivalView = createRivalView();
-  root.add(rivalView.group);
-
-  const skyMotes = createSkyMotes();
-  root.add(skyMotes);
-
-  const handView = createHandView();
-  root.add(handView.group);
-
-  const trailView = createTrailView();
-  root.add(trailView.line);
-
-  const zoneLayer = new THREE.Group();
-  const effectLayer = new THREE.Group();
-  const golemLayer = new THREE.Group();
-  root.add(zoneLayer);
-  root.add(effectLayer);
-  root.add(golemLayer);
-
-  worldView = {
-    root,
-    terrainMesh,
-    water,
-    shrineViews,
-    villageViews,
-    villagerViews,
-    rivalView,
-    skyMotes,
-    handView,
-    trailView,
-    zoneLayer,
-    effectLayer,
-    golemLayer,
-    zoneViews: new Map(),
-    effectViews: new Map(),
-    golemViews: new Map(),
-  };
-
-  refreshTerrainVisuals();
-  syncDynamicViews();
-}
-
-function createTerrainMesh() {
-  const geometry = new THREE.PlaneGeometry(2200, 1900, 120, 100);
-  geometry.rotateX(-Math.PI / 2);
-  geometry.setAttribute("color", new THREE.Float32BufferAttribute(new Float32Array(geometry.attributes.position.count * 3), 3));
-
-  const material = new THREE.MeshStandardMaterial({
-    vertexColors: true,
-    roughness: 0.95,
-    metalness: 0.02,
-  });
-
-  const mesh = new THREE.Mesh(geometry, material);
-  mesh.position.y = -18;
-  return mesh;
-}
-
-function refreshTerrainVisuals() {
-  const position = worldView.terrainMesh.geometry.attributes.position;
-  const color = worldView.terrainMesh.geometry.attributes.color;
-
-  for (let index = 0; index < position.count; index += 1) {
-    const x = position.getX(index);
-    const z = position.getZ(index);
-    const y = getTerrainHeight(x, z);
-    const fields = getFieldAt(x, z);
-    const radial = Math.hypot(x / 1.05, z / 0.84);
-    const shore = smoothstep(WORLD_RADIUS + 55, WORLD_RADIUS - 30, radial);
-
-    position.setY(index, y);
-
-    const low = new THREE.Color(0x2e4637);
-    const mid = new THREE.Color(0x5f8252);
-    const high = new THREE.Color(0x88a96a);
-
-    scratchColor.copy(low).lerp(mid, clamp((y + 25) / 90, 0, 1));
-    scratchColor.lerp(high, clamp((y - 48) / 95, 0, 1));
-    scratchColor.lerp(new THREE.Color(0x1d2a27), clamp(1 - shore, 0, 1) * 0.7);
-    scratchColor.lerp(new THREE.Color(0x76bc65), clamp(fields.fertility * 0.22, 0, 0.48));
-    scratchColor.lerp(new THREE.Color(0xff7d4f), clamp(fields.scorch * 0.34, 0, 0.7));
-    scratchColor.lerp(new THREE.Color(0xddd49a), clamp(fields.sanctity * 0.2, 0, 0.28));
-    scratchColor.lerp(new THREE.Color(0x5f2323), clamp(fields.corruption * 0.62, 0, 0.76));
-
-    color.setXYZ(index, scratchColor.r, scratchColor.g, scratchColor.b);
+  if (height > width * 1.9 && verticalTravel > height * 0.55 && turns <= 1) {
+    return { kind: "finisher", miracleId: "rain", label: "Downward line", detail: "Rain finisher recognized." };
   }
 
-  position.needsUpdate = true;
-  color.needsUpdate = true;
-  worldView.terrainMesh.geometry.computeVertexNormals();
-  world.terrainDirty = false;
-}
-
-function createWaterMeshes() {
-  const group = new THREE.Group();
-
-  const waterGeometry = new THREE.CircleGeometry(1500, 88);
-  waterGeometry.rotateX(-Math.PI / 2);
-  const waterMaterial = new THREE.MeshBasicMaterial({
-    color: 0x18424a,
-    transparent: true,
-    opacity: 0.78,
-  });
-  const waterSurface = new THREE.Mesh(waterGeometry, waterMaterial);
-  waterSurface.position.y = -34;
-  group.add(waterSurface);
-
-  const glowGeometry = new THREE.RingGeometry(WORLD_RADIUS * 0.98, WORLD_RADIUS * 1.18, 96);
-  glowGeometry.rotateX(-Math.PI / 2);
-  const glowMaterial = new THREE.MeshBasicMaterial({
-    color: 0x5fa3a8,
-    transparent: true,
-    opacity: 0.2,
-    side: THREE.DoubleSide,
-  });
-  const shoreGlow = new THREE.Mesh(glowGeometry, glowMaterial);
-  shoreGlow.position.y = -28;
-  group.add(shoreGlow);
-
-  return { group, shoreGlow, waterSurface };
-}
-
-function createPropGroup() {
-  const group = new THREE.Group();
-
-  for (const seedData of world.propSeeds) {
-    if (Math.hypot(seedData.x, seedData.y) > WORLD_RADIUS - 40) {
-      continue;
-    }
-
-    const trunk = new THREE.Mesh(
-      new THREE.CylinderGeometry(4, 6, 28 * seedData.scale, 6),
-      new THREE.MeshStandardMaterial({ color: 0x6a4b34, roughness: 1 })
-    );
-
-    const crown = new THREE.Mesh(
-      new THREE.ConeGeometry(16 * seedData.scale, 46 * seedData.scale, 8),
-      new THREE.MeshStandardMaterial({ color: 0x3f6a41, roughness: 1 })
-    );
-
-    const groupItem = new THREE.Group();
-    groupItem.add(trunk);
-    groupItem.add(crown);
-
-    trunk.position.y = 12 * seedData.scale;
-    crown.position.y = 38 * seedData.scale;
-
-    const height = getTerrainHeight(seedData.x, seedData.y) - 8;
-    groupItem.position.set(seedData.x, height, seedData.y);
-    groupItem.rotation.y = seedData.twist;
-    group.add(groupItem);
+  if (closure < 0.32 && Math.abs(width - height) / Math.max(width, height) < 0.42 && totalLength > Math.max(width, height) * 2.4) {
+    return { kind: "finisher", miracleId: "blessing", label: "Closed circle", detail: "Blessing finisher recognized." };
   }
 
-  return group;
-}
+  if (turns >= 1 && width > height * 0.72 && height > width * 0.45 && hasCrossingStroke(sampled)) {
+    return { kind: "finisher", miracleId: "purge", label: "Cross stroke", detail: "Purge finisher recognized." };
+  }
 
-function createShrineView(shrine) {
-  const group = new THREE.Group();
-  const baseHeight = getTerrainHeight(shrine.x, shrine.y);
-  group.position.set(shrine.x, baseHeight + 2, shrine.y);
+  if (verticalTravel < -height * 0.25 && turns >= 2 && height > width * 0.75) {
+    return { kind: "finisher", miracleId: "fertility", label: "Upward sprout", detail: "Fertility finisher recognized." };
+  }
 
-  const plinth = new THREE.Mesh(
-    new THREE.CylinderGeometry(14 * shrine.size, 20 * shrine.size, 18 * shrine.size, 6),
-    new THREE.MeshStandardMaterial({ color: 0x73573d, roughness: 1 })
-  );
-  plinth.position.y = 8;
-  group.add(plinth);
+  if (closure < 0.48 && aspect > 0.65 && aspect < 1.55 && countCorners(sampled) >= 3) {
+    return { kind: "finisher", miracleId: "stone-shape", label: "Square seal", detail: "Stone Shape finisher recognized." };
+  }
 
-  const crystal = new THREE.Mesh(
-    new THREE.OctahedronGeometry(14 * shrine.size, 0),
-    new THREE.MeshStandardMaterial({
-      color: 0xf4c768,
-      emissive: 0xd09c34,
-      emissiveIntensity: 1.2,
-      roughness: 0.2,
-      metalness: 0.1,
-    })
-  );
-  crystal.position.y = 28;
-  group.add(crystal);
-
-  const aura = new THREE.Mesh(
-    new THREE.RingGeometry(shrine.aura * 0.7, shrine.aura, 32),
-    new THREE.MeshBasicMaterial({
-      color: 0xf4c768,
-      transparent: true,
-      opacity: 0.34,
-      side: THREE.DoubleSide,
-    })
-  );
