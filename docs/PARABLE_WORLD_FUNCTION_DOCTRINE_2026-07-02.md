@@ -8,13 +8,13 @@ This file supplements `Parable_Bible.md`. It does not replace the project bible.
 
 ## Core Correction
 
-The next planning priority is not writing the opening dream prompts. Those are flavor compared to the deeper system questions:
+The planning priority is not writing dream flavor first. Those prompts are later-layer flavor compared to the deeper system questions:
 
 - What is the player's godhood representation?
 - Where does identity live?
 - Where is UI allowed to appear?
 - What must remain world-space and hand-driven?
-- How does the temple function as the only major interface surface?
+- How does the temple function as the major interface surface?
 
 ## God Representation Rule
 
@@ -27,11 +27,18 @@ The player is not a creature, hero, body, statue-person, or map avatar. The play
 
 ## Hand Appearance Rule
 
-The player may have complete control over the appearance of the divine hand from a set of in-game options. The hand may be humanoid, clawlike, made of light, abstract, elemental, skeletal, carved, radiant, shadowed, or any other authored form included by the game.
+The player may control the appearance of the divine hand from a set of authored in-game options. The hand is the player's only embodied god-presence. Changing the hand's appearance is therefore an identity customization feature, not a cosmetic side menu. It belongs in the temple.
 
-The hand is the player's only embodied god-presence. Changing the hand's appearance is therefore an identity customization feature, not a cosmetic side menu. It belongs in the temple.
+The first shippable hand set should include at least:
 
-Morality/world-state may affect the hand's appearance over time. A benevolent, protective, cruel, feared, neglected, corrupted, or awe-inspiring god may gradually alter the hand's surface, aura, gesture traces, light, color, shadow, texture, or small adornments. This should enrich identity without making the hand unusable or overriding the player's chosen base form.
+- a default humanlike hand;
+- a masculine, rough-looking hand;
+- an elegant, feminine hand;
+- left-hand and right-hand variants for each.
+
+Later hand forms may include clawlike, made of light, abstract, elemental, skeletal, carved, radiant, shadowed, or other authored forms.
+
+Morality is not a judgment meter. Morality/world-state is the visible effect of the player's choices and repeated actions. A benevolent, protective, cruel, feared, neglected, corrupted, or awe-inspiring god may gradually alter the hand's surface, aura, gesture traces, light, color, shadow, texture, or small adornments. These effects should show consequence without overriding the player's chosen base hand form or making the hand unusable.
 
 ## Hand Control Rule
 
@@ -53,7 +60,7 @@ Future specs should document this control grammar behaviorally and exhaustively.
 
 The god symbol is the player's chosen mark. It should function similarly to the god-symbol idea in Black & White-like god play, while remaining original to Parable.
 
-At the start, the game may present a small glowing pop-up or ritual choice with around five initial symbol options. These can be suggested based on the opening miracle path and first unlocked miracle. For example:
+The first symbol selection should occur as a short ritual moment. A villager asks: "Who are you?" Then a small glowing symbol choice appears, offering around five initial god symbols. These can be suggested based on the opening miracle path and first unlocked miracle. For example:
 
 - Fireball start -> symbol options that visually echo or vary the Fireball glyph language.
 - Rain start -> symbol options that echo rainfall, cloud, wave, or mercy glyph language.
@@ -102,32 +109,87 @@ Preferred transition:
 
 This is acceptable because the temple is a special god-space and not ordinary world traversal. The transition should still feel ceremonial rather than like opening a settings menu.
 
-## Temple as Interface
+## Temple Navigation Model
 
-The temple should function as Parable's primary diegetic UI container.
+The temple interior should feel like the player floats into the center of the temple and looks toward static chamber directions.
 
-The temple interior can be a more static area with directional navigation. The player may click left/front/right or other clear directions to rotate or shift between temple chambers.
+The temple is not free-roam exploration in the first version. It is a central sacred hub with directional navigation:
 
-Examples:
+- look/click left to face one chamber;
+- look/click right to face another chamber;
+- look/click forward/front to face the central/save/world-state chamber;
+- additional directions can be added only if needed.
 
-- click left -> symbol chamber, with people painting, carving, or arranging god symbols;
-- click front -> save/history/world-state chamber;
-- click right -> options/settings/accessibility chamber;
-- other chambers may be added for miracles, villages, golems, world travel, and history.
+This keeps the temple readable, stable, and Black & White-like instead of turning it into a walking simulator or normal menu screen.
 
-Possible temple sections:
+## Fixed Temple Chambers
 
-- Symbol chamber: villagers painting, carving, or arranging different god symbols.
-- Miracle chamber: glyphs, shrine records, learned miracles, upgrade tiers, old-god inscriptions.
-- Village chamber: maps, offerings, village temples, allegiance, prayers, and belief flow.
-- Golem chamber: assembled golem parts, macro demonstrations, path drawings, construction materials, active golem upkeep.
-- History chamber: old gods, found shrines, discovered glyphs, rival god signs, campaign memory.
-- World chamber: island travel, conquered/lost villages, shrine construction choices, local island bonuses.
-- Save chamber: save/load, campaign memory, world-state records.
-- Options chamber: settings, accessibility, input tuning, display/audio preferences.
-- Tutorial chamber: replayable teachings, control diagrams, discovered glyph references.
+The temple chamber map should be treated as mostly settled. Do not keep re-opening this as a vague design question.
+
+First-slice / core chambers:
+
+1. Symbol / Identity Chamber
+   - Change god symbol.
+   - Change divine hand appearance if hand customization is included.
+   - Visual: villagers or attendants painting, carving, arranging, or presenting symbols and hand forms.
+
+2. Save / World-State Chamber
+   - Save/load.
+   - Campaign state.
+   - Island/world memory.
+   - Records of living-world changes.
+   - This is the natural front/central chamber.
+
+3. Options / Settings Chamber
+   - Input tuning.
+   - Mouse/control settings.
+   - Audio/display/accessibility.
+   - This replaces normal settings menus in the world.
+
+4. Miracle / Glyph Chamber
+   - Learned miracles.
+   - Discovered glyphs.
+   - Upgrade tiers.
+   - Old-god shrine records.
+   - Tutorial glyph references.
+
+5. Village / Belief Chamber
+   - Village temples.
+   - Allegiance.
+   - Prayers.
+   - Belief/worship flow.
+   - Statistics that should not appear in the normal world HUD.
+
+6. Golem Chamber
+   - Golem parts.
+   - Construction materials.
+   - Macro demonstrations.
+   - Path drawings.
+   - Active golem upkeep.
+
+Later or combinable chambers:
+
+- History / Old Gods Chamber: old gods, rival signs, discovered shrine lore, campaign memory.
+- World / Island Chamber: island travel, conquered/lost villages, shrine construction choices, local island bonuses.
+- Tutorial Chamber: replayable teachings, control diagrams, discovered glyph references. This can be merged into Miracle/Glyph and Options in the first slice.
+
+If scope must be cut, the minimum first-slice temple is Symbol/Identity, Save/World-State, Options/Settings, and Miracle/Glyph. Village/Belief and Golem chambers become required once those systems are active.
+
+## Temple as Interface Principle
 
 The point is not to create a huge menu. The point is to make necessary management feel sacred, physical, and located inside the god's temple rather than pasted onto the world.
+
+Systems that are not direct moment-to-moment gameplay, but are important for engaging with the game, belong in the temple. This includes:
+
+- statistics;
+- options;
+- saving/loading;
+- symbols;
+- hand appearance;
+- tutorials/control references;
+- miracle records and glyph references;
+- village allegiance and belief summaries;
+- golem construction and macro review once golems exist.
 
 ## Symbol UI Example
 
@@ -145,34 +207,14 @@ This keeps identity UI inside the world and reinforces that sacred things are ma
 
 For the next planning stage, prioritize functional/world-structure questions over flavor text. The dream prompts can come later.
 
-Higher-priority questions:
+Remaining high-priority questions:
 
-1. What does the divine hand look like, do, and communicate?
-2. What are the exact mouse-first hand controls?
-3. What is the temple interior interface model?
-4. What sections does the temple contain in the first vertical slice?
-5. How does the player choose or change their god symbol?
-6. How does the symbol appear in villages, shrines, golems, and influence?
-7. What information is forbidden from appearing as normal HUD?
-8. What information must remain available inside the temple?
-9. What information can appear briefly in world-space near the hand, villagers, shrines, or objects?
-10. How does entering/exiting the temple work without breaking immersion?
-11. What hand forms ship in the first vertical slice?
-12. How much can morality alter the hand without overriding player choice?
-13. Which temple chambers exist in the first slice versus later?
-14. What minimal symbol-selection pop-up is allowed at the start before the player has entered the temple?
-
-## First-Slice Temple Minimum
-
-The first vertical slice does not need every temple chamber. The minimum useful temple could include:
-
-1. Symbol chamber: choose/change god symbol.
-2. Hand chamber or identity chamber: choose hand appearance if included in the first slice.
-3. Save/front chamber: save/load or campaign-state representation.
-4. Options chamber: input, audio, display, accessibility.
-5. Miracle chamber: learned starter miracles and discovered glyph references.
-
-If this is still too much, prioritize symbol, options/input tuning, and miracle references first.
+1. What exact mouse-first control grammar is required to recreate the Black & White-like hand feel behaviorally?
+2. Which hand appearances ship first beyond the default/rough/elegant left-right set?
+3. How does morality/world-state visually affect each hand form without overriding player choice?
+4. What precise camera positions and click targets define the temple's left/front/right navigation?
+5. Which chambers are required in the first playable vertical slice versus unlocked later?
+6. How much tutorial/reference content belongs in Miracle/Glyph versus Options/Settings?
 
 ## Non-Negotiables
 
@@ -186,6 +228,7 @@ If this is still too much, prioritize symbol, options/input tuning, and miracle 
 - No arbitrary changes to what the hand can grab.
 - Mouse-first Black & White-style controls must be specified in extreme detail.
 - Hand appearance may be customizable, but the hand remains the god's only embodied presence.
+- Morality is effect/consequence, not judgment.
 - Morality can affect the hand, but must not erase player choice or make the hand hard to read/use.
 - Temple UI must support the god fantasy rather than feeling like admin software.
 
