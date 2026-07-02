@@ -162,3 +162,55 @@ State After Completion:
 Next Step / Handoff:
 - Future Fable or Codex prompts should include this doctrine whenever discussing creature replacement, golem design, automation, tutorial structure, or core fantasy.
 - Next design pass should define the player's direct god abilities separately from optional golem macro abilities so automation supports godhood instead of consuming it.
+
+### Entry 3 - Golem resource doctrine clarified
+
+Summary:
+- Refined the golem doctrine so golem creation and macro programming are resource-based rather than a reduction of the player's divinity.
+
+Reason / Intent:
+- The user clarified that golems should be powerful because they reward planning, materials, aspects, elements, and macro design, not because they tax the god's core divinity.
+- The user rejected the idea that investing divine will should function primarily as a cost that takes away from the player's godhood.
+- The user noted that a temporary symbolic sacrifice, such as binding one finger of the divine hand until it regrows, could be visually interesting but should not become the default core cost model.
+- The core fantasy requires the player to remain fully divine; taking away from divinity would undermine the feeling of being a god.
+
+Files Changed:
+- `Parable_Bible.md`
+
+Commands Run:
+```text
+GitHub connector update_file was used to append this ledger entry to `Parable_Bible.md` on `main`.
+```
+
+Command Intent:
+- Prevent future design, Fable, or Codex prompts from making golems cost the player's divine identity or baseline god powers.
+
+Outputs Generated:
+- Additive project bible entry defining golem power as resource-and-planning driven.
+
+Decisions:
+- Golem power should come from resource investment, material choice, elemental/aspect composition, planning, and macro quality.
+- Golems should not impose a standing penalty to the player's core divinity, direct god abilities, or baseline god fantasy.
+- Divine will may be represented ceremonially, symbolically, or narratively, but should not be a primary mechanical drain that makes the player feel less like a god.
+- Optional temporary embodiment costs, such as binding a finger of the divine hand until it regrows, remain possible special-case flavor, not the default economy.
+- The reward for a well-built golem is that it is powerful and useful when assembled intelligently.
+- The player remains the god before, during, and after golem deployment.
+
+Doctrine:
+```text
+Golems are powered by resources, materials, elements, aspects, and macro design. They should reward planning and construction skill, not reduce the player's core divinity. Investing divine will should usually mean giving a command sacred authority or identity, not losing baseline god power. Any temporary hand/finger sacrifice mechanic may be used as rare symbolic flavor, but the default rule is that golems cost world-facing resources rather than the godhood fantasy itself.
+```
+
+Bugs / Blockers:
+- No gameplay implementation was changed in this entry.
+- The current runtime still appears to treat `Golem Wake` as a simple cleanse helper; the richer resource/material/aspect macro system remains a future design and implementation target.
+
+Correction:
+- Entry 2 remains valid but is refined: golems are optional vessels of delegated divine will, but delegation must not be modeled as subtracting from the player's divinity by default.
+
+State After Completion:
+- Parable's authoritative project bible now records that golems should be resource-and-planning based, while direct godhood remains intact.
+
+Next Step / Handoff:
+- Future design work should define the direct god ability set separately from optional golem macro abilities, then define golem costs using materials, resources, elements, aspects, construction steps, and macro constraints instead of divine-power penalties.
+- Future Fable or Codex prompts should include Entry 2 and Entry 3 together when designing golems.
