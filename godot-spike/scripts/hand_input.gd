@@ -388,6 +388,9 @@ func simulate_release_for_test(world_velocity: Vector3, force_gentle := false) -
 	_sampler.add_sample(_rig.global_transform.basis.inverse() * world_velocity * 0.1, 0.1)
 	_release_held(force_gentle)
 
+func simulate_cancel_for_test() -> void:
+	_cancel_everything()
+
 func simulate_arm_for_test() -> void:
 	_force_arm_for_debug()
 
@@ -395,6 +398,9 @@ func simulate_glyph_for_test(kind: String, target: Vector3) -> bool:
 	_miracle_armed = true
 	_armed_until = _time + MIRACLE_ARMED_DURATION
 	return _world.cast_glyph(kind, target) if _world else false
+
+func throw_min_speed_for_test() -> float:
+	return THROW_MIN_SPEED
 
 func armed_timer_remaining() -> float:
 	return maxf(_armed_until - _time, 0.0)

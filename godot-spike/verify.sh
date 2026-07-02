@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Parable Godot hand-feel spike — verifier.
 # Headless checks only: detection, file presence, project sanity, import,
-# script load + structural smoke test, runbook cross-check.
+# script load + structural smoke test, contract checks, playability surrogate
+# checks, runbook cross-check.
 # It can NOT verify rendering or hand feel — that is Andrew's job via run.sh.
 set -uo pipefail
 
@@ -38,7 +39,7 @@ REQUIRED=(
   scenes/Main.tscn scenes/TempleInterior.tscn
   scenes/objects/Villager.tscn scenes/objects/Rock.tscn
   scenes/objects/Tree.tscn scenes/objects/Offering.tscn
-  tests/verify_headless.gd
+  tests/verify_headless.gd tests/verify_contracts.gd tests/verify_playability_surrogates.gd
   scripts/world.gd scripts/island.gd scripts/hand_input.gd scripts/hand_visual.gd
   scripts/camera_rig.gd scripts/grabbable.gd scripts/villager_proxy.gd
   scripts/rock_proxy.gd scripts/tree_proxy.gd scripts/offering_proxy.gd
@@ -76,7 +77,25 @@ else
   cat /tmp/parable_smoke.log
 fi
 
-section "6. Runbook cross-check"
+section "6. Contract verification"
+if "$GODOT" --headless --path . --script res://tests/verify_contracts.gd >/tmp/parable_contracts.log 2>&1; then
+  ok "contract verification passed"
+  grep -E "^(  ok|  FAIL|CONTRACT)" /tmp/parable_contracts.log | tail -8
+else
+  fail "contract verification FAILED — output:"
+  cat /tmp/parable_contracts.log
+fi
+
+section "7. Playability surrogate verification"
+if "$GODOT" --headless --path . --script res://tests/verify_playability_surrogates.gd >/tmp/parable_surrogates.log 2>&1; then
+  ok "playability surrogate verification passed"
+  grep -E "^(  ok|  FAIL|PLAYABILITY)" /tmp/parable_surrogates.log | tail -10
+else
+  fail "playability surrogate verification FAILED — output:"
+  cat /tmp/parable_surrogates.log
+fi
+
+section "8. Runbook cross-check"
 for term in "./run.sh" "Right mouse button" "Left mouse button" "Middle mouse button" "Esc" "F3" "Scroll wheel" ; do
   grep -qi -- "$term" README_FOR_ANDREW.md && ok "runbook mentions: $term" || fail "runbook missing: $term"
 done

@@ -30,6 +30,9 @@ func is_awakened() -> bool:
 func current_state_label() -> String:
 	return ["dormant", "awakened", "taught"][state]
 
+func last_reject_reason() -> String:
+	return _last_reject
+
 func altar_point() -> Vector3:
 	return global_position + Vector3(0.0, 1.05, 1.1)
 

@@ -20,6 +20,9 @@ func _process(_delta: float) -> void:
 		visible = not visible
 	if not visible:
 		return
+	_label.text = "\n".join(snapshot_lines())
+
+func snapshot_lines() -> Array[String]:
 	var tree := get_tree()
 	var hand := tree.get_first_node_in_group("divine_hand")
 	var rig := tree.get_first_node_in_group("camera_rig")
@@ -46,6 +49,7 @@ func _process(_delta: float) -> void:
 			d.get("glyph_closure", 0.0), d.get("glyph_reversals", 0), d.get("glyph_radius_swing", 0.0)])
 	if shrine:
 		lines.append("shrine awake: %s (%s)" % [str(shrine.is_awakened()), shrine.current_state_label()])
+		lines.append("shrine reject: %s" % shrine.last_reject_reason())
 		var nearest := INF
 		for g in tree.get_nodes_in_group("grabbable"):
 			if g.display_name == "offering":
@@ -54,4 +58,4 @@ func _process(_delta: float) -> void:
 	if rig:
 		lines.append("camera: %s dist %.1f" % ["orbiting" if rig.is_orbiting() else ("locked" if rig.locked else "free"), rig.dist])
 	lines.append("fps: %d" % Engine.get_frames_per_second())
-	_label.text = "\n".join(lines)
+	return lines
