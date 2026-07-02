@@ -17,6 +17,9 @@ var _symbol_slot: Node3D
 var _glyph_slot: Node3D
 var _candidate_slot: Node3D
 var _bolt_glyph_mat: StandardMaterial3D
+var _left_marker: StandardMaterial3D
+var _right_marker: StandardMaterial3D
+var _exit_marker: StandardMaterial3D
 
 func _ready() -> void:
 	add_to_group("temple_interior")
@@ -144,6 +147,7 @@ func _build_chamber() -> void:
 	door_mat.emission = Color(0.5, 0.8, 1.0)
 	door_mat.emission_energy_multiplier = 0.8
 	door.material_override = door_mat
+	_exit_marker = door_mat
 	door.position = Vector3(0.0, 1.6, -6.6)
 	add_child(door)
 	_hotspot("ExitDoor", Vector3(0.0, 1.6, -6.5), Vector3(2.2, 3.4, 1.0))
@@ -159,6 +163,7 @@ func _build_chamber() -> void:
 	sym_pedestal.material_override = stone
 	sym_pedestal.position = Vector3(-5.6, 0.5, 0.0)
 	add_child(sym_pedestal)
+	_left_marker = _marker(Vector3(-6.4, 2.5, 0.0), "IDENTITY")
 	_symbol_slot = Node3D.new()
 	_symbol_slot.position = Vector3(-5.6, 2.0, 0.0)
 	_symbol_slot.rotation_degrees.y = 90.0
@@ -181,6 +186,7 @@ func _build_chamber() -> void:
 	_bolt_glyph_mat.emission_enabled = true
 	_bolt_glyph_mat.emission = Color(1.0, 0.72, 0.25)
 	_bolt_glyph_mat.emission_energy_multiplier = 0.18
+	_right_marker = _marker(Vector3(6.4, 2.5, 0.0), "MIRACLE")
 	var zig_points := [
 		Vector2(-0.25, 0.6), Vector2(0.25, 0.25), Vector2(-0.25, -0.1),
 		Vector2(0.25, -0.45), Vector2(-0.25, -0.8),
@@ -202,6 +208,31 @@ func _build_chamber() -> void:
 		seg.rotation.z = (b - a).angle()
 		_glyph_slot.add_child(seg)
 	_hotspot("RightHotspot", Vector3(5.4, 1.6, 0.0), Vector3(1.6, 3.6, 3.6))
+
+func _marker(pos: Vector3, text: String) -> StandardMaterial3D:
+	var panel := MeshInstance3D.new()
+	var quad := QuadMesh.new()
+	quad.size = Vector2(2.1, 1.0)
+	panel.mesh = quad
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.18, 0.16, 0.24, 0.95)
+	mat.emission_enabled = true
+	mat.emission = Color(0.95, 0.82, 0.42)
+	mat.emission_energy_multiplier = 1.2
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	panel.material_override = mat
+	panel.position = pos
+	panel.rotation_degrees.y = -90.0 if pos.x > 0.0 else 90.0
+	add_child(panel)
+	var label := Label3D.new()
+	label.text = text
+	label.font_size = 72
+	label.pixel_size = 0.01
+	label.modulate = Color(1.0, 0.95, 0.75)
+	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	label.position = pos + Vector3(0.0, 0.0, 0.01)
+	add_child(label)
+	return mat
 
 func _hotspot(hname: String, pos: Vector3, size: Vector3) -> void:
 	var area := Area3D.new()

@@ -23,6 +23,8 @@ const CARRY_LAG := {
 	MassCategory.HEAVY: 6.0,
 }
 const HARD_LANDING_SPEED := 5.0
+const SURFACE_RECOVERY_MARGIN := 1.6
+const ABSOLUTE_FLOOR_Y := -12.0
 
 var mass_category: int = MassCategory.MEDIUM
 var display_name := "object"
@@ -32,6 +34,8 @@ var held_wiggle_amp := 0.0
 var is_held := false
 var is_airborne := false
 var start_frozen := false
+var recovery_count := 0
+var last_recovery_reason := "-"
 
 var _hold_target := Vector3.ZERO
 var _wiggle_t := 0.0
@@ -59,9 +63,11 @@ func _build_body() -> void:
 	pass
 
 func _physics_process(delta: float) -> void:
+	var island := get_tree().get_first_node_in_group("island")
+	_guard_surface_recovery(island)
 	if is_held:
 		var k := 1.0 - exp(-float(CARRY_LAG[mass_category]) * delta)
-		var target := _hold_target
+		var target: Vector3 = _hold_target
 		if held_wiggle_amp > 0.0:
 			_wiggle_t += delta * 9.0
 			target += Vector3(sin(_wiggle_t) * held_wiggle_amp, 0.0, cos(_wiggle_t * 1.3) * held_wiggle_amp)
@@ -85,16 +91,18 @@ func begin_hold() -> void:
 ## velocity_world is the raw sampled hand velocity; class scaling happens here.
 func release(velocity_world: Vector3, throw_min_speed: float) -> void:
 	is_held = false
-	freeze = false
 	var v := velocity_world * float(THROW_MULTIPLIER[mass_category])
 	var cap := float(THROW_CLAMP[mass_category])
 	if v.length() > cap:
 		v = v.normalized() * cap
 	if velocity_world.length() < throw_min_speed:
+		freeze_mode = RigidBody3D.FREEZE_MODE_KINEMATIC
+		freeze = true
 		linear_velocity = Vector3.ZERO
 		angular_velocity = Vector3.ZERO
 		_on_released()
 	else:
+		freeze = false
 		linear_velocity = v
 		angular_velocity = Vector3(randf() - 0.5, randf() - 0.5, randf() - 0.5) * 3.0
 		is_airborne = true
@@ -107,6 +115,33 @@ func clamp_above_ground(island: Node, xz_override := Vector2.INF) -> void:
 	var pz := global_position.z if xz_override == Vector2.INF else xz_override.y
 	var floor_y: float = island.height_at(px, pz) + ground_clearance
 	global_position = Vector3(px, maxf(global_position.y, floor_y), pz)
+
+func place_on_surface(island: Node, xz_override := Vector2.INF) -> void:
+	if island == null:
+		return
+	freeze_mode = RigidBody3D.FREEZE_MODE_KINEMATIC
+	freeze = true
+	linear_velocity = Vector3.ZERO
+	angular_velocity = Vector3.ZERO
+	var px := global_position.x if xz_override == Vector2.INF else xz_override.x
+	var pz := global_position.z if xz_override == Vector2.INF else xz_override.y
+	global_position = Vector3(px, island.height_at(px, pz) + ground_clearance, pz)
+
+func surface_height(island: Node) -> float:
+	if island == null:
+		return ground_clearance
+	return island.height_at(global_position.x, global_position.z) + ground_clearance
+
+func _guard_surface_recovery(island: Node) -> void:
+	if island == null or is_held:
+		return
+	var safe_y: float = surface_height(island)
+	if global_position.y < ABSOLUTE_FLOOR_Y or global_position.y < safe_y - SURFACE_RECOVERY_MARGIN:
+		recovery_count += 1
+		last_recovery_reason = "below_floor"
+		place_on_surface(island)
+		if OS.is_stdout_verbose():
+			print("RECOVERED %s to surface at %.2f,%.2f" % [display_name, global_position.x, global_position.z])
 
 func _on_body_entered(_body: Node) -> void:
 	if not is_airborne:

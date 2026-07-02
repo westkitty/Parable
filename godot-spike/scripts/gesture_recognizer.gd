@@ -12,9 +12,9 @@ const SPIRAL_RESAMPLE_COUNT := 40
 const MIN_POINTS := 6
 const MIN_SIZE_PX := 26.0
 const MIN_PATH_LENGTH_PX := 110.0
-const SPIRAL_MIN_PATH_LENGTH_PX := 150.0
-const SPIRAL_MIN_ROTATION := -4.5
-const SPIRAL_MIN_RADIUS_SWING := 0.18
+const SPIRAL_MIN_PATH_LENGTH_PX := 92.0
+const SPIRAL_MIN_ROTATION := -3.25
+const SPIRAL_MIN_RADIUS_SWING := 0.06
 
 ## Returns {kind: "circle"|"zigzag"|"none", plus feature values for diagnostics}.
 static func classify(raw: PackedVector2Array) -> Dictionary:

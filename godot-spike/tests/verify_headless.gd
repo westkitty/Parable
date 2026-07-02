@@ -66,6 +66,8 @@ func _run() -> void:
 	await process_frame
 	await process_frame
 	await process_frame
+	for _i in 12:
+		await physics_frame
 
 	for node_name in ["Island", "CameraRig", "DivineHand", "Grabbables",
 			"Shrine", "TempleDoorway", "GestureTrace", "DevDiagnostics",
@@ -84,8 +86,16 @@ func _run() -> void:
 	_check(not main.get_node("Island").is_in_group("grabbable"), "island is NOT grabbable")
 	_check(not main.get_node("Shrine").is_in_group("grabbable"), "shrine is NOT grabbable")
 	_check(not main.get_node("TempleDoorway").is_in_group("grabbable"), "temple doorway is NOT grabbable")
+	var island := main.get_node("Island")
 	for g in get_nodes_in_group("grabbable"):
 		_check(g.ground_clearance > 0.0, "grabbable clearance configured: %s" % g.display_name)
+		_check(g.global_position.y > -8.0, "grabbable above safety floor: %s" % g.display_name)
+		_check(g.global_position.y >= island.height_at(g.global_position.x, g.global_position.z) - 0.2,
+			"grabbable not below terrain: %s" % g.display_name)
+		if g.display_name in ["rock", "offering"]:
+			_check(g.global_position.y >= island.height_at(g.global_position.x, g.global_position.z) + 0.1,
+				"object starts visibly above ground: %s" % g.display_name)
+		_check(g.recovery_count == 0, "no recovery needed at startup: %s" % g.display_name)
 
 	# 6. Temple interior scene instantiates with a camera.
 	var interior_scene := load("res://scenes/TempleInterior.tscn")
@@ -94,6 +104,16 @@ func _run() -> void:
 	root.add_child(interior)
 	await process_frame
 	_check(interior.get_node_or_null("InteriorCamera") != null, "temple interior has camera")
+	for temple_node in ["LeftHotspot", "RightHotspot", "ExitDoor"]:
+		_check(interior.get_node_or_null(temple_node) != null, "temple interaction exists: " + temple_node)
+
+	# 6b. Orbit binding: middle mouse primary.
+	var orbit_events := InputMap.action_get_events("camera_orbit")
+	var has_middle := false
+	for e in orbit_events:
+		if e is InputEventMouseButton and e.button_index == MOUSE_BUTTON_MIDDLE:
+			has_middle = true
+	_check(has_middle, "input map binds camera_orbit to middle mouse")
 
 	# 7. Recognizer: synthetic circle, zigzag, straight line.
 	var circle := PackedVector2Array()
@@ -122,12 +142,26 @@ func _run() -> void:
 		spiral.append(Vector2(240.0 + cos(-t) * radius, 220.0 + sin(-t) * radius))
 	var r4: Dictionary = GestureRecognizer.detect_spiral(spiral)
 	_check(r4.kind == "spiral", "recognizer: clockwise spiral arming detected (got %s)" % r4.kind)
+	var spiral_out := PackedVector2Array()
+	for i in 40:
+		var t2 := (i / 39.0) * PI * 2.1
+		var radius2 := lerpf(34.0, 118.0, i / 39.0)
+		spiral_out.append(Vector2(240.0 + cos(-t2) * radius2, 220.0 + sin(-t2) * radius2))
+	var r5: Dictionary = GestureRecognizer.detect_spiral(spiral_out)
+	_check(r5.kind == "spiral", "recognizer: outward clockwise spiral detected (got %s)" % r5.kind)
 
 	# 8. Blessing reliably starts the ritual and shrine learning gates bolt.
 	var world_script := load("res://scripts/world.gd")
 	_check(world_script != null, "world script loads for ritual contract")
 	_check(main.cast_glyph("circle", Vector3.ZERO) == true, "starter blessing cast succeeds")
 	_check(bool(main.get("_ritual_started")) == true, "starter blessing arms symbol ritual")
+	main._spawn_symbol_choices(Vector3.ZERO)
+	_check(main.get("_symbol_choices").size() == 3, "symbol ritual creates 3 choices")
+	var choices: Array = main.get("_symbol_choices")
+	if choices.size() == 3:
+		var sep_a: float = choices[0].global_position.distance_to(choices[1].global_position)
+		var sep_b: float = choices[1].global_position.distance_to(choices[2].global_position)
+		_check(sep_a > 2.0 and sep_b > 2.0, "symbol choices are visibly separated")
 	var shrine := main.get_node("Shrine")
 	_check(main.cast_glyph("zigzag", shrine.global_position) == false, "bolt starts locked before shrine path")
 	var offering: Node = null

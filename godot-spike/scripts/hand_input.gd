@@ -19,9 +19,9 @@ const HOVER_HEIGHT := 1.1
 const PRESS_HEIGHT := 0.45
 const RAY_LENGTH := 400.0
 const MIRACLE_POINT_STEP_PX := 8.0
-const MIRACLE_IDLE_RESET := 0.42
-const MIRACLE_GLYPH_TIMEOUT := 2.4
-const MIRACLE_ARM_WINDOW := 1.8
+const MIRACLE_IDLE_RESET := 0.72
+const MIRACLE_GLYPH_TIMEOUT := 3.1
+const MIRACLE_ARM_WINDOW := 2.4
 
 var enabled := true
 var state := "hover"
@@ -127,7 +127,7 @@ func _world_frame(mouse: Vector2, _delta: float) -> void:
 		if state != "carry":
 			state = "hover"
 
-	if Input.is_action_just_pressed("pan_action") and not _rig.is_orbiting() and _held == null:
+	if Input.is_action_just_pressed("pan_action") and not _rig.is_orbiting() and not _rig.orbit_modifier_active() and _held == null:
 		_press_screen = mouse
 		var inter := _ray_hit(space, from, dir, 4, true)
 		if not inter.is_empty():
@@ -282,7 +282,7 @@ func _update_miracle_tracking(mouse: Vector2) -> void:
 		return
 	if not _miracle_armed:
 		var spiral := GestureRecognizer.detect_spiral(_stroke_screen)
-		if spiral.kind == "spiral" or (_miracle_override and _stroke_length >= 70.0):
+		if spiral.kind == "spiral" or (_miracle_override and _stroke_length >= 48.0):
 			_arm_miracle(spiral)
 			return
 		if (_time - _stroke_started_at > MIRACLE_ARM_WINDOW or _time - _stroke_last_move_at > MIRACLE_IDLE_RESET) and not _miracle_override:
@@ -363,6 +363,8 @@ func get_debug() -> Dictionary:
 		"last_throw_raw": _last_throw_raw,
 		"last_throw_final": _last_throw_final,
 		"gesture_mode": _miracle_armed or _miracle_override,
+		"trace_length": _stroke_length,
+		"trace_armed": _miracle_armed,
 		"glyph_kind": _last_glyph.get("kind", "-"),
 		"glyph_rotation": _last_glyph.get("rotation", 0.0),
 		"glyph_closure": _last_glyph.get("closure", 0.0),

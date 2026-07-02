@@ -5,14 +5,15 @@ extends StaticBody3D
 
 enum ShrineState { DORMANT, AWAKENED, TAUGHT }
 
-const LEARN_RADIUS := 6.0
-const OFFER_RADIUS := 2.6
+const LEARN_RADIUS := 8.0
+const OFFER_RADIUS := 4.0
 
 var state: int = ShrineState.DORMANT
 
 var _glyph_mat: StandardMaterial3D
 var _altar_point := Vector3.ZERO
 var _pulse: Tween
+var _reject_mat: StandardMaterial3D
 
 func _ready() -> void:
 	add_to_group("shrine")
@@ -56,6 +57,13 @@ func teach(identity: Node, director: Node) -> void:
 	if director:
 		director.announce("bolt_learned", global_position)
 
+func reject_attempt() -> void:
+	if _reject_mat == null:
+		return
+	var tw := create_tween()
+	tw.tween_property(_reject_mat, "emission_energy_multiplier", 4.0, 0.12)
+	tw.tween_property(_reject_mat, "emission_energy_multiplier", 0.6, 0.35)
+
 func _build() -> void:
 	var stone := StandardMaterial3D.new()
 	stone.albedo_color = Color(0.45, 0.44, 0.42)
@@ -74,6 +82,7 @@ func _build() -> void:
 	_glyph_mat.emission_enabled = true
 	_glyph_mat.emission = Color(1.0, 0.72, 0.25)
 	_glyph_mat.emission_energy_multiplier = 0.25
+	_reject_mat = _glyph_mat
 	var zig_points := [
 		Vector2(-0.3, 0.8), Vector2(0.3, 0.4), Vector2(-0.3, 0.0),
 		Vector2(0.3, -0.4), Vector2(-0.3, -0.8),

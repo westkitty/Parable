@@ -67,6 +67,7 @@ The controls (this is everything):
 | **Left mouse button on the ground + drag** | Grip the world and pan it |
 | **Left mouse button click** | Interact with the temple doorway, shrine choices, ritual symbols |
 | **Middle mouse button + drag** | Orbit the camera |
+| **Option/Alt + left drag** | Orbit fallback if middle mouse is unreliable on this Mac |
 | **Scroll wheel** | Zoom in/out |
 | **Draw a clockwise spiral with the hand** | Arms miracle-casting mode |
 | **After the spiral, draw a circle or zigzag** | Cast the learned miracle |

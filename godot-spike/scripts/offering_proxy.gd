@@ -10,39 +10,40 @@ func _configure() -> void:
 	mass = 3.0
 	display_name = "offering"
 	hold_offset = Vector3(0.0, 0.08, 0.0)
-	ground_clearance = 0.62
+	ground_clearance = 0.95
+	start_frozen = true
 
 func _build_body() -> void:
 	var base := BoxMesh.new()
-	base.size = Vector3(0.56, 0.8, 0.56)
-	var mi := _add_mesh(base, Color(0.22, 0.72, 0.68), Vector3(0.0, 0.4, 0.0), false)
+	base.size = Vector3(0.72, 1.0, 0.72)
+	var mi := _add_mesh(base, Color(0.18, 0.82, 0.78), Vector3(0.0, 0.5, 0.0), false)
 	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.22, 0.72, 0.68)
+	mat.albedo_color = Color(0.18, 0.82, 0.78)
 	mat.emission_enabled = true
 	mat.emission = Color(0.3, 1.0, 0.9)
-	mat.emission_energy_multiplier = 2.0
+	mat.emission_energy_multiplier = 3.2
 	mi.material_override = mat
 	_hover_mats.append(mat)
 	var cap := SphereMesh.new()
-	cap.radius = 0.26
-	cap.height = 0.52
-	var top := _add_mesh(cap, Color(0.45, 0.95, 0.86), Vector3(0.0, 0.95, 0.0), false)
+	cap.radius = 0.34
+	cap.height = 0.68
+	var top := _add_mesh(cap, Color(0.45, 0.98, 0.9), Vector3(0.0, 1.18, 0.0), false)
 	top.material_override = mat
 	var halo := MeshInstance3D.new()
 	var torus := TorusMesh.new()
-	torus.inner_radius = 0.2
-	torus.outer_radius = 0.33
+	torus.inner_radius = 0.28
+	torus.outer_radius = 0.46
 	halo.mesh = torus
 	halo.material_override = mat
-	halo.position = Vector3(0.0, 0.78, 0.0)
+	halo.position = Vector3(0.0, 0.96, 0.0)
 	add_child(halo)
 	var shape := BoxShape3D.new()
-	shape.size = Vector3(0.6, 1.2, 0.6)
-	_add_collider(shape, Vector3(0.0, 0.58, 0.0))
+	shape.size = Vector3(0.78, 1.6, 0.78)
+	_add_collider(shape, Vector3(0.0, 0.8, 0.0))
 
 func set_hover(on: bool) -> void:
 	for m in _hover_mats:
-		m.emission_energy_multiplier = 3.4 if on else 2.0
+		m.emission_energy_multiplier = 4.8 if on else 3.2
 
 func consume_at(altar_point: Vector3) -> void:
 	consumed = true

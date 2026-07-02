@@ -6,14 +6,15 @@ func _configure() -> void:
 	mass = 40.0
 	display_name = "rock"
 	hold_offset = Vector3(0.0, -0.18, 0.0)
-	ground_clearance = 0.78
+	start_frozen = true
 
 func _build_body() -> void:
 	var sph := SphereMesh.new()
 	var s := randf_range(0.72, 0.96)
+	ground_clearance = s + 0.08
 	sph.radius = s
 	sph.height = s * 1.7
-	_add_mesh(sph, Color(0.68, 0.68, 0.66))
+	_add_mesh(sph, Color(0.72, 0.72, 0.7))
 	var shape := SphereShape3D.new()
 	shape.radius = s
 	_add_collider(shape)

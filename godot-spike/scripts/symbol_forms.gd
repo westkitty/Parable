@@ -31,25 +31,26 @@ static func build(id: String, energy: float = 2.0) -> Node3D:
 			dot.material_override = mat
 			root.add_child(dot)
 		"triad":
+			var tri_points := [Vector2(0.0, 0.42), Vector2(-0.38, -0.24), Vector2(0.38, -0.24)]
 			for k in 3:
-				var bar := MeshInstance3D.new()
-				var b := BoxMesh.new()
-				b.size = Vector3(0.62, 0.07, 0.07)
-				bar.mesh = b
-				bar.material_override = mat
-				var ang := deg_to_rad(k * 120.0 + 90.0)
-				bar.position = Vector3(cos(ang), sin(ang), 0.0) * 0.18
-				bar.rotation_degrees.z = k * 120.0 + 30.0
-				root.add_child(bar)
+				var a: Vector2 = tri_points[k]
+				var b: Vector2 = tri_points[(k + 1) % 3]
+				var edge := MeshInstance3D.new()
+				var edge_mesh := BoxMesh.new()
+				edge_mesh.size = Vector3(a.distance_to(b), 0.08, 0.08)
+				edge.mesh = edge_mesh
+				edge.material_override = mat
+				edge.position = Vector3((a.x + b.x) * 0.5, (a.y + b.y) * 0.5, 0.0)
+				edge.rotation_degrees.z = rad_to_deg((b - a).angle())
+				root.add_child(edge)
 		"wave":
 			for k in 3:
 				var seg := MeshInstance3D.new()
 				var b2 := BoxMesh.new()
-				b2.size = Vector3(0.34, 0.07, 0.07)
+				b2.size = Vector3(0.56, 0.08, 0.08)
 				seg.mesh = b2
 				seg.material_override = mat
-				seg.position = Vector3(-0.28 + k * 0.28, 0.14 if k % 2 == 0 else -0.14, 0.0)
-				seg.rotation_degrees.z = 38.0 if k % 2 == 0 else -38.0
+				seg.position = Vector3(0.0, 0.3 - k * 0.3, 0.0)
 				root.add_child(seg)
 		_:
 			var fallback := MeshInstance3D.new()

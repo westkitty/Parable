@@ -35,9 +35,10 @@ func _process(_delta: float) -> void:
 		lines.append("hand velocity: %.2f m/s" % d.get("hand_speed", 0.0))
 		lines.append("last throw: %.2f raw -> %.2f clamped" % [d.get("last_throw_raw", 0.0), d.get("last_throw_final", 0.0)])
 		lines.append("gesture mode: %s" % str(d.get("gesture_mode", false)))
-		lines.append("last glyph: %s (rot %.2f, closure %.2f, reversals %d)" % [
+		lines.append("trace: len %.1f armed %s" % [d.get("trace_length", 0.0), str(d.get("trace_armed", false))])
+		lines.append("last glyph: %s (rot %.2f, closure %.2f, reversals %d, radius %.2f)" % [
 			d.get("glyph_kind", "-"), d.get("glyph_rotation", 0.0),
-			d.get("glyph_closure", 0.0), d.get("glyph_reversals", 0)])
+			d.get("glyph_closure", 0.0), d.get("glyph_reversals", 0), d.get("glyph_radius_swing", 0.0)])
 	if rig:
 		lines.append("camera: %s dist %.1f" % ["orbiting" if rig.is_orbiting() else ("locked" if rig.locked else "free"), rig.dist])
 	lines.append("fps: %d" % Engine.get_frames_per_second())

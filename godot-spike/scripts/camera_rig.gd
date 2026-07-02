@@ -19,13 +19,14 @@ var dist := 26.0
 var _pitch: Node3D
 var _dist_target := 26.0
 var _orbiting := false
+var _orbit_fallback := false
 
 func _ready() -> void:
 	add_to_group("camera_rig")
 	_pitch = $Pitch
 	camera = $Pitch/Camera3D
-	position = Vector3(0.0, 4.0, 2.0)
-	_pitch.rotation.x = deg_to_rad(-48.0)
+	position = Vector3(0.0, 6.0, 3.5)
+	_pitch.rotation.x = deg_to_rad(-56.0)
 	camera.position = Vector3(0.0, 0.0, dist)
 	camera.far = 300.0
 	_dist_target = dist
@@ -40,18 +41,23 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_MIDDLE:
 			_orbiting = event.pressed
+		elif event.button_index == MOUSE_BUTTON_LEFT and event.alt_pressed:
+			_orbit_fallback = event.pressed
 		elif event.pressed and event.button_index == MOUSE_BUTTON_WHEEL_UP:
 			_zoom(1.0 / ZOOM_FACTOR)
 		elif event.pressed and event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 			_zoom(ZOOM_FACTOR)
-	elif event is InputEventMouseMotion and _orbiting:
+	elif event is InputEventMouseMotion and is_orbiting():
 		rotation.y -= event.relative.x * ORBIT_SENS * control_scale
 		_pitch.rotation.x = clampf(
 			_pitch.rotation.x - event.relative.y * ORBIT_SENS * control_scale,
 			PITCH_MIN, PITCH_MAX)
 
 func is_orbiting() -> bool:
-	return _orbiting and not locked
+	return (_orbiting or _orbit_fallback) and not locked
+
+func orbit_modifier_active() -> bool:
+	return _orbit_fallback and not locked
 
 func _zoom(factor: float) -> void:
 	_dist_target = clampf(_dist_target * factor, DIST_MIN, DIST_MAX)

@@ -13,6 +13,7 @@ const VILLAGE_CENTER := Vector3(7.0, 0.0, 5.0)
 const SHRINE_POS := Vector2(-13.0, -6.0)
 const TEMPLE_POS := Vector2(11.0, -13.0)
 const FADE_TIME := 0.4
+const SYMBOL_SPACING := 2.9
 
 var identity: Node
 var director: Node
@@ -140,17 +141,17 @@ func _spawn_cast() -> void:
 	for rp in [Vector2(0, 10), Vector2(-4, 8), Vector2(3, -3), Vector2(12, 0), Vector2(-2, -12)]:
 		var rock := RockScene.instantiate()
 		parent.add_child(rock)
-		rock.global_position = _island.ground_point(rp.x, rp.y) + Vector3(0.0, rock.ground_clearance, 0.0)
+		rock.place_on_surface(_island, rp)
 	# Trees anchored.
 	for tp in [Vector2(-6, 10), Vector2(14, 6), Vector2(-16, 2), Vector2(2, -16)]:
 		var tree := TreeScene.instantiate()
 		parent.add_child(tree)
-		tree.global_position = _island.ground_point(tp.x, tp.y)
+		tree.place_on_surface(_island, tp)
 	# Offerings between village and shrine.
-	for op in [Vector2(-8, -1), Vector2(-10, 3)]:
+	for op in [Vector2(-11.5, -2.0), Vector2(-14.2, -4.2)]:
 		var off := OfferingScene.instantiate()
 		parent.add_child(off)
-		off.global_position = _island.ground_point(op.x, op.y) + Vector3(0.0, off.ground_clearance, 0.0)
+		off.place_on_surface(_island, op)
 
 func _build_fade_layer() -> void:
 	var layer := CanvasLayer.new()
@@ -246,9 +247,10 @@ func _spawn_symbol_choices(around: Vector3) -> void:
 		var visual := SymbolForms.build(id)
 		holder.add_child(visual)
 		add_child(holder)
-		holder.scale = Vector3(1.5, 1.5, 1.5)
-		var ang := -0.8 + i * 0.8
-		holder.global_position = around + Vector3(cos(ang) * 2.2, 1.9, sin(ang) * 2.2)
+		holder.scale = Vector3(1.7, 1.7, 1.7)
+		holder.global_position = around + Vector3((i - 1) * SYMBOL_SPACING, 1.8, 0.0)
+		if _rig and _rig.camera:
+			holder.look_at(_rig.camera.global_position, Vector3.UP, true)
 		_symbol_choices.append(holder)
 
 func handle_symbol_click(area: Node) -> void:

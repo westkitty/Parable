@@ -6,6 +6,8 @@ extends StaticBody3D
 const LAND_RADIUS := 24.0
 const GRID_EXTENT := 27.0
 const GRID_STEPS := 44
+const WATER_HEIGHT := -2.6
+const SEABED_HEIGHT := -4.2
 
 func _ready() -> void:
 	add_to_group("island")
@@ -18,8 +20,8 @@ func height_at(x: float, z: float) -> float:
 	var r := Vector2(x, z).length()
 	var m := clampf(1.0 - r / LAND_RADIUS, 0.0, 1.0)
 	var s := m * m * (3.0 - 2.0 * m)
-	var h := -0.45 + 7.6 * s
-	h += (sin(x * 0.31) * cos(z * 0.22) * 0.45 + sin(x * 0.09 + z * 0.14) * 0.72) * s
+	var h := lerpf(SEABED_HEIGHT, 5.6, s)
+	h += (sin(x * 0.26) * cos(z * 0.18) * 0.35 + sin(x * 0.08 + z * 0.12) * 0.55) * s
 	return h
 
 func ground_point(x: float, z: float) -> Vector3:
@@ -61,9 +63,11 @@ func _tri(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3) -> void:
 		st.add_vertex(p)
 
 func _ground_color(h: float) -> Color:
-	if h < 0.75:
+	if h < WATER_HEIGHT + 0.65:
+		return Color(0.5, 0.42, 0.24)   # shoreline earth
+	if h < 1.5:
 		return Color(0.88, 0.8, 0.56)   # sand
-	if h < 4.7:
+	if h < 4.6:
 		return Color(0.26, 0.65, 0.24)  # grass
 	return Color(0.52, 0.52, 0.5)      # rocky top
 
@@ -75,11 +79,25 @@ func _build_water() -> void:
 	disc.bottom_radius = 70.0
 	disc.height = 0.1
 	water.mesh = disc
-	water.position = Vector3(0.0, -0.38, 0.0)
+	water.position = Vector3(0.0, WATER_HEIGHT, 0.0)
 	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.1, 0.4, 0.68, 0.72)
+	mat.albedo_color = Color(0.08, 0.38, 0.72, 0.74)
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	mat.roughness = 0.08
 	mat.metallic = 0.12
 	water.material_override = mat
 	add_child(water)
+
+	var shoreline := MeshInstance3D.new()
+	shoreline.name = "IslandBase"
+	var mound := CylinderMesh.new()
+	mound.top_radius = LAND_RADIUS - 1.5
+	mound.bottom_radius = LAND_RADIUS + 1.0
+	mound.height = 1.6
+	shoreline.mesh = mound
+	shoreline.position = Vector3(0.0, WATER_HEIGHT - 0.45, 0.0)
+	var shore_mat := StandardMaterial3D.new()
+	shore_mat.albedo_color = Color(0.28, 0.58, 0.22)
+	shore_mat.roughness = 1.0
+	shoreline.material_override = shore_mat
+	add_child(shoreline)
