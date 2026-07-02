@@ -32,7 +32,8 @@ func _configure() -> void:
 	mass_category = MassCategory.LIGHT
 	mass = 9.0
 	display_name = "villager"
-	hold_offset = Vector3(0.0, -0.85, 0.0)
+	hold_offset = Vector3(0.0, -0.16, 0.0)
+	ground_clearance = 0.85
 	held_wiggle_amp = 0.06
 	start_frozen = true
 
@@ -68,8 +69,8 @@ func _build_body() -> void:
 	_question = Label3D.new()
 	_question.text = "Who are you?"
 	_question.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	_question.font_size = 64
-	_question.pixel_size = 0.006
+	_question.font_size = 96
+	_question.pixel_size = 0.01
 	_question.modulate = Color(1.0, 0.95, 0.8)
 	_question.outline_size = 12
 	_question.position = Vector3(0.0, 1.5, 0.0)

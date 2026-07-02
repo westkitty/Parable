@@ -54,7 +54,7 @@ done
 section "3. project.godot sanity"
 grep -q 'run/main_scene="res://scenes/Main.tscn"' project.godot \
   && ok "main scene set" || fail "main scene not set to scenes/Main.tscn"
-for action in hand_press camera_orbit camera_zoom_in camera_zoom_out gesture_mode cancel_action toggle_diagnostics; do
+for action in grab_action pan_action interact_action camera_orbit camera_zoom_in camera_zoom_out gesture_mode cancel_action toggle_diagnostics; do
   grep -q "^${action}=" project.godot && ok "input action: $action" || fail "input action missing: $action"
 done
 grep -q 'GodIdentity=' project.godot && ok "GodIdentity autoload" || fail "GodIdentity autoload missing"
@@ -77,7 +77,7 @@ else
 fi
 
 section "6. Runbook cross-check"
-for term in "./run.sh" "Space" "Esc" "F3" "Right button" "Scroll wheel" ; do
+for term in "./run.sh" "Right mouse button" "Left mouse button" "Middle mouse button" "Esc" "F3" "Scroll wheel" ; do
   grep -qi -- "$term" README_FOR_ANDREW.md && ok "runbook mentions: $term" || fail "runbook missing: $term"
 done
 

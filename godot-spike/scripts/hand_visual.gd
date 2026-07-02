@@ -5,6 +5,8 @@ extends Node3D
 var _fingers: Array[Node3D] = []   # pivot nodes (4 fingers)
 var _thumb: Node3D
 var _palm: MeshInstance3D
+var _skin_mats: Array[StandardMaterial3D] = []
+var _aura: OmniLight3D
 var _pose := "open"
 var _curl_target := 0.15
 var _thumb_target := 0.2
@@ -18,6 +20,7 @@ func _ready() -> void:
 	skin.emission_enabled = true
 	skin.emission = Color(1.0, 0.85, 0.55)
 	skin.emission_energy_multiplier = 0.12
+	_skin_mats.append(skin)
 
 	_palm = MeshInstance3D.new()
 	var palm_mesh := BoxMesh.new()
@@ -54,6 +57,12 @@ func _ready() -> void:
 	tseg.position = Vector3(0.0, 0.0, -0.16)
 	tseg.material_override = skin
 	_thumb.add_child(tseg)
+	_aura = OmniLight3D.new()
+	_aura.light_color = Color(0.42, 1.0, 0.9)
+	_aura.light_energy = 0.0
+	_aura.omni_range = 4.6
+	_aura.position = Vector3(0.0, 0.1, 0.0)
+	add_child(_aura)
 
 	set_pose("open")
 
@@ -73,6 +82,11 @@ func _targets(curl: float, thumb: float, tilt: float, spread: float) -> void:
 	_thumb_target = thumb
 	_tilt_target = tilt
 	_spread_target = spread
+
+func set_miracle_armed(on: bool) -> void:
+	for mat in _skin_mats:
+		mat.emission_energy_multiplier = 0.9 if on else 0.12
+	_aura.light_energy = 1.9 if on else 0.0
 
 func _process(delta: float) -> void:
 	var k := 1.0 - exp(-12.0 * delta)

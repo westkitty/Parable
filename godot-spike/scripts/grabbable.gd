@@ -27,6 +27,7 @@ const HARD_LANDING_SPEED := 5.0
 var mass_category: int = MassCategory.MEDIUM
 var display_name := "object"
 var hold_offset := Vector3(0.0, -0.7, 0.0)
+var ground_clearance := 0.7
 var held_wiggle_amp := 0.0
 var is_held := false
 var is_airborne := false
@@ -78,7 +79,7 @@ func begin_hold() -> void:
 	is_airborne = false
 	freeze_mode = RigidBody3D.FREEZE_MODE_KINEMATIC
 	freeze = true
-	_hold_target = global_position + Vector3(0.0, 0.5, 0.0)
+	_hold_target = global_position + Vector3(0.0, ground_clearance + 0.35, 0.0)
 	_on_grabbed()
 
 ## velocity_world is the raw sampled hand velocity; class scaling happens here.
@@ -98,6 +99,14 @@ func release(velocity_world: Vector3, throw_min_speed: float) -> void:
 		angular_velocity = Vector3(randf() - 0.5, randf() - 0.5, randf() - 0.5) * 3.0
 		is_airborne = true
 		_on_thrown(v)
+
+func clamp_above_ground(island: Node, xz_override := Vector2.INF) -> void:
+	if island == null:
+		return
+	var px := global_position.x if xz_override == Vector2.INF else xz_override.x
+	var pz := global_position.z if xz_override == Vector2.INF else xz_override.y
+	var floor_y: float = island.height_at(px, pz) + ground_clearance
+	global_position = Vector3(px, maxf(global_position.y, floor_y), pz)
 
 func _on_body_entered(_body: Node) -> void:
 	if not is_airborne:

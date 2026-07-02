@@ -18,8 +18,8 @@ func height_at(x: float, z: float) -> float:
 	var r := Vector2(x, z).length()
 	var m := clampf(1.0 - r / LAND_RADIUS, 0.0, 1.0)
 	var s := m * m * (3.0 - 2.0 * m)
-	var h := -1.4 + 8.2 * s
-	h += (sin(x * 0.35) * cos(z * 0.28) * 0.65 + sin(x * 0.11 + z * 0.17) * 1.05) * s
+	var h := -0.45 + 7.6 * s
+	h += (sin(x * 0.31) * cos(z * 0.22) * 0.45 + sin(x * 0.09 + z * 0.14) * 0.72) * s
 	return h
 
 func ground_point(x: float, z: float) -> Vector3:
@@ -61,11 +61,11 @@ func _tri(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3) -> void:
 		st.add_vertex(p)
 
 func _ground_color(h: float) -> Color:
-	if h < 0.35:
-		return Color(0.76, 0.68, 0.5)   # sand
-	if h < 4.2:
-		return Color(0.24, 0.44, 0.22)  # grass
-	return Color(0.42, 0.42, 0.4)      # rocky top
+	if h < 0.75:
+		return Color(0.88, 0.8, 0.56)   # sand
+	if h < 4.7:
+		return Color(0.26, 0.65, 0.24)  # grass
+	return Color(0.52, 0.52, 0.5)      # rocky top
 
 func _build_water() -> void:
 	var water := MeshInstance3D.new()
@@ -75,11 +75,11 @@ func _build_water() -> void:
 	disc.bottom_radius = 70.0
 	disc.height = 0.1
 	water.mesh = disc
-	water.position = Vector3(0.0, -0.05, 0.0)
+	water.position = Vector3(0.0, -0.38, 0.0)
 	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.18, 0.42, 0.55, 0.92)
+	mat.albedo_color = Color(0.1, 0.4, 0.68, 0.72)
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mat.roughness = 0.15
-	mat.metallic = 0.2
+	mat.roughness = 0.08
+	mat.metallic = 0.12
 	water.material_override = mat
 	add_child(water)

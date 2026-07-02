@@ -7,9 +7,14 @@ extends RefCounted
 ## is conceptually informed by the old prototype's analyzeGesture; no code
 ## is ported. Everything here is tunable, debuggable plain geometry.
 
-const RESAMPLE_COUNT := 32
-const MIN_POINTS := 8
-const MIN_SIZE_PX := 40.0
+const RESAMPLE_COUNT := 36
+const SPIRAL_RESAMPLE_COUNT := 40
+const MIN_POINTS := 6
+const MIN_SIZE_PX := 26.0
+const MIN_PATH_LENGTH_PX := 110.0
+const SPIRAL_MIN_PATH_LENGTH_PX := 150.0
+const SPIRAL_MIN_ROTATION := -4.5
+const SPIRAL_MIN_RADIUS_SWING := 0.18
 
 ## Returns {kind: "circle"|"zigzag"|"none", plus feature values for diagnostics}.
 static func classify(raw: PackedVector2Array) -> Dictionary:
@@ -40,22 +45,65 @@ static func classify(raw: PackedVector2Array) -> Dictionary:
 	out.width = w
 	out.height = h
 	out.length = length
-	if span < MIN_SIZE_PX:
+	if span < MIN_SIZE_PX or length < MIN_PATH_LENGTH_PX:
 		return out
 
 	# Circle: roughly one full turn, nearly closed, roughly round.
 	var aspect := w / h
-	if absf(rotation) > 4.6 and absf(rotation) < 8.6 \
-			and closure < 0.42 and aspect > 0.45 and aspect < 2.2:
+	if absf(rotation) > 3.9 and absf(rotation) < 9.2 \
+			and closure < 0.66 and aspect > 0.38 and aspect < 2.6:
 		out.kind = "circle"
 		return out
 
 	# Vertical zigzag: taller than wide, several horizontal direction
 	# reversals, long path, and no net rotation build-up.
-	if h > w * 1.05 and reversals >= 3 and length > h * 1.35 and absf(rotation) < 4.0:
+	if h > w * 0.65 and reversals >= 2 and length > h * 1.1 and absf(rotation) < 5.2:
 		out.kind = "zigzag"
 		return out
 
+	return out
+
+static func detect_spiral(raw: PackedVector2Array) -> Dictionary:
+	var out := {
+		"kind": "none",
+		"rotation": 0.0,
+		"length": 0.0,
+		"radius_swing": 0.0,
+		"clockwise": false,
+	}
+	if raw.size() < MIN_POINTS:
+		return out
+	var pts := _resample(raw, SPIRAL_RESAMPLE_COUNT)
+	var centroid := Vector2.ZERO
+	for p in pts:
+		centroid += p
+	centroid /= float(pts.size())
+	var lo := pts[0]
+	var hi := pts[0]
+	var length := 0.0
+	var radii: Array[float] = []
+	for i in pts.size():
+		var p: Vector2 = pts[i]
+		lo = Vector2(minf(lo.x, p.x), minf(lo.y, p.y))
+		hi = Vector2(maxf(hi.x, p.x), maxf(hi.y, p.y))
+		radii.append(p.distance_to(centroid))
+		if i > 0:
+			length += p.distance_to(pts[i - 1])
+	var span := maxf(hi.x - lo.x, hi.y - lo.y)
+	if span < MIN_SIZE_PX or length < SPIRAL_MIN_PATH_LENGTH_PX:
+		return out
+	var rotation := _centroid_rotation(pts, centroid)
+	var mean_radius := 0.0
+	for r in radii:
+		mean_radius += r
+	mean_radius /= float(radii.size())
+	var radius_swing := absf(radii[-1] - radii[0]) / maxf(mean_radius, 1.0)
+	out.rotation = rotation
+	out.length = length
+	out.radius_swing = radius_swing
+	out.clockwise = rotation <= SPIRAL_MIN_ROTATION
+	if rotation <= SPIRAL_MIN_ROTATION and radius_swing >= SPIRAL_MIN_RADIUS_SWING:
+		out.kind = "spiral"
 	return out
 
 static func _resample(raw: PackedVector2Array, count: int) -> PackedVector2Array:
@@ -112,3 +160,13 @@ static func _x_reversals(pts: PackedVector2Array, width: float) -> int:
 			reversals += 1
 		last_sign = s
 	return reversals
+
+static func _centroid_rotation(pts: PackedVector2Array, centroid: Vector2) -> float:
+	var total := 0.0
+	var last_angle := (pts[0] - centroid).angle()
+	for i in range(1, pts.size()):
+		var angle := (pts[i] - centroid).angle()
+		var delta := wrapf(angle - last_angle, -PI, PI)
+		total += delta
+		last_angle = angle
+	return total

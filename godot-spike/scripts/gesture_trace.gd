@@ -22,6 +22,13 @@ func begin() -> void:
 	_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	_last_point = Vector3.INF
 
+func set_armed_feedback() -> void:
+	if _mat == null:
+		return
+	_mat.albedo_color = Color(0.52, 0.98, 0.92, 0.95)
+	_mat.emission = Color(0.3, 1.0, 0.92)
+	_mat.emission_energy_multiplier = 4.2
+
 func add_point(world_pos: Vector3) -> void:
 	if _mat == null:
 		return
@@ -64,6 +71,9 @@ func end_fail() -> void:
 
 func cancel() -> void:
 	end_fail()
+
+func clear_now() -> void:
+	_clear()
 
 func _clear() -> void:
 	for m in _motes:

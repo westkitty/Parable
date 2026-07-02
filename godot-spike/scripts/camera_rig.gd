@@ -38,7 +38,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if locked:
 		return
 	if event is InputEventMouseButton:
-		if event.button_index == MOUSE_BUTTON_RIGHT:
+		if event.button_index == MOUSE_BUTTON_MIDDLE:
 			_orbiting = event.pressed
 		elif event.pressed and event.button_index == MOUSE_BUTTON_WHEEL_UP:
 			_zoom(1.0 / ZOOM_FACTOR)

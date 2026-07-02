@@ -1,21 +1,27 @@
 extends Node3D
 ## The divine hand: input state machine and the player's body.
-## Control grammar (Candidate A, locked by approval):
-##   LMB      — hand acts on world: grab hovered object, else grip-drag ground to pan
-##   RMB      — orbit (camera_rig)
-##   Scroll   — zoom (camera_rig)
-##   Space    — held: gesture mode (grabbing disabled at state-machine level)
-##   Esc      — safe release: gentle drop, abort gesture, never throws
-## States: hover | pan | carry | gesture | gesture_draw
+## Control grammar (Andrew patch):
+##   RMB      — grab / carry / release
+##   LMB      — click interact, or grip-drag ground to pan
+##   MMB      — orbit
+##   Scroll   — zoom
+##   Spiral   — arms miracle mode without holding any button
+##   Space    — optional debug fallback to keep miracle tracing alive
+##   Esc      — safe release: gentle drop, abort miracle, never throws
+## States: hover | pan | carry | miracle
 
 const PICK_RADIUS := 0.9            # forgiveness radius around the hand point
 const CLICK_DRAG_THRESHOLD_PX := 6.0
 const THROW_MIN_SPEED := 2.2        # below this, release = gentle drop
+const THROW_VERTICAL_LIFT := 2.35   # modest extra loft, validated by Andrew later
 const CARRY_CAMERA_SCALE := 0.6
 const HOVER_HEIGHT := 1.1
 const PRESS_HEIGHT := 0.45
-const GESTURE_PLANE_LIFT := 1.6
 const RAY_LENGTH := 400.0
+const MIRACLE_POINT_STEP_PX := 8.0
+const MIRACLE_IDLE_RESET := 0.42
+const MIRACLE_GLYPH_TIMEOUT := 2.4
+const MIRACLE_ARM_WINDOW := 1.8
 
 var enabled := true
 var state := "hover"
@@ -38,13 +44,15 @@ var _press_kind := ""          # "" | "pan" | "carry" | "pending_click"
 var _pending_click_target: Node = null
 var _pan_anchor := Vector3.ZERO
 
-# Gesture bookkeeping
-var _gesture_mode := false
-var _drawing := false
+# Miracle bookkeeping
+var _miracle_armed := false
+var _miracle_override := false
 var _stroke_screen := PackedVector2Array()
 var _stroke_world: Array[Vector3] = []
-var _gesture_plane_y := 0.0
-var _last_glyph := {"kind": "-", "rotation": 0.0, "closure": 1.0, "reversals": 0}
+var _stroke_length := 0.0
+var _stroke_started_at := 0.0
+var _stroke_last_move_at := 0.0
+var _last_glyph := {"kind": "-", "rotation": 0.0, "closure": 1.0, "reversals": 0, "radius_swing": 0.0}
 var _last_throw_raw := 0.0
 var _last_throw_final := 0.0
 
@@ -65,15 +73,7 @@ func _physics_process(delta: float) -> void:
 	if Input.is_action_just_pressed("cancel_action"):
 		_cancel_everything()
 
-	var want_gesture := Input.is_action_pressed("gesture_mode")
-	if want_gesture and not _gesture_mode:
-		_enter_gesture_mode()
-	elif not want_gesture and _gesture_mode:
-		_exit_gesture_mode()
-
-	if _gesture_mode:
-		_gesture_frame(mouse)
-		return
+	_miracle_override = Input.is_action_pressed("gesture_mode")
 
 	_world_frame(mouse, delta)
 
@@ -108,21 +108,37 @@ func _world_frame(mouse: Vector2, _delta: float) -> void:
 	_set_hovered(new_hover)
 
 	# Presses.
-	if Input.is_action_just_pressed("hand_press") and not _rig.is_orbiting():
+	if Input.is_action_just_pressed("grab_action") and not _rig.is_orbiting():
+		if _miracle_armed:
+			_cancel_miracle(false)
 		_press_screen = mouse
 		if _hovered != null:
 			_begin_carry(_hovered)
-		else:
-			var inter := _ray_hit(space, from, dir, 4, true)
-			if not inter.is_empty():
-				_press_kind = "pending_click"
-				_pending_click_target = inter.collider
-			else:
-				_press_kind = "pan"
-				_pan_anchor = _ground_point
 
 	# Held-button behavior.
-	if Input.is_action_pressed("hand_press"):
+	if Input.is_action_pressed("grab_action"):
+		if _press_kind == "carry":
+			state = "carry"
+			_update_carry()
+	elif Input.is_action_just_released("grab_action"):
+		if _press_kind == "carry":
+			_release_held()
+		_press_kind = ""
+		if state != "carry":
+			state = "hover"
+
+	if Input.is_action_just_pressed("pan_action") and not _rig.is_orbiting() and _held == null:
+		_press_screen = mouse
+		var inter := _ray_hit(space, from, dir, 4, true)
+		if not inter.is_empty():
+			_press_kind = "pending_click"
+			_pending_click_target = inter.collider
+		else:
+			_press_kind = "pan"
+			_pan_anchor = _ground_point
+			_cancel_miracle(false)
+
+	if Input.is_action_pressed("pan_action"):
 		match _press_kind:
 			"pan":
 				state = "pan"
@@ -133,15 +149,10 @@ func _world_frame(mouse: Vector2, _delta: float) -> void:
 					if t2 > 0.0:
 						var now := from + dir * t2
 						_rig.pan_by(_pan_anchor - now)
-			"carry":
-				state = "carry"
-				_update_carry()
 			"pending_click":
 				pass
-	elif Input.is_action_just_released("hand_press"):
+	elif Input.is_action_just_released("pan_action"):
 		match _press_kind:
-			"carry":
-				_release_held()
 			"pending_click":
 				if mouse.distance_to(_press_screen) < CLICK_DRAG_THRESHOLD_PX \
 						and _pending_click_target != null \
@@ -173,6 +184,8 @@ func _world_frame(mouse: Vector2, _delta: float) -> void:
 			_visual.set_pose("flat")
 		"carry":
 			_visual.set_pose("carry")
+		"miracle":
+			_visual.set_pose("point")
 		_:
 			_visual.set_pose("grip" if _hovered != null else "open")
 
@@ -183,6 +196,8 @@ func _world_frame(mouse: Vector2, _delta: float) -> void:
 	# Carrying a villager toward a throw: legible pre-throw panic (visual-first).
 	if _held != null and _held.is_in_group("villager"):
 		_held.set_panic(_current_hand_speed() > THROW_MIN_SPEED)
+
+	_update_miracle_tracking(mouse)
 
 func _begin_carry(obj: Node) -> void:
 	_held = obj
@@ -201,7 +216,10 @@ func _update_carry() -> void:
 		_held = null
 		_press_kind = ""
 		return
-	_held.set_hold_target(global_position + _held.hold_offset)
+	var target: Vector3 = global_position + _held.hold_offset
+	var floor_y: float = _island.height_at(target.x, target.z) + _held.ground_clearance
+	target.y = maxf(target.y, floor_y)
+	_held.set_hold_target(target)
 
 func _release_held(force_gentle := false) -> void:
 	if _held == null or not is_instance_valid(_held):
@@ -211,10 +229,13 @@ func _release_held(force_gentle := false) -> void:
 	var v_world: Vector3 = _rig.global_transform.basis * v_local
 	if force_gentle:
 		v_world = Vector3.ZERO
+	elif v_world.length() >= THROW_MIN_SPEED:
+		v_world.y = maxf(v_world.y + THROW_VERTICAL_LIFT, THROW_VERTICAL_LIFT * 0.7)
 	_last_throw_raw = v_world.length()
 	var obj := _held
 	_held = null
 	_rig.control_scale = 1.0
+	obj.clamp_above_ground(_island)
 
 	# Offering placed gently near the shrine → awaken the glyph.
 	var shrine := get_tree().get_first_node_in_group("shrine")
@@ -234,64 +255,67 @@ func _cancel_everything() -> void:
 		_release_held(true)
 	_press_kind = ""
 	_pending_click_target = null
-	if _drawing:
-		_drawing = false
-		_stroke_screen.clear()
-		_stroke_world.clear()
-		if _trace:
-			_trace.cancel()
+	_cancel_miracle(true)
 
-# --- Gesture mode ------------------------------------------------------------
-
-func _enter_gesture_mode() -> void:
-	# Grabs are impossible in here by construction: carry ends gently first.
-	if _held != null:
-		_release_held(true)
-	_press_kind = ""
-	_gesture_mode = true
-	state = "gesture"
-	_gesture_plane_y = _ground_point.y + GESTURE_PLANE_LIFT
-	_rig.locked = true
-	_visual.set_pose("point")
-
-func _exit_gesture_mode() -> void:
-	if _drawing:
-		_finish_stroke()
-	_gesture_mode = false
-	state = "hover"
-	_rig.locked = false
-	_visual.set_pose("open")
-
-func _gesture_frame(mouse: Vector2) -> void:
-	var ray: Array = _rig.screen_ray(mouse)
-	var from: Vector3 = ray[0]
-	var dir: Vector3 = ray[1]
-	# Hand rides a fixed sacred draw plane; the world holds still beneath it.
-	if absf(dir.y) > 0.0001:
-		var t := (_gesture_plane_y - from.y) / dir.y
-		if t > 0.0:
-			var p := from + dir * t
-			global_position = global_position.lerp(p, 0.5)
-
-	if Input.is_action_just_pressed("hand_press"):
-		_drawing = true
-		state = "gesture_draw"
-		_stroke_screen = PackedVector2Array()
-		_stroke_world.clear()
-		if _trace:
-			_trace.begin()
-	if _drawing:
-		if _stroke_screen.is_empty() or mouse.distance_to(_stroke_screen[-1]) > 3.0:
-			_stroke_screen.append(mouse)
-			_stroke_world.append(global_position)
+func _update_miracle_tracking(mouse: Vector2) -> void:
+	if _rig == null or _island == null:
+		return
+	var blockers: bool = _held != null or _press_kind == "carry" or _press_kind == "pan" or _rig.is_orbiting()
+	if blockers:
+		_cancel_miracle(false)
+		return
+	var intentional_motion := _stroke_screen.is_empty() or mouse.distance_to(_stroke_screen[-1]) >= MIRACLE_POINT_STEP_PX
+	if intentional_motion:
+		if _stroke_screen.is_empty():
+			_stroke_started_at = _time
+			_stroke_length = 0.0
 			if _trace:
-				_trace.add_point(global_position)
-	if Input.is_action_just_released("hand_press") and _drawing:
+				_trace.begin()
+		else:
+			_stroke_length += mouse.distance_to(_stroke_screen[-1])
+		_stroke_screen.append(mouse)
+		_stroke_world.append(global_position)
+		_stroke_last_move_at = _time
+		if _trace:
+			_trace.add_point(global_position)
+	if _stroke_screen.is_empty():
+		return
+	if not _miracle_armed:
+		var spiral := GestureRecognizer.detect_spiral(_stroke_screen)
+		if spiral.kind == "spiral" or (_miracle_override and _stroke_length >= 70.0):
+			_arm_miracle(spiral)
+			return
+		if (_time - _stroke_started_at > MIRACLE_ARM_WINDOW or _time - _stroke_last_move_at > MIRACLE_IDLE_RESET) and not _miracle_override:
+			_cancel_miracle(false)
+		return
+	if _time - _stroke_started_at > MIRACLE_GLYPH_TIMEOUT:
 		_finish_stroke()
+		return
+	if _time - _stroke_last_move_at > MIRACLE_IDLE_RESET and _stroke_screen.size() >= GestureRecognizer.MIN_POINTS:
+		_finish_stroke()
+
+func _arm_miracle(spiral: Dictionary) -> void:
+	_miracle_armed = true
+	state = "miracle"
+	_last_glyph = {
+		"kind": "spiral",
+		"rotation": spiral.get("rotation", 0.0),
+		"closure": 0.0,
+		"reversals": 0,
+		"radius_swing": spiral.get("radius_swing", 0.0),
+	}
+	_stroke_screen = PackedVector2Array()
+	_stroke_world.clear()
+	_stroke_length = 0.0
+	_stroke_started_at = _time
+	_stroke_last_move_at = _time
+	if _trace:
+		_trace.begin()
+		_trace.set_armed_feedback()
+	if _visual:
+		_visual.set_miracle_armed(true)
 
 func _finish_stroke() -> void:
-	_drawing = false
-	state = "gesture"
 	var result := GestureRecognizer.classify(_stroke_screen)
 	_last_glyph = result
 	var centroid := Vector3.ZERO
@@ -306,8 +330,23 @@ func _finish_stroke() -> void:
 			_trace.end_success()
 		else:
 			_trace.end_fail()
+	_cancel_miracle(false)
+
+func _cancel_miracle(with_fail_fx: bool) -> void:
+	if with_fail_fx and _trace and (_miracle_armed or not _stroke_screen.is_empty()):
+		_trace.end_fail()
+	elif not with_fail_fx and _trace and not _stroke_screen.is_empty() and not _miracle_armed:
+		_trace.clear_now()
+	_miracle_armed = false
+	if _visual:
+		_visual.set_miracle_armed(false)
+	if state == "miracle":
+		state = "hover"
 	_stroke_screen = PackedVector2Array()
 	_stroke_world.clear()
+	_stroke_length = 0.0
+	_stroke_started_at = 0.0
+	_stroke_last_move_at = 0.0
 
 # --- Queries -----------------------------------------------------------------
 
@@ -323,11 +362,12 @@ func get_debug() -> Dictionary:
 		"hand_speed": _current_hand_speed(),
 		"last_throw_raw": _last_throw_raw,
 		"last_throw_final": _last_throw_final,
-		"gesture_mode": _gesture_mode,
+		"gesture_mode": _miracle_armed or _miracle_override,
 		"glyph_kind": _last_glyph.get("kind", "-"),
 		"glyph_rotation": _last_glyph.get("rotation", 0.0),
 		"glyph_closure": _last_glyph.get("closure", 0.0),
 		"glyph_reversals": _last_glyph.get("reversals", 0),
+		"glyph_radius_swing": _last_glyph.get("radius_swing", 0.0),
 	}
 
 # --- Internals ---------------------------------------------------------------

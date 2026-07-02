@@ -61,20 +61,20 @@ func scene_label() -> String:
 
 func _setup_environment() -> void:
 	$Sun.rotation_degrees = Vector3(-52.0, 38.0, 0.0)
-	$Sun.light_energy = 1.2
+	$Sun.light_energy = 1.55
 	$Sun.shadow_enabled = true
 	var env := Environment.new()
 	env.background_mode = Environment.BG_SKY
 	var sky := Sky.new()
 	var sky_mat := ProceduralSkyMaterial.new()
-	sky_mat.sky_top_color = Color(0.35, 0.55, 0.75)
-	sky_mat.sky_horizon_color = Color(0.75, 0.8, 0.85)
-	sky_mat.ground_bottom_color = Color(0.2, 0.3, 0.4)
-	sky_mat.ground_horizon_color = Color(0.7, 0.75, 0.8)
+	sky_mat.sky_top_color = Color(0.28, 0.56, 0.86)
+	sky_mat.sky_horizon_color = Color(0.9, 0.93, 0.98)
+	sky_mat.ground_bottom_color = Color(0.18, 0.32, 0.46)
+	sky_mat.ground_horizon_color = Color(0.82, 0.88, 0.93)
 	sky.sky_material = sky_mat
 	env.sky = sky
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
-	env.ambient_light_energy = 0.9
+	env.ambient_light_energy = 1.15
 	var we := WorldEnvironment.new()
 	we.environment = env
 	add_child(we)
@@ -140,7 +140,7 @@ func _spawn_cast() -> void:
 	for rp in [Vector2(0, 10), Vector2(-4, 8), Vector2(3, -3), Vector2(12, 0), Vector2(-2, -12)]:
 		var rock := RockScene.instantiate()
 		parent.add_child(rock)
-		rock.global_position = _island.ground_point(rp.x, rp.y) + Vector3(0.0, 0.8, 0.0)
+		rock.global_position = _island.ground_point(rp.x, rp.y) + Vector3(0.0, rock.ground_clearance, 0.0)
 	# Trees anchored.
 	for tp in [Vector2(-6, 10), Vector2(14, 6), Vector2(-16, 2), Vector2(2, -16)]:
 		var tree := TreeScene.instantiate()
@@ -150,7 +150,7 @@ func _spawn_cast() -> void:
 	for op in [Vector2(-8, -1), Vector2(-10, 3)]:
 		var off := OfferingScene.instantiate()
 		parent.add_child(off)
-		off.global_position = _island.ground_point(op.x, op.y) + Vector3(0.0, 0.6, 0.0)
+		off.global_position = _island.ground_point(op.x, op.y) + Vector3(0.0, off.ground_clearance, 0.0)
 
 func _build_fade_layer() -> void:
 	var layer := CanvasLayer.new()
@@ -194,7 +194,7 @@ func cast_glyph(kind: String, target: Vector3) -> bool:
 # --- Symbol ritual --------------------------------------------------------------
 
 func _run_symbol_ritual(near_point: Vector3) -> void:
-	await get_tree().create_timer(1.6).timeout
+	await get_tree().create_timer(0.9).timeout
 	var asker := _nearest_free_villager(near_point)
 	if asker == null:
 		_ritual_started = false
@@ -240,14 +240,15 @@ func _spawn_symbol_choices(around: Vector3) -> void:
 		holder.add_to_group("interactive")
 		var col := CollisionShape3D.new()
 		var shape := SphereShape3D.new()
-		shape.radius = 0.7
+		shape.radius = 1.1
 		col.shape = shape
 		holder.add_child(col)
 		var visual := SymbolForms.build(id)
 		holder.add_child(visual)
 		add_child(holder)
-		var ang := -0.6 + i * 0.6
-		holder.global_position = around + Vector3(cos(ang) * 1.6, 1.6, sin(ang) * 1.6)
+		holder.scale = Vector3(1.5, 1.5, 1.5)
+		var ang := -0.8 + i * 0.8
+		holder.global_position = around + Vector3(cos(ang) * 2.2, 1.9, sin(ang) * 2.2)
 		_symbol_choices.append(holder)
 
 func handle_symbol_click(area: Node) -> void:

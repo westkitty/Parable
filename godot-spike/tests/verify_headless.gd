@@ -45,8 +45,8 @@ func _run() -> void:
 		_check(s != null, "script loads: " + path)
 
 	# 2. Input actions must be defined in project settings.
-	for action in ["hand_press", "camera_orbit", "camera_zoom_in",
-			"camera_zoom_out", "gesture_mode", "cancel_action", "toggle_diagnostics"]:
+	for action in ["grab_action", "pan_action", "interact_action", "camera_orbit",
+			"camera_zoom_in", "camera_zoom_out", "gesture_mode", "cancel_action", "toggle_diagnostics"]:
 		var ok := InputMap.has_action(action) or ProjectSettings.has_setting("input/" + action)
 		_check(ok, "input action defined: " + action)
 
@@ -84,6 +84,8 @@ func _run() -> void:
 	_check(not main.get_node("Island").is_in_group("grabbable"), "island is NOT grabbable")
 	_check(not main.get_node("Shrine").is_in_group("grabbable"), "shrine is NOT grabbable")
 	_check(not main.get_node("TempleDoorway").is_in_group("grabbable"), "temple doorway is NOT grabbable")
+	for g in get_nodes_in_group("grabbable"):
+		_check(g.ground_clearance > 0.0, "grabbable clearance configured: %s" % g.display_name)
 
 	# 6. Temple interior scene instantiates with a camera.
 	var interior_scene := load("res://scenes/TempleInterior.tscn")
@@ -113,7 +115,35 @@ func _run() -> void:
 	var r3: Dictionary = GestureRecognizer.classify(line)
 	_check(r3.kind == "none", "recognizer: straight line rejected (got %s)" % r3.kind)
 
-	# 8. Throw sampler basic sanity.
+	var spiral := PackedVector2Array()
+	for i in 40:
+		var t := (i / 39.0) * PI * 2.4
+		var radius := lerpf(120.0, 35.0, i / 39.0)
+		spiral.append(Vector2(240.0 + cos(-t) * radius, 220.0 + sin(-t) * radius))
+	var r4: Dictionary = GestureRecognizer.detect_spiral(spiral)
+	_check(r4.kind == "spiral", "recognizer: clockwise spiral arming detected (got %s)" % r4.kind)
+
+	# 8. Blessing reliably starts the ritual and shrine learning gates bolt.
+	var world_script := load("res://scripts/world.gd")
+	_check(world_script != null, "world script loads for ritual contract")
+	_check(main.cast_glyph("circle", Vector3.ZERO) == true, "starter blessing cast succeeds")
+	_check(bool(main.get("_ritual_started")) == true, "starter blessing arms symbol ritual")
+	var shrine := main.get_node("Shrine")
+	_check(main.cast_glyph("zigzag", shrine.global_position) == false, "bolt starts locked before shrine path")
+	var offering: Node = null
+	for g in get_nodes_in_group("grabbable"):
+		if g.display_name == "offering":
+			offering = g
+			break
+	_check(offering != null, "offering exists for shrine path")
+	if offering != null:
+		shrine.receive_offering(offering)
+		_check(shrine.is_awakened(), "shrine awakens after offering")
+		main.get_node("DivineHand").global_position = shrine.global_position + Vector3(0.0, 1.2, 0.0)
+		_check(main.cast_glyph("zigzag", shrine.global_position) == true, "zigzag teaches at shrine after awakening")
+		_check(main.identity.learned_bolt == true, "bolt becomes learned after shrine path")
+
+	# 9. Throw sampler basic sanity.
 	var sampler := ThrowSampler.new()
 	sampler.add_sample(Vector3.ZERO, 0.0)
 	sampler.add_sample(Vector3(1.0, 0.0, 0.0), 0.1)

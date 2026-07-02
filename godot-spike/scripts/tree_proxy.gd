@@ -7,7 +7,8 @@ func _configure() -> void:
 	mass_category = MassCategory.HEAVY
 	mass = 120.0
 	display_name = "tree"
-	hold_offset = Vector3(0.0, -1.6, 0.0)
+	hold_offset = Vector3(0.0, -0.95, 0.0)
+	ground_clearance = 1.28
 	start_frozen = true
 
 func _build_body() -> void:
