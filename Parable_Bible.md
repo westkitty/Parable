@@ -214,3 +214,55 @@ State After Completion:
 Next Step / Handoff:
 - Future design work should define the direct god ability set separately from optional golem macro abilities, then define golem costs using materials, resources, elements, aspects, construction steps, and macro constraints instead of divine-power penalties.
 - Future Fable or Codex prompts should include Entry 2 and Entry 3 together when designing golems.
+
+### Entry 4 - Black and White control grammar target
+
+Summary:
+- Clarified that Parable should target the exact kind of control feel and world feel associated with Black & White-style god play, while remaining a distinct original game.
+
+Reason / Intent:
+- The user wants Parable to feel like loading into a god game where the player immediately inhabits divine control over a tactile world.
+- The requested target is not merely a generic god-game influence system; it is a direct manipulation control grammar and world presentation style close to the remembered Black & White feeling.
+- This reinforces earlier doctrine: the player is the god, not a supervisor of a creature or an abstract dashboard.
+
+Files Changed:
+- `Parable_Bible.md`
+
+Commands Run:
+```text
+GitHub connector update_file was used to append this ledger entry to `Parable_Bible.md` on `main`.
+```
+
+Command Intent:
+- Preserve the design target before future implementation planning, so Parable does not drift into button-driven RTS, abstract sim UI, or detached strategy-map controls.
+
+Outputs Generated:
+- Additive project bible entry defining the control/world-feel target.
+
+Decisions:
+- Parable should inherit the control philosophy of direct god-hand manipulation: touching, grabbing, dragging, throwing, blessing, punishing, shaping, and gesturing over the living world.
+- The world should feel like a tactile miniature island under divine control, not a flat strategy dashboard.
+- The camera/world style should favor readable 3D diorama/island presentation, strong sense of scale, villages and worshippers visible as living miniatures, and a ceremonial feeling when loading in.
+- UI should be minimized or made diegetic where possible; primary play should occur through the hand/world, not through spell buttons or panels.
+- Gesture miracles remain compatible with this goal only if they feel like physical divine ritual performed over the world rather than abstract drawing on a HUD.
+- Golems remain optional automation/presence tools and must not replace the player's direct control grammar.
+- Parable must avoid copying proprietary Black & White assets, names, code, exact content, or protected expression; the target is control feel, world grammar, and god-fantasy design, not IP duplication.
+
+Doctrine:
+```text
+Parable's control and world-feel north star is Black & White-style god play: a tactile divine hand over a living 3D island, with direct manipulation, physical-feeling gestures, villagers that visibly react, and a world that feels like a miniature sacred place under the player's godhood. Parable must not become a button-first RTS, a detached dashboard sim, or a creature-supervision game. The player should feel like the god from the moment the world loads. This is an experiential and control-grammar target, not permission to copy proprietary Black & White assets or protected content.
+```
+
+Bugs / Blockers:
+- No gameplay implementation was changed in this entry.
+- The current runtime still uses HUD panels and gesture drawing; future implementation must evaluate whether the controls feel like direct god-hand manipulation in a real browser session.
+
+Correction:
+- Earlier framing around browser prototype, gesture roster, and golem automation remains valid but is subordinate to the higher experiential target: the player must feel like a god directly controlling a living world.
+
+State After Completion:
+- Parable's authoritative project bible now records Black & White-style direct control and tactile 3D world feel as the control/world north star.
+
+Next Step / Handoff:
+- Future design work should define a direct hand-control specification: camera movement, grab/drag/throw, object interaction, villager manipulation, miracle gesture feel, world-space UI, and onboarding.
+- Future Fable or Codex prompts should include Entry 4 whenever planning controls, camera, UI, world presentation, tutorial, or moment-to-moment feel.
