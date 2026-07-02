@@ -111,3 +111,54 @@ State After Completion:
 Next Step / Handoff:
 - Run a real browser test from a normal networked machine: `python3 -m http.server 8000`, open `http://localhost:8000`, then test clockwise spiral -> vertical zigzag = Fireball.
 - Next engineering improvement should vendor Three.js locally to remove CDN dependency and make browser verification more deterministic.
+
+### Entry 2 - Golem doctrine clarified
+
+Summary:
+- Clarified the design role of golems in Parable. Golems are a presence and automation system, not a replacement core fantasy and not a creature-system clone.
+
+Reason / Intent:
+- The user clarified that the old creature idea weakened the god fantasy by making the player feel like a supervisor of a Tamagotchi-like entity instead of the god.
+- The user wants the game to remain centered on direct god-perspective abilities even if golems become numerous or strategically useful.
+- The golem system should preserve the useful gameplay space of delegated repeated actions without shifting agency away from the player.
+
+Files Changed:
+- `Parable_Bible.md`
+
+Commands Run:
+```text
+GitHub connector update_file was used to append this ledger entry to `Parable_Bible.md` on `main`.
+```
+
+Command Intent:
+- Preserve a durable design-law correction before future planning, Fable prompts, Codex prompts, or implementation work accidentally re-center the game around creature-like companions.
+
+Outputs Generated:
+- Additive project bible entry defining the golem doctrine and player-agency rule.
+
+Decisions:
+- Golems are not creatures, pets, avatars, or mandatory companions.
+- Golems are optional tools for creating divine presence through delegated automation.
+- Golems may be built, invested in, and programmed with repeatable macro-like tasks.
+- The player must retain the full god-perspective ability set; golems must not take over core play.
+- Golems should create presence through authorship and delegation, not through personality or creature attachment.
+- Parable should avoid making the golem feel like the true god while the player merely supervises.
+
+Doctrine:
+```text
+Golems are optional vessels of delegated divine will. They are not alive, not pets, not creatures, and not the core of Parable. They exist to create presence by letting the god externalize a repeated command into the world. The player remains the god and must retain direct divine abilities regardless of whether any golems are active. A golem may automate a macro-like behavior, but it must never become the central fantasy, the primary avatar, or a mandatory Tamagotchi-style companion.
+```
+
+Bugs / Blockers:
+- No gameplay implementation was changed in this entry.
+- The current runtime still appears to treat `Golem Wake` as a simple cleanse helper; the richer macro-programming doctrine remains a design target, not a verified implemented system.
+
+Correction:
+- Any prior framing that treated golems as the main replacement for all creature-system emotional weight is superseded. Golems replace the creature system only as a presence/automation layer, while the core fantasy remains direct godhood.
+
+State After Completion:
+- Parable's authoritative project bible now records that golems are optional embodied macros/presence tools and that direct god-perspective power remains primary.
+
+Next Step / Handoff:
+- Future Fable or Codex prompts should include this doctrine whenever discussing creature replacement, golem design, automation, tutorial structure, or core fantasy.
+- Next design pass should define the player's direct god abilities separately from optional golem macro abilities so automation supports godhood instead of consuming it.
