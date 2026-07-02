@@ -471,3 +471,55 @@ State After Completion:
 Next Step / Handoff:
 - Future Fable work should integrate Entries 4-7 into a coherent rewrite plan and vertical slice brief.
 - The next artifact should probably be a Fable-ready `Parable Direct Godhood Rewrite Context Packet` followed by a Fable prompt for the control scheme, miracle discovery tutorial island, shrine upgrade system, and first rival-god event.
+
+### Entry 8 - Fourth starter miracle decided
+
+Summary:
+- Resolved the fourth starter miracle family for the opening/tutorial miracle set.
+
+Reason / Intent:
+- Entry 7 left the fourth starter miracle undecided alongside Healing, Rain, and Fireball.
+- The user agreed with the proposed fourth family: Sanctuary / Protection.
+- This creates four emotionally distinct dream-seeded starting paths and avoids making Lightning a starter, preserving Lightning as a strong later found-shrine miracle candidate.
+
+Files Changed:
+- `Parable_Bible.md`
+
+Commands Run:
+```text
+GitHub connector update_file was used to append this ledger entry to `Parable_Bible.md` on `main`.
+```
+
+Command Intent:
+- Lock the starter miracle set before Fable rewrite planning and tutorial-island design.
+
+Outputs Generated:
+- Additive project bible entry resolving the fourth starter miracle family.
+
+Decisions:
+- The first four starter miracle families are Fireball, Rain, Healing, and Sanctuary/Protection.
+- Fireball represents wrath, destruction, punishment, and dangerous intervention.
+- Rain represents mercy, fertility, relief, flood/storm imagery, and environmental blessing.
+- Healing represents salvation, restoration, care, and rescue from plague or injury.
+- Sanctuary/Protection represents shelter, guardianship, warding, safety, and the god as protector.
+- The player should begin with one of these four, selected/funneled by the opening dream path.
+- The other three should be discoverable nearby on the tutorial island through shrine/glyph learning.
+- Lightning should remain a strong candidate for a later found miracle, especially through a storm/metal/altar environmental shrine puzzle.
+
+Doctrine:
+```text
+Parable's opening miracle set is Fireball, Rain, Healing, and Sanctuary/Protection. The first miracle is dream-seeded by the player's opening input, and the other three are learned nearby through tutorial shrine discovery. These four represent the opening godhood doors: wrath, mercy, restoration, and protection. Lightning should not be the default fourth starter; it is better saved as a later found shrine miracle.
+```
+
+Bugs / Blockers:
+- No gameplay implementation was changed in this entry.
+- Exact gesture glyphs, dream prompts, shrine puzzle designs, and upgrade tiers for the four starter miracle families remain to be specified.
+
+Correction:
+- Entry 7's undecided fourth starter miracle is resolved as Sanctuary/Protection.
+
+State After Completion:
+- Parable's authoritative project bible now records the first four starter miracle families and the reason Lightning should likely be reserved for later discovery.
+
+Next Step / Handoff:
+- Future design work should define the four opening dream paths, their glyphs, their tutorial shrine puzzles, and at least three upgrade tiers for each starter miracle.
