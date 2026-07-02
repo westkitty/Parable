@@ -5,6 +5,7 @@ extends Node3D
 var _fingers: Array[Node3D] = []   # pivot nodes (4 fingers)
 var _thumb: Node3D
 var _palm: MeshInstance3D
+var _grip_socket: Node3D
 var _skin_mats: Array[StandardMaterial3D] = []
 var _aura: OmniLight3D
 var _pose := "open"
@@ -29,6 +30,11 @@ func _ready() -> void:
 	_palm.mesh = palm_mesh
 	_palm.material_override = skin
 	add_child(_palm)
+
+	_grip_socket = Node3D.new()
+	_grip_socket.name = "GripSocket"
+	_grip_socket.position = Vector3(0.0, -0.02, -0.06)
+	add_child(_grip_socket)
 
 	for i in 4:
 		var pivot := Node3D.new()
@@ -94,8 +100,15 @@ func set_tracking_feedback(on: bool) -> void:
 	if _aura.light_energy < 1.9:
 		_aura.light_energy = 0.45 if on else 0.0
 
-func grip_socket_world(local_offset: Vector3) -> Vector3:
-	return to_global(local_offset)
+func grip_socket_local() -> Vector3:
+	return _grip_socket.position
+
+func grip_socket_world(local_offset: Vector3 = Vector3.ZERO) -> Vector3:
+	return _grip_socket.to_global(local_offset)
+
+func origin_for_grip_world(world_point: Vector3) -> Vector3:
+	var basis := global_transform.basis
+	return world_point - basis * grip_socket_local()
 
 func _process(delta: float) -> void:
 	var k := 1.0 - exp(-12.0 * delta)

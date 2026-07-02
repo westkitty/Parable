@@ -23,6 +23,8 @@ var _pitch: Node3D
 var _dist_target := 26.0
 var _orbiting := false
 var _orbit_fallback := false
+var _middle_button_down := false
+var _orbit_source := "none"
 var _default_state := {}
 
 func _ready() -> void:
@@ -40,23 +42,35 @@ func _process(delta: float) -> void:
 	dist = lerpf(dist, _dist_target, 1.0 - exp(-10.0 * delta))
 	camera.position = Vector3(0.0, 0.0, dist)
 
-func _unhandled_input(event: InputEvent) -> void:
+func _input(event: InputEvent) -> void:
 	if locked:
 		return
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_MIDDLE:
+			_middle_button_down = event.pressed
 			_orbiting = event.pressed
+			_orbit_source = "middle" if event.pressed else "none"
 		elif event.button_index == MOUSE_BUTTON_LEFT:
 			_orbit_fallback = event.pressed and (event.alt_pressed or event.shift_pressed)
+			if _orbit_fallback:
+				_orbit_source = "alt_left" if event.alt_pressed else "shift_left"
+			elif not _middle_button_down:
+				_orbit_source = "none"
 		elif event.pressed and event.button_index == MOUSE_BUTTON_WHEEL_UP:
 			_zoom(1.0 / ZOOM_FACTOR)
 		elif event.pressed and event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 			_zoom(ZOOM_FACTOR)
-	elif event is InputEventMouseMotion and is_orbiting():
-		rotation.y -= event.relative.x * ORBIT_SENS * control_scale
-		_pitch.rotation.x = clampf(
-			_pitch.rotation.x - event.relative.y * ORBIT_SENS * control_scale,
-			PITCH_MIN, PITCH_MAX)
+	elif event is InputEventMouseMotion:
+		var middle_motion := bool(event.button_mask & MOUSE_BUTTON_MASK_MIDDLE)
+		if middle_motion and not _middle_button_down:
+			_middle_button_down = true
+			_orbiting = true
+			_orbit_source = "middle"
+		if is_orbiting():
+			rotation.y -= event.relative.x * ORBIT_SENS * control_scale
+			_pitch.rotation.x = clampf(
+				_pitch.rotation.x - event.relative.y * ORBIT_SENS * control_scale,
+				PITCH_MIN, PITCH_MAX)
 	elif event is InputEventKey and event.pressed and not event.echo:
 		match event.keycode:
 			KEY_R:
@@ -71,6 +85,19 @@ func is_orbiting() -> bool:
 
 func orbit_modifier_active() -> bool:
 	return (Input.is_key_pressed(KEY_SHIFT) or Input.is_key_pressed(KEY_ALT) or _orbit_fallback) and not locked
+
+func middle_button_down() -> bool:
+	return _middle_button_down
+
+func orbit_source() -> String:
+	return _orbit_source if is_orbiting() else "none"
+
+func camera_mode() -> String:
+	if locked:
+		return "locked"
+	if is_orbiting():
+		return "orbit"
+	return "free"
 
 func simulate_orbit_drag(delta: Vector2) -> void:
 	rotation.y -= delta.x * ORBIT_SENS * control_scale

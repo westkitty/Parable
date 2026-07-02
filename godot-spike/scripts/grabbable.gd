@@ -74,15 +74,16 @@ func _physics_process(delta: float) -> void:
 	var island := get_tree().get_first_node_in_group("island")
 	_guard_surface_recovery(island)
 	if is_held:
-		var k := 1.0 - exp(-float(CARRY_LAG[mass_category]) * delta)
 		var target: Vector3 = _hold_target
 		if held_wiggle_amp > 0.0:
 			_wiggle_t += delta * 9.0
 			target += Vector3(sin(_wiggle_t) * held_wiggle_amp, 0.0, cos(_wiggle_t * 1.3) * held_wiggle_amp)
-		global_position = global_position.lerp(target, k)
+		global_position = target
 
 func set_hold_target(pos: Vector3) -> void:
 	_hold_target = pos
+	if is_held:
+		global_position = pos
 
 func pick_anchor_point() -> Vector3:
 	return global_position + pick_anchor_offset

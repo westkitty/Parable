@@ -178,7 +178,7 @@ func _build_chamber() -> void:
 	sym_pedestal.material_override = stone
 	sym_pedestal.position = Vector3(-5.6, 0.5, 0.0)
 	add_child(sym_pedestal)
-	_left_marker = _marker(Vector3(-6.4, 2.5, 0.0), "SYMBOL")
+	_left_marker = _marker(Vector3(-3.1, 2.7, -4.4), "SYMBOL")
 	_symbol_slot = Node3D.new()
 	_symbol_slot.position = Vector3(-5.6, 2.0, 0.0)
 	_symbol_slot.rotation_degrees.y = 90.0
@@ -201,7 +201,7 @@ func _build_chamber() -> void:
 	_bolt_glyph_mat.emission_enabled = true
 	_bolt_glyph_mat.emission = Color(1.0, 0.72, 0.25)
 	_bolt_glyph_mat.emission_energy_multiplier = 0.18
-	_right_marker = _marker(Vector3(6.4, 2.5, 0.0), "GLYPHS")
+	_right_marker = _marker(Vector3(3.1, 2.7, -4.4), "GLYPHS")
 	var zig_points := [
 		Vector2(-0.25, 0.6), Vector2(0.25, 0.25), Vector2(-0.25, -0.1),
 		Vector2(0.25, -0.45), Vector2(-0.25, -0.8),
@@ -223,7 +223,7 @@ func _build_chamber() -> void:
 		seg.rotation.z = (b - a).angle()
 		_glyph_slot.add_child(seg)
 	_hotspot("RightHotspot", Vector3(5.4, 1.6, 0.0), Vector3(2.4, 4.2, 4.4))
-	_marker(Vector3(0.0, 3.05, -6.18), "EXIT")
+	_marker(Vector3(0.0, 3.1, -5.95), "EXIT")
 
 func _marker(pos: Vector3, text: String) -> StandardMaterial3D:
 	var panel := MeshInstance3D.new()
@@ -238,7 +238,7 @@ func _marker(pos: Vector3, text: String) -> StandardMaterial3D:
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	panel.material_override = mat
 	panel.position = pos
-	panel.rotation_degrees.y = -90.0 if pos.x > 0.0 else 90.0
+	panel.rotation_degrees.y = 180.0
 	add_child(panel)
 	var label := Label3D.new()
 	label.text = text

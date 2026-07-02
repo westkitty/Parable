@@ -26,6 +26,7 @@ const MIRACLE_ARMED_DURATION := 6.2
 const DEBUG_SPACE_ARM_DURATION := 5.0
 const HAND_TRACKING_FEEDBACK_LENGTH := 26.0
 const HAND_DIRECT_CARRY_HEIGHT := 0.06
+const HOVER_GRIP_LIFT := Vector3(0.0, 0.38, 0.0)
 
 var enabled := true
 var state := "hover"
@@ -85,7 +86,7 @@ func _physics_process(delta: float) -> void:
 		_cancel_everything()
 
 	_miracle_override = Input.is_action_pressed("gesture_mode")
-	if _miracle_override and _diagnostics_visible():
+	if Input.is_action_just_pressed("gesture_mode") and _diagnostics_visible():
 		_force_arm_for_debug()
 
 	_world_frame(mouse, delta)
@@ -128,12 +129,11 @@ func _world_frame(mouse: Vector2, _delta: float) -> void:
 		if _hovered != null:
 			_begin_carry(_hovered)
 
-	# Held-button behavior.
-	if Input.is_action_pressed("grab_action"):
-		if _press_kind == "carry":
-			state = "carry"
-			_update_carry()
-	elif Input.is_action_just_released("grab_action"):
+	# Carry follows the hand until the explicit release path ends it.
+	if _press_kind == "carry":
+		state = "carry"
+		_update_carry()
+	if Input.is_action_just_released("grab_action"):
 		if _press_kind == "carry":
 			_release_held()
 		_press_kind = ""
@@ -184,13 +184,11 @@ func _world_frame(mouse: Vector2, _delta: float) -> void:
 	var hand_h := HOVER_HEIGHT
 	if _press_kind == "pan":
 		hand_h = PRESS_HEIGHT
-	elif _hovered != null and _held == null:
-		hand_h = 0.56
 	var target := _ground_point + Vector3(0.0, hand_h, 0.0)
 	if _hovered != null and _held == null:
-		target = _hovered.pick_anchor_point() + Vector3(0.0, 0.38, 0.0)
+		target = _origin_for_hover_anchor(_hovered.pick_anchor_point())
 	if _held != null:
-		target = _ground_point + Vector3(0.0, HAND_DIRECT_CARRY_HEIGHT, 0.0)
+		target = _origin_for_hover_anchor(_ground_point + Vector3(0.0, _carry_anchor_height(), 0.0))
 	_hand_target = target
 	global_position = target
 	rotation.y = _rig.rotation.y
@@ -340,9 +338,12 @@ func _arm_miracle(spiral: Dictionary) -> void:
 	if _trace:
 		_trace.begin()
 		_trace.set_armed_feedback()
+		_trace.add_point(global_position)
+		_trace.add_point(global_position + Vector3(0.0, 0.15, 0.0))
 	if _visual:
 		_visual.set_tracking_feedback(false)
 		_visual.set_miracle_armed(true)
+	_last_cast_result = "debug_arm" if _diagnostics_visible() and _miracle_override else "spiral_arm"
 
 func _force_arm_for_debug() -> void:
 	if _miracle_armed:
@@ -411,6 +412,7 @@ func simulate_grab(obj: Node) -> bool:
 func simulate_release_for_test(world_velocity: Vector3, force_gentle := false) -> void:
 	if _held == null:
 		return
+	_update_carry()
 	_sampler.clear()
 	_sampler.add_sample(Vector3.ZERO, 0.0)
 	_sampler.add_sample(_rig.global_transform.basis.inverse() * world_velocity * 0.1, 0.1)
@@ -447,6 +449,7 @@ func get_debug() -> Dictionary:
 		"last_release_mode": _last_release_mode,
 		"last_release_speed": _last_release_speed,
 		"gesture_mode": _miracle_armed or _miracle_override,
+		"debug_force_arm": _diagnostics_visible() and _miracle_override,
 		"trace_length": _stroke_length,
 		"trace_armed": _miracle_armed,
 		"armed_timer": armed_timer_remaining(),
@@ -457,6 +460,12 @@ func get_debug() -> Dictionary:
 		"glyph_reversals": _last_glyph.get("reversals", 0),
 		"glyph_radius_swing": _last_glyph.get("radius_swing", 0.0),
 		"glyph_loops": _miracle_debug_loops,
+		"ray_target": _ground_point,
+		"hand_target": _hand_target,
+		"grip_point": _visual.grip_socket_world() if (_visual and _visual.has_method("grip_socket_world")) else global_position,
+		"hold_offset": _held.hold_offset if (_held != null and is_instance_valid(_held)) else Vector3.ZERO,
+		"hold_distance": _held.global_position.distance_to(_visual.grip_socket_world(_held.hold_offset)) if (_held != null and is_instance_valid(_held) and _visual and _visual.has_method("grip_socket_world")) else 0.0,
+		"hover_anchor": _hovered.pick_anchor_point() if (_hovered != null and is_instance_valid(_hovered) and _hovered.has_method("pick_anchor_point")) else Vector3.ZERO,
 	}
 
 # --- Internals ---------------------------------------------------------------
@@ -499,12 +508,15 @@ func _screen_pick_grabbable(mouse: Vector2) -> Node:
 		return _nearest_grabbable(_ground_point, PICK_RADIUS)
 	var best: Node = null
 	var best_score := INF
+	var grip_screen: Vector2 = mouse
+	if _visual and _visual.has_method("grip_socket_world"):
+		grip_screen = _rig.camera.unproject_position(_visual.grip_socket_world())
 	for g in get_tree().get_nodes_in_group("grabbable"):
 		if g == _held:
 			continue
 		var anchor: Vector3 = g.pick_anchor_point()
 		var screen_pos: Vector2 = _rig.camera.unproject_position(anchor)
-		var d := mouse.distance_to(screen_pos)
+		var d := grip_screen.distance_to(screen_pos)
 		if d > g.hover_screen_radius:
 			continue
 		var score := d / maxf(g.hover_screen_radius, 1.0)
@@ -512,6 +524,17 @@ func _screen_pick_grabbable(mouse: Vector2) -> Node:
 			best_score = score
 			best = g
 	return best
+
+func _origin_for_hover_anchor(anchor: Vector3) -> Vector3:
+	if _visual and _visual.has_method("origin_for_grip_world"):
+		return _visual.origin_for_grip_world(anchor + HOVER_GRIP_LIFT)
+	return anchor + HOVER_GRIP_LIFT
+
+func _carry_anchor_height() -> float:
+	if _held == null or not is_instance_valid(_held):
+		return HAND_DIRECT_CARRY_HEIGHT
+	var needed: float = _held.ground_clearance - HOVER_GRIP_LIFT.y - _held.hold_offset.y
+	return maxf(HAND_DIRECT_CARRY_HEIGHT, needed)
 
 func _set_hovered(obj: Node) -> void:
 	if obj == _hovered:

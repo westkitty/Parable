@@ -32,6 +32,7 @@ func snapshot_lines() -> Array[String]:
 	if world:
 		lines.append("scene: %s" % world.scene_label())
 		lines.append("temple chamber: %s" % world.current_temple_chamber())
+		lines.append("cursor policy: %s / %s" % [world.cursor_focus_state(), world.cursor_policy_state()])
 	if hand:
 		var d: Dictionary = hand.get_debug()
 		lines.append("input state: %s" % d.get("state", "?"))
@@ -45,11 +46,17 @@ func snapshot_lines() -> Array[String]:
 		lines.append("last release speed: %.2f" % d.get("last_release_speed", 0.0))
 		lines.append("gesture mode: %s" % str(d.get("gesture_mode", false)))
 		lines.append("miracle armed: %s timer %.2f" % [str(d.get("trace_armed", false)), d.get("armed_timer", 0.0)])
+		lines.append("debug arm: %s" % str(d.get("debug_force_arm", false)))
 		lines.append("cast result: %s" % d.get("cast_result", "-"))
 		lines.append("trace: len %.1f loops %.2f" % [d.get("trace_length", 0.0), d.get("glyph_loops", 0.0)])
 		lines.append("last glyph: %s (rot %.2f, closure %.2f, reversals %d, radius %.2f)" % [
 			d.get("glyph_kind", "-"), d.get("glyph_rotation", 0.0),
 			d.get("glyph_closure", 0.0), d.get("glyph_reversals", 0), d.get("glyph_radius_swing", 0.0)])
+		lines.append("ray target: %s" % str(d.get("ray_target", Vector3.ZERO)))
+		lines.append("hand target: %s" % str(d.get("hand_target", Vector3.ZERO)))
+		lines.append("grip point: %s" % str(d.get("grip_point", Vector3.ZERO)))
+		lines.append("hold offset: %s grip dist %.2f" % [str(d.get("hold_offset", Vector3.ZERO)), d.get("hold_distance", 0.0)])
+		lines.append("hover anchor: %s" % str(d.get("hover_anchor", Vector3.ZERO)))
 	if shrine:
 		lines.append("shrine awake: %s (%s)" % [str(shrine.is_awakened()), shrine.current_state_label()])
 		lines.append("shrine reject: %s" % shrine.last_reject_reason())
@@ -59,6 +66,7 @@ func snapshot_lines() -> Array[String]:
 				nearest = minf(nearest, g.global_position.distance_to(shrine.altar_point()))
 		lines.append("nearest offering dist: %s" % ("%.2f" % nearest if nearest < INF else "-"))
 	if rig:
-		lines.append("camera: %s dist %.1f" % ["orbiting" if rig.is_orbiting() else ("locked" if rig.locked else "free"), rig.dist])
+		lines.append("camera: %s dist %.1f" % [rig.camera_mode(), rig.dist])
+		lines.append("middle button: %s orbit source: %s" % [str(rig.middle_button_down()), rig.orbit_source()])
 	lines.append("fps: %d" % Engine.get_frames_per_second())
 	return lines

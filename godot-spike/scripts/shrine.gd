@@ -19,7 +19,6 @@ var _reject_mat: StandardMaterial3D
 var _altar_mat: StandardMaterial3D
 var _last_reject := "-"
 var _drop_ring: MeshInstance3D
-var _drop_label: Label3D
 
 func _ready() -> void:
 	add_to_group("shrine")
@@ -35,12 +34,15 @@ func _process(delta: float) -> void:
 	if _drop_ring:
 		_drop_ring.visible = preview
 		_drop_ring.rotation.y += delta * 0.8
-	if _drop_label:
-		_drop_label.visible = preview
 	if preview and _altar_mat:
 		_altar_mat.emission_energy_multiplier = maxf(_altar_mat.emission_energy_multiplier, 2.2 if state == ShrineState.DORMANT else 2.8)
 	if preview and _glyph_mat and state == ShrineState.DORMANT:
 		_glyph_mat.emission_energy_multiplier = maxf(_glyph_mat.emission_energy_multiplier, 1.2)
+	if state == ShrineState.DORMANT:
+		for g in get_tree().get_nodes_in_group("grabbable"):
+			if g.display_name == "offering" and g.recent_gentle_release and not g.consumed and within_offer_range(g.global_position):
+				receive_offering(g)
+				break
 
 func is_awakened() -> bool:
 	return state == ShrineState.AWAKENED
@@ -141,15 +143,6 @@ func _build() -> void:
 	_drop_ring.rotation_degrees.x = 90.0
 	_drop_ring.visible = false
 	add_child(_drop_ring)
-	_drop_label = Label3D.new()
-	_drop_label.text = "PLACE"
-	_drop_label.font_size = 88
-	_drop_label.pixel_size = 0.01
-	_drop_label.modulate = Color(0.75, 1.0, 0.95)
-	_drop_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	_drop_label.position = Vector3(0.0, 1.6, 1.8)
-	_drop_label.visible = false
-	add_child(_drop_label)
 	_block(Vector3(0.5, 2.6, 0.5), Vector3(-1.2, 1.3, -0.4), stone)
 	_block(Vector3(0.5, 2.6, 0.5), Vector3(1.2, 1.3, -0.4), stone)
 	_block(Vector3(2.9, 0.5, 0.7), Vector3(0.0, 2.85, -0.4), stone)

@@ -31,14 +31,15 @@ var _ritual_started := false
 var _village_stone: Node3D
 var _symbol_choices: Array[Node] = []
 var _symbol_pick := ""
-var _mouse_hidden_requested := false
+var _window_focused := true
+var _mouse_inside := true
+var _cursor_hidden := false
 
 signal _symbol_picked(id: String)
 
 func _ready() -> void:
 	add_to_group("world")
-	Input.set_mouse_mode(Input.MOUSE_MODE_HIDDEN)
-	_mouse_hidden_requested = true
+	_set_game_cursor_active(true)
 	identity = get_node_or_null("/root/GodIdentity")
 	if identity == null:
 		# Headless test path: no autoload registration, create a local one.
@@ -62,7 +63,32 @@ func _exit_tree() -> void:
 	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 
 func mouse_hidden_for_play() -> bool:
-	return _mouse_hidden_requested
+	return _cursor_hidden
+
+func cursor_policy_state() -> String:
+	return "hidden" if _cursor_hidden else "visible"
+
+func cursor_focus_state() -> String:
+	return "focused" if _window_focused else "unfocused"
+
+func _notification(what: int) -> void:
+	match what:
+		NOTIFICATION_WM_WINDOW_FOCUS_IN:
+			_window_focused = true
+			_set_game_cursor_active(_mouse_inside)
+		NOTIFICATION_WM_WINDOW_FOCUS_OUT:
+			_window_focused = false
+			_set_game_cursor_active(false)
+		NOTIFICATION_WM_MOUSE_ENTER:
+			_mouse_inside = true
+			_set_game_cursor_active(_window_focused)
+		NOTIFICATION_WM_MOUSE_EXIT:
+			_mouse_inside = false
+			_set_game_cursor_active(false)
+
+func _set_game_cursor_active(active: bool) -> void:
+	_cursor_hidden = active and _window_focused and _mouse_inside
+	Input.set_mouse_mode(Input.MOUSE_MODE_HIDDEN if _cursor_hidden else Input.MOUSE_MODE_VISIBLE)
 
 func scene_label() -> String:
 	return "temple" if _in_temple else "world"

@@ -25,6 +25,10 @@ func _run() -> void:
 	var diagnostics: CanvasLayer = main.get_node("DevDiagnostics")
 
 	_check(main.mouse_hidden_for_play() == true, "cursor hide call path exists in world boot path")
+	_check(main.has_method("cursor_policy_state"), "cursor policy helper exists")
+	_check(main.has_method("cursor_focus_state"), "cursor focus helper exists")
+	_check(rig.has_method("middle_button_down"), "camera middle-button helper exists")
+	_check(rig.has_method("orbit_source"), "camera orbit-source helper exists")
 	await _assert_stable_hold_and_release_modes(hand)
 	await _assert_throw_threshold_edges(hand)
 	await _assert_camera_motion_preserves_hold(hand, rig)
@@ -57,6 +61,9 @@ func _assert_stable_hold_and_release_modes(hand: Node) -> void:
 			await physics_frame
 		_check(hand.is_carrying(), "%s remains held across physics frames" % kind)
 		_check(obj.is_held == true, "%s owner state remains held" % kind)
+		var expected_hold: Vector3 = hand.get_node("HandVisual").grip_socket_world(obj.hold_offset)
+		var grip_dist: float = obj.global_position.distance_to(expected_hold)
+		_check(grip_dist < 0.35, "%s held object stays near grip socket" % kind)
 		_check(_mesh_color(obj) == color_before, "%s held state does not recolor base material" % kind)
 		hand.simulate_release_for_test(Vector3.ZERO, true)
 		for _i in 2:
@@ -107,24 +114,34 @@ func _assert_camera_motion_preserves_hold(hand: Node, rig: Node) -> void:
 	fallback_press.button_index = MOUSE_BUTTON_LEFT
 	fallback_press.pressed = true
 	fallback_press.shift_pressed = true
-	rig._unhandled_input(fallback_press)
+	rig._input(fallback_press)
 	_check(rig.is_orbiting(), "shift + left orbit fallback activates")
 	var fallback_release := InputEventMouseButton.new()
 	fallback_release.button_index = MOUSE_BUTTON_LEFT
 	fallback_release.pressed = false
 	fallback_release.shift_pressed = true
-	rig._unhandled_input(fallback_release)
+	rig._input(fallback_release)
 	var alt_press := InputEventMouseButton.new()
 	alt_press.button_index = MOUSE_BUTTON_LEFT
 	alt_press.pressed = true
 	alt_press.alt_pressed = true
-	rig._unhandled_input(alt_press)
+	rig._input(alt_press)
 	_check(rig.is_orbiting(), "alt + left orbit fallback activates")
 	var alt_release := InputEventMouseButton.new()
 	alt_release.button_index = MOUSE_BUTTON_LEFT
 	alt_release.pressed = false
 	alt_release.alt_pressed = true
-	rig._unhandled_input(alt_release)
+	rig._input(alt_release)
+	var middle_press := InputEventMouseButton.new()
+	middle_press.button_index = MOUSE_BUTTON_MIDDLE
+	middle_press.pressed = true
+	rig._input(middle_press)
+	_check(rig.middle_button_down(), "middle mouse explicit press is tracked")
+	_check(rig.orbit_source() == "middle", "middle mouse is primary orbit source")
+	var middle_release := InputEventMouseButton.new()
+	middle_release.button_index = MOUSE_BUTTON_MIDDLE
+	middle_release.pressed = false
+	rig._input(middle_release)
 	rig.reset_to_safe_default()
 	var reset_state: Dictionary = rig.save_state()
 	_check(absf(float(reset_state.yaw)) < 0.001 and absf(float(reset_state.dist) - 26.0) < 0.01, "camera reset returns to safe default")
@@ -150,6 +167,7 @@ func _assert_safe_cancel_clears_state(hand: Node) -> void:
 func _assert_shrine_release_contract(hand: Node, main: Node, shrine: Node) -> void:
 	var offerings := _find_grabbables("offering")
 	_check(shrine.within_offer_range(shrine.altar_point() + Vector3(4.8, 0.0, 0.0)), "shrine offering radius is generous")
+	_check(not ("PLACE" in _label_texts(shrine)), "shrine no longer exposes PLACE text")
 	var gentle := offerings[0] if not offerings.is_empty() else null
 	_check(gentle != null, "offering exists for gentle shrine contract")
 	if gentle != null:
@@ -174,6 +192,9 @@ func _assert_shrine_release_contract(hand: Node, main: Node, shrine: Node) -> vo
 
 func _assert_glyph_learning_contract(hand: Node, main: Node, shrine: Node) -> void:
 	_check(main.cast_glyph("zigzag", shrine.global_position) == false, "zigzag remains locked before shrine teaching")
+	hand.simulate_arm_for_test()
+	var debug_arm: Dictionary = hand.get_debug()
+	_check(bool(debug_arm.get("trace_armed", false)) == true, "F3 + Space force-arm path can set armed state")
 	shrine.state = shrine.ShrineState.AWAKENED
 	hand.global_position = shrine.global_position + Vector3(0.0, 1.2, 0.0)
 	_check(hand.simulate_glyph_for_test("zigzag", shrine.global_position) == true, "awakened shrine teaches zigzag")
@@ -207,6 +228,8 @@ func _assert_temple_and_diagnostics_contract(main: Node, diagnostics: CanvasLaye
 	_check("SYMBOL" in label_texts, "temple exposes SYMBOL label")
 	_check("GLYPHS" in label_texts, "temple exposes GLYPHS label")
 	_check("EXIT" in label_texts, "temple exposes EXIT label")
+	_check(main.mouse_hidden_for_play() == true, "temple flow does not restore cursor policy")
+	_check(_temple_labels_face_camera(temple), "temple labels are camera-visible from center")
 	shrine.state = shrine.ShrineState.DORMANT
 	main._in_temple = false
 	temple.leave()
@@ -247,6 +270,13 @@ func _label_texts(node: Node) -> Array[String]:
 		if child is Label3D:
 			out.append(child.text)
 	return out
+
+func _temple_labels_face_camera(node: Node) -> bool:
+	for child in node.get_children():
+		if child is Label3D and child.text in ["SYMBOL", "GLYPHS", "EXIT"]:
+			if child.position.z > -3.5:
+				return false
+	return true
 
 func _check(cond: bool, label: String) -> void:
 	if cond:

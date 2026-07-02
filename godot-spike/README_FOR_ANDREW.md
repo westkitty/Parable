@@ -24,8 +24,9 @@ If anything else goes wrong, run `./verify.sh` and send back what it prints.
 If the game launches but an interaction chain breaks, press `F3` and report:
 hovered object, held object, right-mouse state, miracle armed, last recognizer result,
 path length, rotation/loop, shrine awake, and temple chamber.
+If the cursor does not return when your mouse leaves the game window, report that.
 If gesture recognition still fails but you need to keep testing, press `F3`,
-then hold `Space` for the debug arm fallback.
+then press `Space` for the debug arm fallback.
 Use this three-line format so the failure is actionable:
 `1. I tried: ...`
 `2. I expected: ...`
@@ -79,15 +80,15 @@ The controls (this is everything):
 | **Left mouse button on the ground + drag** | Grip the world and pan it |
 | **Left mouse button click** | Interact with the temple doorway, shrine choices, ritual symbols |
 | **Middle mouse button + drag** | Orbit the camera |
-| **Shift + left drag** | Orbit fallback |
-| **Option/Alt + left drag** | Orbit fallback if middle mouse is unreliable on this Mac |
+| **Shift + left drag** | Orbit fallback only |
+| **Option/Alt + left drag** | Orbit fallback only if middle mouse is unreliable on this Mac |
 | **Scroll wheel** | Zoom in/out |
 | **= / +** | Zoom in fallback |
 | **-** | Zoom out fallback |
 | **Draw a clockwise spiral with the hand** | Arms miracle-casting mode |
 | **After the spiral, draw a circle or zigzag** | Cast the learned miracle |
 | **R** | Reset camera to the safe default |
-| **Hold Space** | Debug arm fallback only when F3 diagnostics are open |
+| **F3, then Space** | Debug arm fallback only |
 | **Esc** | Safe release — gently drops anything, cancels any gesture |
 | **F3** | Ugly developer numbers overlay (not part of the game) |
 
