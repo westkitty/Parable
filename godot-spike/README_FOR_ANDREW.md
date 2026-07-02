@@ -78,7 +78,7 @@ Now the actual test, step by step:
 
 1. **Just move the mouse** for ten seconds. Does the hand feel like a
    body, or like a cursor?
-2. **Pan** by dragging the ground. **Orbit** with the right button.
+2. **Pan** by dragging the ground. **Orbit** with the middle mouse button.
    **Zoom** with the wheel. Try keeping the hand near a villager while
    orbiting around them.
 3. **Pick up a rock with the right button.** Carry it around. Set it down gently. Then pick
