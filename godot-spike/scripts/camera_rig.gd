@@ -59,6 +59,12 @@ func is_orbiting() -> bool:
 func orbit_modifier_active() -> bool:
 	return _orbit_fallback and not locked
 
+func simulate_orbit_drag(delta: Vector2) -> void:
+	rotation.y -= delta.x * ORBIT_SENS * control_scale
+	_pitch.rotation.x = clampf(
+		_pitch.rotation.x - delta.y * ORBIT_SENS * control_scale,
+		PITCH_MIN, PITCH_MAX)
+
 func _zoom(factor: float) -> void:
 	_dist_target = clampf(_dist_target * factor, DIST_MIN, DIST_MAX)
 	if factor < 1.0:

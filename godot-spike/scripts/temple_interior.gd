@@ -40,6 +40,9 @@ func enter(world: Node) -> void:
 func leave() -> void:
 	active = false
 
+func current_chamber() -> String:
+	return _facing
+
 func _unhandled_input(event: InputEvent) -> void:
 	if not active or _turning:
 		return
@@ -72,6 +75,7 @@ func _handle_click(screen_pos: Vector2) -> void:
 func _turn_to(yaw: float, facing: String) -> void:
 	_turning = true
 	_facing = facing
+	_refresh_markers()
 	var tw := create_tween()
 	tw.tween_property(_camera, "rotation:y", yaw, TURN_TIME) \
 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
@@ -97,6 +101,17 @@ func _refresh_contents() -> void:
 	# Glyph chamber: circle always lit; zigzag dim until learned.
 	var learned: bool = identity != null and identity.learned_bolt
 	_bolt_glyph_mat.emission_energy_multiplier = 2.6 if learned else 0.18
+	_refresh_markers()
+
+func focus_symbol_chamber() -> void:
+	_turn_to(deg_to_rad(90.0), "left")
+
+func focus_glyph_chamber() -> void:
+	_turn_to(deg_to_rad(-90.0), "right")
+
+func exit_requested() -> void:
+	if _world:
+		_world.exit_temple()
 
 func _build_chamber() -> void:
 	var stone := StandardMaterial3D.new()
@@ -233,6 +248,14 @@ func _marker(pos: Vector3, text: String) -> StandardMaterial3D:
 	label.position = pos + Vector3(0.0, 0.0, 0.01)
 	add_child(label)
 	return mat
+
+func _refresh_markers() -> void:
+	if _left_marker:
+		_left_marker.emission_energy_multiplier = 2.8 if _facing == "left" else 1.2
+	if _right_marker:
+		_right_marker.emission_energy_multiplier = 2.8 if _facing == "right" else 1.2
+	if _exit_marker:
+		_exit_marker.emission_energy_multiplier = 2.0 if _facing == "center" else 0.8
 
 func _hotspot(hname: String, pos: Vector3, size: Vector3) -> void:
 	var area := Area3D.new()

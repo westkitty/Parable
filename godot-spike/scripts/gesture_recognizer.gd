@@ -15,6 +15,7 @@ const MIN_PATH_LENGTH_PX := 110.0
 const SPIRAL_MIN_PATH_LENGTH_PX := 92.0
 const SPIRAL_MIN_ROTATION := -3.25
 const SPIRAL_MIN_RADIUS_SWING := 0.06
+const SPIRAL_TWO_LOOP_ROTATION := -10.0
 
 ## Returns {kind: "circle"|"zigzag"|"none", plus feature values for diagnostics}.
 static func classify(raw: PackedVector2Array) -> Dictionary:
@@ -70,6 +71,7 @@ static func detect_spiral(raw: PackedVector2Array) -> Dictionary:
 		"length": 0.0,
 		"radius_swing": 0.0,
 		"clockwise": false,
+		"loop_estimate": 0.0,
 	}
 	if raw.size() < MIN_POINTS:
 		return out
@@ -102,7 +104,9 @@ static func detect_spiral(raw: PackedVector2Array) -> Dictionary:
 	out.length = length
 	out.radius_swing = radius_swing
 	out.clockwise = rotation <= SPIRAL_MIN_ROTATION
-	if rotation <= SPIRAL_MIN_ROTATION and radius_swing >= SPIRAL_MIN_RADIUS_SWING:
+	out.loop_estimate = absf(rotation) / TAU
+	var two_loops := rotation <= SPIRAL_TWO_LOOP_ROTATION
+	if (rotation <= SPIRAL_MIN_ROTATION and radius_swing >= SPIRAL_MIN_RADIUS_SWING) or two_loops:
 		out.kind = "spiral"
 	return out
 

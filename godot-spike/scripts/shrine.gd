@@ -7,6 +7,7 @@ enum ShrineState { DORMANT, AWAKENED, TAUGHT }
 
 const LEARN_RADIUS := 8.0
 const OFFER_RADIUS := 4.0
+const OFFER_REJECT_RADIUS := 6.0
 
 var state: int = ShrineState.DORMANT
 
@@ -14,6 +15,8 @@ var _glyph_mat: StandardMaterial3D
 var _altar_point := Vector3.ZERO
 var _pulse: Tween
 var _reject_mat: StandardMaterial3D
+var _altar_mat: StandardMaterial3D
+var _last_reject := "-"
 
 func _ready() -> void:
 	add_to_group("shrine")
@@ -23,6 +26,9 @@ func _ready() -> void:
 
 func is_awakened() -> bool:
 	return state == ShrineState.AWAKENED
+
+func current_state_label() -> String:
+	return ["dormant", "awakened", "taught"][state]
 
 func altar_point() -> Vector3:
 	return global_position + Vector3(0.0, 1.05, 1.1)
@@ -38,6 +44,11 @@ func receive_offering(offering: Node) -> void:
 		return
 	offering.consume_at(altar_point())
 	state = ShrineState.AWAKENED
+	_last_reject = "-"
+	if _altar_mat:
+		_altar_mat.emission_enabled = true
+		_altar_mat.emission = Color(0.28, 1.0, 0.9)
+		_altar_mat.emission_energy_multiplier = 2.4
 	_pulse = create_tween().set_loops()
 	_pulse.tween_property(_glyph_mat, "emission_energy_multiplier", 3.2, 0.9) \
 		.set_trans(Tween.TRANS_SINE)
@@ -57,12 +68,28 @@ func teach(identity: Node, director: Node) -> void:
 	if director:
 		director.announce("bolt_learned", global_position)
 
-func reject_attempt() -> void:
+func reject_attempt(reason := "reject") -> void:
+	_last_reject = reason
 	if _reject_mat == null:
 		return
 	var tw := create_tween()
 	tw.tween_property(_reject_mat, "emission_energy_multiplier", 4.0, 0.12)
 	tw.tween_property(_reject_mat, "emission_energy_multiplier", 0.6, 0.35)
+	if _altar_mat:
+		var tw2 := create_tween()
+		tw2.tween_property(_altar_mat, "emission_energy_multiplier", 3.8, 0.1)
+		tw2.tween_property(_altar_mat, "emission_energy_multiplier", 0.5, 0.3)
+
+func process_offering_release(offering: Node, mode: String, at: Vector3) -> bool:
+	if offering == null or offering.display_name != "offering" or offering.consumed:
+		return false
+	var d := at.distance_to(altar_point())
+	if mode == "drop" and d <= OFFER_RADIUS:
+		receive_offering(offering)
+		return true
+	if d <= OFFER_REJECT_RADIUS:
+		reject_attempt("offering_" + mode)
+	return false
 
 func _build() -> void:
 	var stone := StandardMaterial3D.new()
@@ -70,7 +97,13 @@ func _build() -> void:
 	stone.roughness = 0.95
 
 	# Altar slab + two pillars + back stele carrying the glyph.
-	_block(Vector3(2.4, 0.5, 1.6), Vector3(0.0, 0.25, 1.1), stone)
+	_altar_mat = StandardMaterial3D.new()
+	_altar_mat.albedo_color = Color(0.54, 0.5, 0.46)
+	_altar_mat.roughness = 0.92
+	_altar_mat.emission_enabled = true
+	_altar_mat.emission = Color(0.2, 0.9, 0.82)
+	_altar_mat.emission_energy_multiplier = 0.5
+	_block(Vector3(2.4, 0.5, 1.6), Vector3(0.0, 0.25, 1.1), _altar_mat)
 	_block(Vector3(0.5, 2.6, 0.5), Vector3(-1.2, 1.3, -0.4), stone)
 	_block(Vector3(0.5, 2.6, 0.5), Vector3(1.2, 1.3, -0.4), stone)
 	_block(Vector3(2.9, 0.5, 0.7), Vector3(0.0, 2.85, -0.4), stone)

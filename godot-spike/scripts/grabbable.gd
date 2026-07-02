@@ -26,6 +26,8 @@ const HARD_LANDING_SPEED := 5.0
 const SURFACE_RECOVERY_MARGIN := 1.6
 const ABSOLUTE_FLOOR_Y := -12.0
 
+signal released(obj: Grabbable, mode: String, at: Vector3, speed: float)
+
 var mass_category: int = MassCategory.MEDIUM
 var display_name := "object"
 var hold_offset := Vector3(0.0, -0.7, 0.0)
@@ -36,10 +38,14 @@ var is_airborne := false
 var start_frozen := false
 var recovery_count := 0
 var last_recovery_reason := "-"
+var last_release_mode := "-"
+var last_release_speed := 0.0
+var recent_gentle_release := false
 
 var _hold_target := Vector3.ZERO
 var _wiggle_t := 0.0
 var _hover_mats: Array[StandardMaterial3D] = []
+var _held_visual := false
 
 func _ready() -> void:
 	add_to_group("grabbable")
@@ -78,19 +84,25 @@ func set_hold_target(pos: Vector3) -> void:
 
 func set_hover(on: bool) -> void:
 	for m in _hover_mats:
-		m.emission_energy_multiplier = 0.9 if on else 0.0
+		if _held_visual:
+			m.emission_energy_multiplier = 2.5
+		else:
+			m.emission_energy_multiplier = 0.9 if on else 0.0
 
 func begin_hold() -> void:
 	is_held = true
 	is_airborne = false
+	recent_gentle_release = false
 	freeze_mode = RigidBody3D.FREEZE_MODE_KINEMATIC
 	freeze = true
 	_hold_target = global_position + Vector3(0.0, ground_clearance + 0.35, 0.0)
+	set_held_visual(true)
 	_on_grabbed()
 
 ## velocity_world is the raw sampled hand velocity; class scaling happens here.
 func release(velocity_world: Vector3, throw_min_speed: float) -> void:
 	is_held = false
+	set_held_visual(false)
 	var v := velocity_world * float(THROW_MULTIPLIER[mass_category])
 	var cap := float(THROW_CLAMP[mass_category])
 	if v.length() > cap:
@@ -100,13 +112,21 @@ func release(velocity_world: Vector3, throw_min_speed: float) -> void:
 		freeze = true
 		linear_velocity = Vector3.ZERO
 		angular_velocity = Vector3.ZERO
+		last_release_mode = "drop"
+		last_release_speed = 0.0
+		recent_gentle_release = true
 		_on_released()
+		released.emit(self, "drop", global_position, 0.0)
 	else:
 		freeze = false
 		linear_velocity = v
 		angular_velocity = Vector3(randf() - 0.5, randf() - 0.5, randf() - 0.5) * 3.0
 		is_airborne = true
+		last_release_mode = "throw"
+		last_release_speed = v.length()
+		recent_gentle_release = false
 		_on_thrown(v)
+		released.emit(self, "throw", global_position, v.length())
 
 func clamp_above_ground(island: Node, xz_override := Vector2.INF) -> void:
 	if island == null:
@@ -126,6 +146,7 @@ func place_on_surface(island: Node, xz_override := Vector2.INF) -> void:
 	var px := global_position.x if xz_override == Vector2.INF else xz_override.x
 	var pz := global_position.z if xz_override == Vector2.INF else xz_override.y
 	global_position = Vector3(px, island.height_at(px, pz) + ground_clearance, pz)
+	recent_gentle_release = true
 
 func surface_height(island: Node) -> float:
 	if island == null:
@@ -142,6 +163,11 @@ func _guard_surface_recovery(island: Node) -> void:
 		place_on_surface(island)
 		if OS.is_stdout_verbose():
 			print("RECOVERED %s to surface at %.2f,%.2f" % [display_name, global_position.x, global_position.z])
+
+func set_held_visual(on: bool) -> void:
+	_held_visual = on
+	for m in _hover_mats:
+		m.emission_energy_multiplier = 2.5 if on else 0.0
 
 func _on_body_entered(_body: Node) -> void:
 	if not is_airborne:

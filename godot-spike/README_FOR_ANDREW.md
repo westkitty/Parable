@@ -18,6 +18,9 @@ If it complains Godot is missing, it will print the one install command
 (`brew install --cask godot`). Install, then run `./run.sh` again.
 
 If anything else goes wrong, run `./verify.sh` and send back what it prints.
+If the game launches but an interaction chain breaks, press `F3` and report:
+hovered object, held object, right-mouse state, last release mode, miracle armed,
+armed timer, last glyph result, shrine awake, offering distance, and temple chamber.
 
 ---
 

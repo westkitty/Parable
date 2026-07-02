@@ -58,6 +58,11 @@ func _ready() -> void:
 func scene_label() -> String:
 	return "temple" if _in_temple else "world"
 
+func current_temple_chamber() -> String:
+	if _interior and _in_temple and _interior.has_method("current_chamber"):
+		return _interior.current_chamber()
+	return "-"
+
 # --- Environment / placement -------------------------------------------------
 
 func _setup_environment() -> void:
@@ -137,21 +142,25 @@ func _spawn_cast() -> void:
 		parent.add_child(v)
 		v.global_position = p + Vector3(0.0, 0.85, 0.0)
 		v.home = v.global_position
+		_connect_release_contract(v)
 	# Rocks scattered.
 	for rp in [Vector2(0, 10), Vector2(-4, 8), Vector2(3, -3), Vector2(12, 0), Vector2(-2, -12)]:
 		var rock := RockScene.instantiate()
 		parent.add_child(rock)
 		rock.place_on_surface(_island, rp)
+		_connect_release_contract(rock)
 	# Trees anchored.
 	for tp in [Vector2(-6, 10), Vector2(14, 6), Vector2(-16, 2), Vector2(2, -16)]:
 		var tree := TreeScene.instantiate()
 		parent.add_child(tree)
 		tree.place_on_surface(_island, tp)
+		_connect_release_contract(tree)
 	# Offerings between village and shrine.
 	for op in [Vector2(-11.5, -2.0), Vector2(-14.2, -4.2)]:
 		var off := OfferingScene.instantiate()
 		parent.add_child(off)
 		off.place_on_surface(_island, op)
+		_connect_release_contract(off)
 
 func _build_fade_layer() -> void:
 	var layer := CanvasLayer.new()
@@ -189,6 +198,7 @@ func cast_glyph(kind: String, target: Vector3) -> bool:
 				MiracleFx.bolt(self, target)
 				director.announce("bolt", target)
 				return true
+			_shrine.reject_attempt("zigzag_locked")
 			return false
 	return false
 
@@ -310,3 +320,11 @@ func _fade_to(alpha: float, seconds: float) -> Signal:
 
 func _on_god_event(_kind: String, _pos: Vector3, _data: Dictionary) -> void:
 	pass   # villagers subscribe directly; hook kept for future world reactions
+
+func _connect_release_contract(obj: Node) -> void:
+	if obj and obj.has_signal("released") and not obj.released.is_connected(_on_grabbable_released):
+		obj.released.connect(_on_grabbable_released)
+
+func _on_grabbable_released(obj: Grabbable, mode: String, at: Vector3, _speed: float) -> void:
+	if obj.display_name == "offering":
+		_shrine.process_offering_release(obj, mode, at)

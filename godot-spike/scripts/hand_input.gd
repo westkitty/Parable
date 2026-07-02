@@ -20,8 +20,10 @@ const PRESS_HEIGHT := 0.45
 const RAY_LENGTH := 400.0
 const MIRACLE_POINT_STEP_PX := 8.0
 const MIRACLE_IDLE_RESET := 0.72
-const MIRACLE_GLYPH_TIMEOUT := 3.1
+const MIRACLE_GLYPH_TIMEOUT := 5.0
 const MIRACLE_ARM_WINDOW := 2.4
+const MIRACLE_ARMED_DURATION := 5.0
+const DEBUG_SPACE_ARM_DURATION := 5.0
 
 var enabled := true
 var state := "hover"
@@ -55,6 +57,9 @@ var _stroke_last_move_at := 0.0
 var _last_glyph := {"kind": "-", "rotation": 0.0, "closure": 1.0, "reversals": 0, "radius_swing": 0.0}
 var _last_throw_raw := 0.0
 var _last_throw_final := 0.0
+var _last_release_mode := "-"
+var _armed_until := 0.0
+var _miracle_debug_loops := 0.0
 
 func _ready() -> void:
 	add_to_group("divine_hand")
@@ -74,6 +79,8 @@ func _physics_process(delta: float) -> void:
 		_cancel_everything()
 
 	_miracle_override = Input.is_action_pressed("gesture_mode")
+	if _miracle_override and _diagnostics_visible():
+		_force_arm_for_debug()
 
 	_world_frame(mouse, delta)
 
@@ -237,17 +244,9 @@ func _release_held(force_gentle := false) -> void:
 	_rig.control_scale = 1.0
 	obj.clamp_above_ground(_island)
 
-	# Offering placed gently near the shrine → awaken the glyph.
-	var shrine := get_tree().get_first_node_in_group("shrine")
-	if obj.display_name == "offering" and _last_throw_raw < THROW_MIN_SPEED \
-			and shrine and shrine.within_offer_range(obj.global_position) \
-			and not obj.consumed:
-		shrine.receive_offering(obj)
-		_last_throw_final = 0.0
-		return
-
 	obj.release(v_world, THROW_MIN_SPEED)
 	_last_throw_final = obj.linear_velocity.length()
+	_last_release_mode = obj.last_release_mode
 
 func _cancel_everything() -> void:
 	# Esc never throws, never opens anything.
@@ -288,6 +287,11 @@ func _update_miracle_tracking(mouse: Vector2) -> void:
 		if (_time - _stroke_started_at > MIRACLE_ARM_WINDOW or _time - _stroke_last_move_at > MIRACLE_IDLE_RESET) and not _miracle_override:
 			_cancel_miracle(false)
 		return
+	if _time > _armed_until:
+		_cancel_miracle(false)
+		return
+	if _stroke_screen.is_empty():
+		return
 	if _time - _stroke_started_at > MIRACLE_GLYPH_TIMEOUT:
 		_finish_stroke()
 		return
@@ -297,6 +301,8 @@ func _update_miracle_tracking(mouse: Vector2) -> void:
 func _arm_miracle(spiral: Dictionary) -> void:
 	_miracle_armed = true
 	state = "miracle"
+	_armed_until = _time + MIRACLE_ARMED_DURATION
+	_miracle_debug_loops = spiral.get("loop_estimate", 0.0)
 	_last_glyph = {
 		"kind": "spiral",
 		"rotation": spiral.get("rotation", 0.0),
@@ -314,6 +320,16 @@ func _arm_miracle(spiral: Dictionary) -> void:
 		_trace.set_armed_feedback()
 	if _visual:
 		_visual.set_miracle_armed(true)
+
+func _force_arm_for_debug() -> void:
+	if _miracle_armed:
+		_armed_until = maxf(_armed_until, _time + DEBUG_SPACE_ARM_DURATION)
+		return
+	_arm_miracle({
+		"rotation": -TAU,
+		"radius_swing": 0.2,
+		"loop_estimate": 1.0,
+	})
 
 func _finish_stroke() -> void:
 	var result := GestureRecognizer.classify(_stroke_screen)
@@ -338,6 +354,8 @@ func _cancel_miracle(with_fail_fx: bool) -> void:
 	elif not with_fail_fx and _trace and not _stroke_screen.is_empty() and not _miracle_armed:
 		_trace.clear_now()
 	_miracle_armed = false
+	_armed_until = 0.0
+	_miracle_debug_loops = 0.0
 	if _visual:
 		_visual.set_miracle_armed(false)
 	if state == "miracle":
@@ -353,23 +371,55 @@ func _cancel_miracle(with_fail_fx: bool) -> void:
 func is_carrying() -> bool:
 	return _held != null
 
+func debug_is_right_mouse_down() -> bool:
+	return Input.is_action_pressed("grab_action")
+
+func simulate_grab(obj: Node) -> bool:
+	if obj == null:
+		return false
+	_begin_carry(obj)
+	return _held == obj
+
+func simulate_release_for_test(world_velocity: Vector3, force_gentle := false) -> void:
+	if _held == null:
+		return
+	_sampler.clear()
+	_sampler.add_sample(Vector3.ZERO, 0.0)
+	_sampler.add_sample(_rig.global_transform.basis.inverse() * world_velocity * 0.1, 0.1)
+	_release_held(force_gentle)
+
+func simulate_arm_for_test() -> void:
+	_force_arm_for_debug()
+
+func simulate_glyph_for_test(kind: String, target: Vector3) -> bool:
+	_miracle_armed = true
+	_armed_until = _time + MIRACLE_ARMED_DURATION
+	return _world.cast_glyph(kind, target) if _world else false
+
+func armed_timer_remaining() -> float:
+	return maxf(_armed_until - _time, 0.0)
+
 func get_debug() -> Dictionary:
 	return {
 		"state": state,
 		"hovered": _hovered.display_name if (_hovered != null and is_instance_valid(_hovered)) else "-",
 		"held": _held.display_name if (_held != null and is_instance_valid(_held)) else "-",
 		"held_mass": ["light", "medium", "heavy"][_held.mass_category] if (_held != null and is_instance_valid(_held)) else "-",
+		"right_mouse_down": debug_is_right_mouse_down(),
 		"hand_speed": _current_hand_speed(),
 		"last_throw_raw": _last_throw_raw,
 		"last_throw_final": _last_throw_final,
+		"last_release_mode": _last_release_mode,
 		"gesture_mode": _miracle_armed or _miracle_override,
 		"trace_length": _stroke_length,
 		"trace_armed": _miracle_armed,
+		"armed_timer": armed_timer_remaining(),
 		"glyph_kind": _last_glyph.get("kind", "-"),
 		"glyph_rotation": _last_glyph.get("rotation", 0.0),
 		"glyph_closure": _last_glyph.get("closure", 0.0),
 		"glyph_reversals": _last_glyph.get("reversals", 0),
 		"glyph_radius_swing": _last_glyph.get("radius_swing", 0.0),
+		"glyph_loops": _miracle_debug_loops,
 	}
 
 # --- Internals ---------------------------------------------------------------
@@ -415,3 +465,7 @@ func _set_hovered(obj: Node) -> void:
 	_hovered = obj
 	if _hovered != null:
 		_hovered.set_hover(true)
+
+func _diagnostics_visible() -> bool:
+	var diag := get_tree().get_first_node_in_group("diagnostics")
+	return diag != null and diag.visible
