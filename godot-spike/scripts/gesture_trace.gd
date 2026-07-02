@@ -3,7 +3,7 @@ extends Node3D
 ## emissive motes along the hand path. Success flares gold; failure calmly
 ## dissolves into drifting sparks — the world absorbing an unaccepted mark.
 
-const MOTE_SPACING := 0.22
+const MOTE_SPACING := 0.14
 
 var _motes: Array[MeshInstance3D] = []
 var _mat: StandardMaterial3D
@@ -15,10 +15,10 @@ func _ready() -> void:
 func begin() -> void:
 	_clear()
 	_mat = StandardMaterial3D.new()
-	_mat.albedo_color = Color(1.0, 0.9, 0.55)
+	_mat.albedo_color = Color(1.0, 0.96, 0.72)
 	_mat.emission_enabled = true
-	_mat.emission = Color(1.0, 0.82, 0.4)
-	_mat.emission_energy_multiplier = 2.4
+	_mat.emission = Color(1.0, 0.86, 0.45)
+	_mat.emission_energy_multiplier = 3.6
 	_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	_last_point = Vector3.INF
 
@@ -37,8 +37,8 @@ func add_point(world_pos: Vector3) -> void:
 	_last_point = world_pos
 	var mote := MeshInstance3D.new()
 	var mesh := SphereMesh.new()
-	mesh.radius = 0.075
-	mesh.height = 0.15
+	mesh.radius = 0.1
+	mesh.height = 0.2
 	mote.mesh = mesh
 	mote.material_override = _mat
 	add_child(mote)

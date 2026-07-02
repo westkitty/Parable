@@ -96,7 +96,7 @@ else
 fi
 
 section "8. Runbook cross-check"
-for term in "./run.sh" "Right mouse button" "Left mouse button" "Middle mouse button" "Esc" "F3" "Scroll wheel" ; do
+for term in "./run.sh" "Right mouse button" "Left mouse button" "Middle mouse button" "Shift + left drag" "Option/Alt + left drag" "R" "Esc" "F3" "Scroll wheel" ; do
   grep -qi -- "$term" README_FOR_ANDREW.md && ok "runbook mentions: $term" || fail "runbook missing: $term"
 done
 

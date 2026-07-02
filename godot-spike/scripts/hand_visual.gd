@@ -12,6 +12,7 @@ var _curl_target := 0.15
 var _thumb_target := 0.2
 var _tilt_target := 0.0
 var _spread_target := 1.0
+var _candidate_tracking := false
 
 func _ready() -> void:
 	var skin := StandardMaterial3D.new()
@@ -86,7 +87,15 @@ func _targets(curl: float, thumb: float, tilt: float, spread: float) -> void:
 func set_miracle_armed(on: bool) -> void:
 	for mat in _skin_mats:
 		mat.emission_energy_multiplier = 0.9 if on else 0.12
-	_aura.light_energy = 1.9 if on else 0.0
+	_aura.light_energy = 1.9 if on else (0.45 if _candidate_tracking else 0.0)
+
+func set_tracking_feedback(on: bool) -> void:
+	_candidate_tracking = on
+	if _aura.light_energy < 1.9:
+		_aura.light_energy = 0.45 if on else 0.0
+
+func grip_socket_world(local_offset: Vector3) -> Vector3:
+	return to_global(local_offset)
 
 func _process(delta: float) -> void:
 	var k := 1.0 - exp(-12.0 * delta)

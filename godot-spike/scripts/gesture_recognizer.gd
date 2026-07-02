@@ -7,15 +7,15 @@ extends RefCounted
 ## is conceptually informed by the old prototype's analyzeGesture; no code
 ## is ported. Everything here is tunable, debuggable plain geometry.
 
-const RESAMPLE_COUNT := 36
-const SPIRAL_RESAMPLE_COUNT := 40
+const RESAMPLE_COUNT := 32
+const SPIRAL_RESAMPLE_COUNT := 36
 const MIN_POINTS := 6
-const MIN_SIZE_PX := 26.0
-const MIN_PATH_LENGTH_PX := 110.0
-const SPIRAL_MIN_PATH_LENGTH_PX := 92.0
-const SPIRAL_MIN_ROTATION := -3.25
-const SPIRAL_MIN_RADIUS_SWING := 0.06
-const SPIRAL_TWO_LOOP_ROTATION := -10.0
+const MIN_SIZE_PX := 22.0
+const MIN_PATH_LENGTH_PX := 86.0
+const SPIRAL_MIN_PATH_LENGTH_PX := 64.0
+const SPIRAL_MIN_ROTATION := -2.2
+const SPIRAL_MIN_RADIUS_SWING := 0.015
+const SPIRAL_TWO_LOOP_ROTATION := -8.2
 
 ## Returns {kind: "circle"|"zigzag"|"none", plus feature values for diagnostics}.
 static func classify(raw: PackedVector2Array) -> Dictionary:
@@ -51,14 +51,14 @@ static func classify(raw: PackedVector2Array) -> Dictionary:
 
 	# Circle: roughly one full turn, nearly closed, roughly round.
 	var aspect := w / h
-	if absf(rotation) > 3.9 and absf(rotation) < 9.2 \
-			and closure < 0.66 and aspect > 0.38 and aspect < 2.6:
+	if absf(rotation) > 3.1 and absf(rotation) < 10.4 \
+			and closure < 0.9 and aspect > 0.32 and aspect < 3.1:
 		out.kind = "circle"
 		return out
 
 	# Vertical zigzag: taller than wide, several horizontal direction
 	# reversals, long path, and no net rotation build-up.
-	if h > w * 0.65 and reversals >= 2 and length > h * 1.1 and absf(rotation) < 5.2:
+	if h > w * 0.5 and reversals >= 2 and length > h * 0.92 and absf(rotation) < 6.2:
 		out.kind = "zigzag"
 		return out
 
@@ -106,7 +106,8 @@ static func detect_spiral(raw: PackedVector2Array) -> Dictionary:
 	out.clockwise = rotation <= SPIRAL_MIN_ROTATION
 	out.loop_estimate = absf(rotation) / TAU
 	var two_loops := rotation <= SPIRAL_TWO_LOOP_ROTATION
-	if (rotation <= SPIRAL_MIN_ROTATION and radius_swing >= SPIRAL_MIN_RADIUS_SWING) or two_loops:
+	var sloppy_clockwise := rotation <= -1.8 and length >= SPIRAL_MIN_PATH_LENGTH_PX * 1.25
+	if (rotation <= SPIRAL_MIN_ROTATION and radius_swing >= SPIRAL_MIN_RADIUS_SWING) or two_loops or sloppy_clockwise:
 		out.kind = "spiral"
 	return out
 

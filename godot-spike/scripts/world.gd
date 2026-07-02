@@ -31,11 +31,14 @@ var _ritual_started := false
 var _village_stone: Node3D
 var _symbol_choices: Array[Node] = []
 var _symbol_pick := ""
+var _mouse_hidden_requested := false
 
 signal _symbol_picked(id: String)
 
 func _ready() -> void:
 	add_to_group("world")
+	Input.set_mouse_mode(Input.MOUSE_MODE_HIDDEN)
+	_mouse_hidden_requested = true
 	identity = get_node_or_null("/root/GodIdentity")
 	if identity == null:
 		# Headless test path: no autoload registration, create a local one.
@@ -54,6 +57,12 @@ func _ready() -> void:
 	_spawn_cast()
 	_build_fade_layer()
 	director.god_event.connect(_on_god_event)
+
+func _exit_tree() -> void:
+	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
+
+func mouse_hidden_for_play() -> bool:
+	return _mouse_hidden_requested
 
 func scene_label() -> String:
 	return "temple" if _in_temple else "world"
@@ -156,7 +165,7 @@ func _spawn_cast() -> void:
 		tree.place_on_surface(_island, tp)
 		_connect_release_contract(tree)
 	# Offerings between village and shrine.
-	for op in [Vector2(-11.5, -2.0), Vector2(-14.2, -4.2)]:
+	for op in [Vector2(-12.0, -4.6), Vector2(-10.6, -6.0)]:
 		var off := OfferingScene.instantiate()
 		parent.add_child(off)
 		off.place_on_surface(_island, op)

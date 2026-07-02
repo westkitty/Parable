@@ -5,9 +5,10 @@ extends StaticBody3D
 
 enum ShrineState { DORMANT, AWAKENED, TAUGHT }
 
-const LEARN_RADIUS := 8.0
-const OFFER_RADIUS := 4.0
-const OFFER_REJECT_RADIUS := 6.0
+const LEARN_RADIUS := 9.0
+const OFFER_RADIUS := 5.4
+const OFFER_REJECT_RADIUS := 7.0
+const PREVIEW_RADIUS := 8.0
 
 var state: int = ShrineState.DORMANT
 
@@ -17,12 +18,29 @@ var _pulse: Tween
 var _reject_mat: StandardMaterial3D
 var _altar_mat: StandardMaterial3D
 var _last_reject := "-"
+var _drop_ring: MeshInstance3D
+var _drop_label: Label3D
 
 func _ready() -> void:
 	add_to_group("shrine")
 	collision_layer = 1
 	collision_mask = 0
 	_build()
+
+func _process(delta: float) -> void:
+	var hand := get_tree().get_first_node_in_group("divine_hand")
+	var preview := false
+	if hand and hand.has_method("held_object_name") and hand.held_object_name() == "offering":
+		preview = hand.global_position.distance_to(altar_point()) <= PREVIEW_RADIUS
+	if _drop_ring:
+		_drop_ring.visible = preview
+		_drop_ring.rotation.y += delta * 0.8
+	if _drop_label:
+		_drop_label.visible = preview
+	if preview and _altar_mat:
+		_altar_mat.emission_energy_multiplier = maxf(_altar_mat.emission_energy_multiplier, 2.2 if state == ShrineState.DORMANT else 2.8)
+	if preview and _glyph_mat and state == ShrineState.DORMANT:
+		_glyph_mat.emission_energy_multiplier = maxf(_glyph_mat.emission_energy_multiplier, 1.2)
 
 func is_awakened() -> bool:
 	return state == ShrineState.AWAKENED
@@ -107,6 +125,31 @@ func _build() -> void:
 	_altar_mat.emission = Color(0.2, 0.9, 0.82)
 	_altar_mat.emission_energy_multiplier = 0.5
 	_block(Vector3(2.4, 0.5, 1.6), Vector3(0.0, 0.25, 1.1), _altar_mat)
+	_drop_ring = MeshInstance3D.new()
+	var torus := TorusMesh.new()
+	torus.inner_radius = 1.45
+	torus.outer_radius = 1.78
+	_drop_ring.mesh = torus
+	var ring_mat := StandardMaterial3D.new()
+	ring_mat.albedo_color = Color(0.3, 0.95, 0.88, 0.7)
+	ring_mat.emission_enabled = true
+	ring_mat.emission = Color(0.3, 1.0, 0.92)
+	ring_mat.emission_energy_multiplier = 3.2
+	ring_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	_drop_ring.material_override = ring_mat
+	_drop_ring.position = Vector3(0.0, 0.42, 1.1)
+	_drop_ring.rotation_degrees.x = 90.0
+	_drop_ring.visible = false
+	add_child(_drop_ring)
+	_drop_label = Label3D.new()
+	_drop_label.text = "PLACE"
+	_drop_label.font_size = 88
+	_drop_label.pixel_size = 0.01
+	_drop_label.modulate = Color(0.75, 1.0, 0.95)
+	_drop_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	_drop_label.position = Vector3(0.0, 1.6, 1.8)
+	_drop_label.visible = false
+	add_child(_drop_label)
 	_block(Vector3(0.5, 2.6, 0.5), Vector3(-1.2, 1.3, -0.4), stone)
 	_block(Vector3(0.5, 2.6, 0.5), Vector3(1.2, 1.3, -0.4), stone)
 	_block(Vector3(2.9, 0.5, 0.7), Vector3(0.0, 2.85, -0.4), stone)

@@ -18,9 +18,9 @@ const THROW_CLAMP := {
 	MassCategory.HEAVY: 8.0,
 }
 const CARRY_LAG := {
-	MassCategory.LIGHT: 14.0,
-	MassCategory.MEDIUM: 10.0,
-	MassCategory.HEAVY: 6.0,
+	MassCategory.LIGHT: 28.0,
+	MassCategory.MEDIUM: 22.0,
+	MassCategory.HEAVY: 16.0,
 }
 const HARD_LANDING_SPEED := 5.0
 const SURFACE_RECOVERY_MARGIN := 1.6
@@ -31,6 +31,8 @@ signal released(obj: Grabbable, mode: String, at: Vector3, speed: float)
 var mass_category: int = MassCategory.MEDIUM
 var display_name := "object"
 var hold_offset := Vector3(0.0, -0.7, 0.0)
+var pick_anchor_offset := Vector3.ZERO
+var hover_screen_radius := 54.0
 var ground_clearance := 0.7
 var held_wiggle_amp := 0.0
 var is_held := false
@@ -82,12 +84,12 @@ func _physics_process(delta: float) -> void:
 func set_hold_target(pos: Vector3) -> void:
 	_hold_target = pos
 
+func pick_anchor_point() -> Vector3:
+	return global_position + pick_anchor_offset
+
 func set_hover(on: bool) -> void:
 	for m in _hover_mats:
-		if _held_visual:
-			m.emission_energy_multiplier = 2.5
-		else:
-			m.emission_energy_multiplier = 0.9 if on else 0.0
+		m.emission_energy_multiplier = 0.9 if on else 0.0
 
 func begin_hold() -> void:
 	is_held = true
@@ -95,7 +97,7 @@ func begin_hold() -> void:
 	recent_gentle_release = false
 	freeze_mode = RigidBody3D.FREEZE_MODE_KINEMATIC
 	freeze = true
-	_hold_target = global_position + Vector3(0.0, ground_clearance + 0.35, 0.0)
+	_hold_target = global_position
 	set_held_visual(true)
 	_on_grabbed()
 
@@ -166,8 +168,8 @@ func _guard_surface_recovery(island: Node) -> void:
 
 func set_held_visual(on: bool) -> void:
 	_held_visual = on
-	for m in _hover_mats:
-		m.emission_energy_multiplier = 2.5 if on else 0.0
+	if on:
+		set_hover(false)
 
 func _on_body_entered(_body: Node) -> void:
 	if not is_airborne:

@@ -40,9 +40,12 @@ func snapshot_lines() -> Array[String]:
 		lines.append("right mouse down: %s" % str(d.get("right_mouse_down", false)))
 		lines.append("hand velocity: %.2f m/s" % d.get("hand_speed", 0.0))
 		lines.append("last throw: %.2f raw -> %.2f clamped" % [d.get("last_throw_raw", 0.0), d.get("last_throw_final", 0.0)])
+		lines.append("last throw vec: %s" % str(d.get("last_throw_vector", Vector3.ZERO)))
 		lines.append("last release mode: %s" % d.get("last_release_mode", "-"))
+		lines.append("last release speed: %.2f" % d.get("last_release_speed", 0.0))
 		lines.append("gesture mode: %s" % str(d.get("gesture_mode", false)))
 		lines.append("miracle armed: %s timer %.2f" % [str(d.get("trace_armed", false)), d.get("armed_timer", 0.0)])
+		lines.append("cast result: %s" % d.get("cast_result", "-"))
 		lines.append("trace: len %.1f loops %.2f" % [d.get("trace_length", 0.0), d.get("glyph_loops", 0.0)])
 		lines.append("last glyph: %s (rot %.2f, closure %.2f, reversals %d, radius %.2f)" % [
 			d.get("glyph_kind", "-"), d.get("glyph_rotation", 0.0),

@@ -32,7 +32,9 @@ func _configure() -> void:
 	mass_category = MassCategory.LIGHT
 	mass = 9.0
 	display_name = "villager"
-	hold_offset = Vector3(0.0, -0.16, 0.0)
+	hold_offset = Vector3(0.0, -0.6, -0.08)
+	pick_anchor_offset = Vector3(0.0, 0.78, 0.0)
+	hover_screen_radius = 58.0
 	ground_clearance = 0.85
 	held_wiggle_amp = 0.06
 	start_frozen = true

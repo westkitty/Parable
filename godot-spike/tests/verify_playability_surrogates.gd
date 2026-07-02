@@ -24,6 +24,7 @@ func _run() -> void:
 	var shrine: Node = main.get_node("Shrine")
 	var diagnostics: CanvasLayer = main.get_node("DevDiagnostics")
 
+	_check(main.mouse_hidden_for_play() == true, "cursor hide call path exists in world boot path")
 	await _assert_stable_hold_and_release_modes(hand)
 	await _assert_throw_threshold_edges(hand)
 	await _assert_camera_motion_preserves_hold(hand, rig)
@@ -48,10 +49,15 @@ func _assert_stable_hold_and_release_modes(hand: Node) -> void:
 		if obj == null:
 			continue
 		_check(hand.simulate_grab(obj), "%s simulated grab succeeds" % kind)
+		_check(obj.pick_anchor_offset != Vector3.ZERO, "%s pick anchor offset configured" % kind)
+		_check(obj.hover_screen_radius <= 80.0, "%s pickup radius is not absurdly large" % kind)
+		_check(obj.hold_offset != Vector3(0.0, -0.7, 0.0), "%s hold socket differs from default" % kind)
+		var color_before := _mesh_color(obj)
 		for _i in 5:
 			await physics_frame
 		_check(hand.is_carrying(), "%s remains held across physics frames" % kind)
 		_check(obj.is_held == true, "%s owner state remains held" % kind)
+		_check(_mesh_color(obj) == color_before, "%s held state does not recolor base material" % kind)
 		hand.simulate_release_for_test(Vector3.ZERO, true)
 		for _i in 2:
 			await physics_frame
@@ -97,6 +103,31 @@ func _assert_camera_motion_preserves_hold(hand: Node, rig: Node) -> void:
 	_check(absf(float(before.dist) - float(after.dist)) > 0.001, "camera zoom changes distance target")
 	_check(hand.is_carrying(), "camera motion does not drop held object")
 	_check(rock.is_held == true, "camera motion does not corrupt held object state")
+	var fallback_press := InputEventMouseButton.new()
+	fallback_press.button_index = MOUSE_BUTTON_LEFT
+	fallback_press.pressed = true
+	fallback_press.shift_pressed = true
+	rig._unhandled_input(fallback_press)
+	_check(rig.is_orbiting(), "shift + left orbit fallback activates")
+	var fallback_release := InputEventMouseButton.new()
+	fallback_release.button_index = MOUSE_BUTTON_LEFT
+	fallback_release.pressed = false
+	fallback_release.shift_pressed = true
+	rig._unhandled_input(fallback_release)
+	var alt_press := InputEventMouseButton.new()
+	alt_press.button_index = MOUSE_BUTTON_LEFT
+	alt_press.pressed = true
+	alt_press.alt_pressed = true
+	rig._unhandled_input(alt_press)
+	_check(rig.is_orbiting(), "alt + left orbit fallback activates")
+	var alt_release := InputEventMouseButton.new()
+	alt_release.button_index = MOUSE_BUTTON_LEFT
+	alt_release.pressed = false
+	alt_release.alt_pressed = true
+	rig._unhandled_input(alt_release)
+	rig.reset_to_safe_default()
+	var reset_state: Dictionary = rig.save_state()
+	_check(absf(float(reset_state.yaw)) < 0.001 and absf(float(reset_state.dist) - 26.0) < 0.01, "camera reset returns to safe default")
 	hand.simulate_release_for_test(Vector3.ZERO, true)
 	await physics_frame
 
@@ -118,6 +149,7 @@ func _assert_safe_cancel_clears_state(hand: Node) -> void:
 
 func _assert_shrine_release_contract(hand: Node, main: Node, shrine: Node) -> void:
 	var offerings := _find_grabbables("offering")
+	_check(shrine.within_offer_range(shrine.altar_point() + Vector3(4.8, 0.0, 0.0)), "shrine offering radius is generous")
 	var gentle := offerings[0] if not offerings.is_empty() else null
 	_check(gentle != null, "offering exists for gentle shrine contract")
 	if gentle != null:
@@ -171,6 +203,10 @@ func _assert_temple_and_diagnostics_contract(main: Node, diagnostics: CanvasLaye
 	_check(text.contains("nearest offering dist:"), "diagnostics expose offering distance")
 	_check(text.contains("temple chamber: right"), "diagnostics expose temple chamber")
 	_check(text.contains("camera:"), "diagnostics expose camera state")
+	var label_texts := _label_texts(temple)
+	_check("SYMBOL" in label_texts, "temple exposes SYMBOL label")
+	_check("GLYPHS" in label_texts, "temple exposes GLYPHS label")
+	_check("EXIT" in label_texts, "temple exposes EXIT label")
 	shrine.state = shrine.ShrineState.DORMANT
 	main._in_temple = false
 	temple.leave()
@@ -198,6 +234,19 @@ func _spawn_test_offering(main: Node) -> Node:
 	offering.place_on_surface(main.get_node("Island"), Vector2(-9.0, -3.0))
 	main._connect_release_contract(offering)
 	return offering
+
+func _mesh_color(node: Node) -> Color:
+	for child in node.get_children():
+		if child is MeshInstance3D and child.material_override is StandardMaterial3D:
+			return child.material_override.albedo_color
+	return Color.BLACK
+
+func _label_texts(node: Node) -> Array[String]:
+	var out: Array[String] = []
+	for child in node.get_children():
+		if child is Label3D:
+			out.append(child.text)
+	return out
 
 func _check(cond: bool, label: String) -> void:
 	if cond:

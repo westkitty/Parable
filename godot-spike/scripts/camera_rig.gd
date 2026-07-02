@@ -9,7 +9,10 @@ const PITCH_MAX := deg_to_rad(-15.0)
 const DIST_MIN := 7.0
 const DIST_MAX := 55.0
 const ZOOM_FACTOR := 1.12
-const ZOOM_PULL := 0.18
+const ZOOM_PULL := 0.3
+const DEFAULT_POS := Vector3(0.0, 6.0, 3.5)
+const DEFAULT_PITCH := -56.0
+const DEFAULT_DIST := 26.0
 
 var camera: Camera3D
 var locked := false            # true during gesture drawing + temple transitions
@@ -20,16 +23,18 @@ var _pitch: Node3D
 var _dist_target := 26.0
 var _orbiting := false
 var _orbit_fallback := false
+var _default_state := {}
 
 func _ready() -> void:
 	add_to_group("camera_rig")
 	_pitch = $Pitch
 	camera = $Pitch/Camera3D
-	position = Vector3(0.0, 6.0, 3.5)
-	_pitch.rotation.x = deg_to_rad(-56.0)
+	position = DEFAULT_POS
+	_pitch.rotation.x = deg_to_rad(DEFAULT_PITCH)
 	camera.position = Vector3(0.0, 0.0, dist)
 	camera.far = 300.0
 	_dist_target = dist
+	_default_state = save_state()
 
 func _process(delta: float) -> void:
 	dist = lerpf(dist, _dist_target, 1.0 - exp(-10.0 * delta))
@@ -41,8 +46,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_MIDDLE:
 			_orbiting = event.pressed
-		elif event.button_index == MOUSE_BUTTON_LEFT and event.alt_pressed:
-			_orbit_fallback = event.pressed
+		elif event.button_index == MOUSE_BUTTON_LEFT:
+			_orbit_fallback = event.pressed and (event.alt_pressed or event.shift_pressed)
 		elif event.pressed and event.button_index == MOUSE_BUTTON_WHEEL_UP:
 			_zoom(1.0 / ZOOM_FACTOR)
 		elif event.pressed and event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
@@ -52,12 +57,20 @@ func _unhandled_input(event: InputEvent) -> void:
 		_pitch.rotation.x = clampf(
 			_pitch.rotation.x - event.relative.y * ORBIT_SENS * control_scale,
 			PITCH_MIN, PITCH_MAX)
+	elif event is InputEventKey and event.pressed and not event.echo:
+		match event.keycode:
+			KEY_R:
+				reset_to_safe_default()
+			KEY_EQUAL, KEY_PLUS, KEY_KP_ADD:
+				_zoom(1.0 / ZOOM_FACTOR)
+			KEY_MINUS, KEY_KP_SUBTRACT:
+				_zoom(ZOOM_FACTOR)
 
 func is_orbiting() -> bool:
 	return (_orbiting or _orbit_fallback) and not locked
 
 func orbit_modifier_active() -> bool:
-	return _orbit_fallback and not locked
+	return (Input.is_key_pressed(KEY_SHIFT) or Input.is_key_pressed(KEY_ALT) or _orbit_fallback) and not locked
 
 func simulate_orbit_drag(delta: Vector2) -> void:
 	rotation.y -= delta.x * ORBIT_SENS * control_scale
@@ -84,6 +97,9 @@ func pan_by(offset: Vector3) -> void:
 	position += Vector3(offset.x, 0.0, offset.z)
 	position.x = clampf(position.x, -40.0, 40.0)
 	position.z = clampf(position.z, -40.0, 40.0)
+
+func reset_to_safe_default() -> void:
+	restore_state(_default_state)
 
 ## Ray from the active camera through a screen position.
 func screen_ray(screen_pos: Vector2) -> Array:
