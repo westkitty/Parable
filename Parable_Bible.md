@@ -392,3 +392,82 @@ State After Completion:
 Next Step / Handoff:
 - Future Fable work should synthesize these entries into a rewrite-ready design plan, not code.
 - The next artifact should be a Fable-ready context packet or prompt for a `Parable Direct Godhood Rewrite Plan`, focused on hand controls, miracle access, first-five-minutes birth-of-god opening, golem macro boundaries, and a vertical slice architecture.
+
+### Entry 7 - Miracle discovery and shrine progression doctrine
+
+Summary:
+- Captured the miracle discovery/progression model: miracles and their upgrades should be found in the world through old-god shrines, glyph motifs, environmental rituals, and player tracing, rather than primarily unlocked through quest rewards.
+
+Reason / Intent:
+- The user identified found miracles as a beloved Black & White-like element that should be expanded.
+- Parable's world has had gods for a very long time; many gods existed, left marks, and eventually vanished or lost power.
+- Miracle discovery should make the world feel ancient, sacred, and investigable instead of using a generic quest-unlock or level-up menu.
+
+Files Changed:
+- `Parable_Bible.md`
+
+Commands Run:
+```text
+GitHub connector update_file was used to append this ledger entry to `Parable_Bible.md` on `main`.
+```
+
+Command Intent:
+- Preserve the miracle discovery, upgrade, shrine, village-temple, object-grabbing, golem-pathing, and first-rival-god doctrine before Fable rewrite planning.
+
+Outputs Generated:
+- Additive project bible entry defining miracle acquisition, upgrade tiers, starting miracles, shrine bonuses, village temples, draggable object classes, golem path teaching, and first rival-god reveal direction.
+
+Decisions:
+- Miracles should often be discovered in the world, not simply awarded by quests.
+- Ancient/older-god shrines throughout islands can contain gesture glyphs as part of their motif, giving the player visual access to a miracle's required symbol.
+- Discovery should involve an interactive environmental ritual or puzzle. Example: a lightning shrine near a perpetual storm could require carrying metal, ore, or a pole to a clear altar, causing lightning to strike and awaken the glyph.
+- Once a shrine glyph is awakened, the player should trace the glyph to learn the miracle.
+- Miracles should have upgrade tiers. It is more important to support strong core miracles with upgrades than to create dozens of separate miracles.
+- First core miracle family should start with four candidates: Healing, Rain, Fireball, and one undecided fourth miracle.
+- The player should start with only one miracle, determined by the opening dream/character-direction input. A destructive dream can funnel toward Fireball; a flood/storm dream can funnel toward Rain; a plague-rescue dream can funnel toward Healing; the fourth path remains undecided.
+- Other starting miracles should be discoverable nearby as part of the tutorial island's learning structure.
+- Miracle upgrades should be found throughout the worlds through shrines/glyphs, then retained permanently after being learned.
+- Once the player learns how to upgrade a miracle, building a compatible shrine on an island should grant island-local benefits such as cheaper casting near/on that island.
+- Upgrade shrines should be expensive enough to incentivize meaningful construction choices, but learned upgrades should not disappear when the player leaves an island.
+- Building shrines should contribute to the living world; abandoning or moving beyond an island should not erase the player's learned progress.
+- Each village can have a temple. Destroying a village temple means the god in charge loses that village. This replaces the single-central-temple problem and avoids forcing villagers to wander huge distances to one global temple.
+- The hand should be able to grab villagers, rocks, trees, food, wood, shrine objects, golems, enemies, and golem parts.
+- Buildings should be placeable, but not freely grabbable without major damage; grabbing or wrenching a building should be destructive or exceptional.
+- Sculpting and terrain chunk manipulation are desirable as miracle-tier powers, but implementation feasibility remains open.
+- Golem programming should include teach-by-demonstration and direct path drawing: the player can click/select a golem and literally draw the line/path it will walk.
+- Golem behavior should avoid spreadsheet-like rule editing.
+- First rival-god reveal can occur during an old-god shrine activation: while the player is working to awaken a compelling glyph, another god appears, steals or seizes the opportunity, and defeats or humiliates the player enough to establish threat.
+- Black & White-like control specificity must be documented in extreme detail.
+- Mouse-first control proof is required. Touch parity is desirable but not expected to be reliable or equal at first.
+
+Doctrine:
+```text
+Parable's miracle progression should be archaeological and sacred. The world is full of old gods, dead gods, forgotten gods, and their shrines. Miracles and upgrades are discovered by reading shrine glyphs, solving physical environmental rituals, awakening symbols, and tracing the glyph with the divine hand. The game should prefer a small set of strong miracles with upgrade tiers over dozens of shallow miracles. The player begins with one dream-seeded miracle, then discovers nearby tutorial miracles before encountering older, stranger, and more contested shrine knowledge across islands. Learned miracles and upgrades persist, while compatible island shrines provide local bonuses such as cheaper casting. Village temples define village allegiance: if a god's village temple is destroyed, that god loses the village.
+```
+
+Bugs / Blockers:
+- No gameplay implementation was changed in this entry.
+- Current prototype does not yet support shrine-based miracle discovery, environmental glyph puzzles, miracle upgrades, village temples, destructive building grabbing, terrain-sculpting miracle tiers, or path-drawn golem macros.
+
+Open Questions Raised:
+- What is the fourth starter miracle family alongside Healing, Rain, and Fireball?
+- What exact dream inputs map to the four starter miracle paths?
+- How many upgrade tiers should each miracle have, and what does each tier change: power, radius, duration, cost, precision, side effects, or moral interpretation?
+- Which shrine benefits are local-only versus permanently retained?
+- What are the first tutorial-island shrine puzzles for Healing, Rain, Fireball, and the fourth miracle?
+- What object physics and damage rules govern grabbing buildings or terrain chunks?
+- What are the first old-god shrine types and visual motifs?
+- What is the identity, tone, and first action of the rival god that interrupts the shrine activation?
+
+Correction:
+- Entry 6's open question about the first learned miracle list is partially answered: start with one dream-selected miracle from a set of four, with Healing, Rain, Fireball, and one undecided fourth as the early core.
+- Entry 6's object-grabbing question is partially answered: the hand can grab villagers, rocks, trees, food, wood, shrine objects, golems, enemies, and golem parts; buildings are placeable but not safely grabbable; terrain sculpting/chunks are miracle-tier aspirations.
+- Entry 6's golem-programming question is refined: use teach-by-demonstration plus direct path drawing, not spreadsheet conditions.
+- Entry 6's engine/control question is refined: mouse-first proof is the priority; touch parity is secondary and may not be fully achievable.
+
+State After Completion:
+- Parable's authoritative project bible now records the miracle discovery loop, old-god shrine progression, upgrade doctrine, starter miracle structure, village-temple allegiance model, object grabbing list, golem pathing direction, rival-god reveal concept, and mouse-first control priority.
+
+Next Step / Handoff:
+- Future Fable work should integrate Entries 4-7 into a coherent rewrite plan and vertical slice brief.
+- The next artifact should probably be a Fable-ready `Parable Direct Godhood Rewrite Context Packet` followed by a Fable prompt for the control scheme, miracle discovery tutorial island, shrine upgrade system, and first rival-god event.
