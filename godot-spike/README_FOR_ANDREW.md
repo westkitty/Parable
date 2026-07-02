@@ -3,6 +3,9 @@
 You don't need to know anything about Godot. Your whole job:
 run it, move the mouse, and tell us whether you felt like a god.
 
+If you want the shortest awake-session checklist, read
+`/Users/andrew/Parable/godot-spike/NEXT_PLAYTEST_PACKET.md` first.
+
 ---
 
 ## 1. The one command
