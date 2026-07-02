@@ -266,3 +266,54 @@ State After Completion:
 Next Step / Handoff:
 - Future design work should define a direct hand-control specification: camera movement, grab/drag/throw, object interaction, villager manipulation, miracle gesture feel, world-space UI, and onboarding.
 - Future Fable or Codex prompts should include Entry 4 whenever planning controls, camera, UI, world presentation, tutorial, or moment-to-moment feel.
+
+### Entry 5 - Visual-mechanical target split
+
+Summary:
+- Clarified the Parable target split: graphically aim closer to Black & White 2, while mechanically aiming closer to Black & White 1 or an imagined Black & White 1.5.
+
+Reason / Intent:
+- The user wants the game to preserve the tactile god-control and systemic feel of the first Black & White era while benefiting from a richer, more readable, more polished world presentation associated with the sequel.
+- This prevents future planning from flattening the target into either a pure Black & White 1 nostalgia clone or a prettier but mechanically shallower sequel-like direction.
+- The phrase "1.5" means Parable should feel like a natural mechanical evolution of the first game: more modern and legible, but still centered on god-hand agency, living-world reactivity, worship, villagers, miracles, and direct divine presence.
+
+Files Changed:
+- `Parable_Bible.md`
+
+Commands Run:
+```text
+GitHub connector update_file was used to append this ledger entry to `Parable_Bible.md` on `main`.
+```
+
+Command Intent:
+- Preserve the visual/mechanical split before future Fable prompts, Codex prompts, asset direction, control design, or engine/app architecture work.
+
+Outputs Generated:
+- Additive project bible entry defining the graphics-vs-mechanics target.
+
+Decisions:
+- Visual direction should lean toward a polished, readable, cinematic, lively 3D island presentation closer to the remembered appeal of Black & White 2.
+- Mechanical direction should lean toward Black & White 1-style god play, direct hand control, systemic reactivity, worship, miracles, villagers, and toybox divine manipulation.
+- "Black & White 1.5" is the preferred shorthand for the mechanical ambition: not a remake, not a sequel clone, but a more legible evolution of the first game's god-fantasy mechanics.
+- UI, golems, automation, and future systems must support the B&W 1 / 1.5 god-fantasy mechanics rather than turning the game into an RTS, city builder, or creature-management sequel imitation.
+- Parable must still remain original and must not copy proprietary assets, names, exact content, code, or protected expression from Black & White or Black & White 2.
+
+Doctrine:
+```text
+Parable should be graphically closer to the remembered strength of Black & White 2: richer 3D island presentation, clearer settlements, stronger visual spectacle, and a more polished sense of place. Mechanically, Parable should be closer to Black & White 1 or an imagined Black & White 1.5: tactile god-hand control, living-world reactivity, villagers and worship, miracles, moral consequence, and direct divine agency. The target is not Black & White 2's mechanical direction if that weakens the god fantasy; it is Black & White 1's soul with a more modern visual body.
+```
+
+Bugs / Blockers:
+- No gameplay implementation was changed in this entry.
+- Current procedural assets remain placeholders and do not yet meet the richer B&W2-like visual target.
+- Current mechanics still need direct hand-control proof and expansion before they can satisfy the B&W1/1.5 mechanical target.
+
+Correction:
+- Entry 4 remains valid and is refined: the Black & White-style control/world target now has a split reference point, with B&W2 influencing graphics and B&W1/1.5 influencing mechanics.
+
+State After Completion:
+- Parable's authoritative project bible now records the visual/mechanical split as a durable target.
+
+Next Step / Handoff:
+- Future design work should produce two separate specs: a visual target brief for the richer island/world presentation, and a mechanical/control spec for B&W1/1.5-style god play.
+- Future Fable or Codex prompts should include Entries 4 and 5 together whenever planning graphics, controls, world feel, UI, mechanics, or scope.
