@@ -317,3 +317,78 @@ State After Completion:
 Next Step / Handoff:
 - Future design work should produce two separate specs: a visual target brief for the richer island/world presentation, and a mechanical/control spec for B&W1/1.5-style god play.
 - Future Fable or Codex prompts should include Entries 4 and 5 together whenever planning graphics, controls, world feel, UI, mechanics, or scope.
+
+### Entry 6 - Core control and opening doctrine
+
+Summary:
+- Captured a major design-answer pass covering direct miracle access, invariant object interaction, Black & White-like mouse/touch grammar, birth-of-god opening, golem limits, golem resource economy, villager reactions, opposition, minimal UI, and likely rewrite/Fable direction.
+
+Reason / Intent:
+- The user answered the current design discovery queue with specific rules that materially define the game.
+- These rules clarify that Parable should prioritize exact-feeling direct control and god embodiment, not a generic inspired-by god-game layout.
+- Future Fable/Codex work must not reinterpret these decisions as optional flavor.
+
+Files Changed:
+- `Parable_Bible.md`
+
+Commands Run:
+```text
+GitHub connector update_file was used to append this ledger entry to `Parable_Bible.md` on `main`.
+```
+
+Command Intent:
+- Preserve the user's core control and system answers before generating Fable prompts, rewrite plans, implementation specs, or revised architecture.
+
+Outputs Generated:
+- Additive project bible entry defining concrete gameplay laws and unanswered follow-up areas.
+
+Decisions:
+- Every miracle the player has learned should always remain available, without exception. Learned miracles should not be temporarily removed, hidden, disabled by loadout, or displaced by golem use.
+- The player should always be able to grab interactable things consistently. What the player can grab should not change unpredictably or depend on arbitrary modes.
+- The player should always be able to interact with things in the same way. Direct manipulation grammar must be stable.
+- Mouse and touch control grammar should chase the Black & White feeling as closely as legally and practically possible: click/press, hold, drag, throw with momentum, scroll-wheel zoom, pan, zoom, orbit, and physical-feeling hand/world interaction.
+- Grabbing and throwing should be the same interaction family: hold the button/touch, move with intent, release/throw using momentum.
+- The first five minutes should show the birth of a god.
+- Because things become sacred because people choose to make them sacred, the opening can begin from a villager's dream that spreads socially: dream -> telling a friend -> belief growth -> god-presence emergence.
+- The dream seed can vary based on player input, including nightmare, blessing, fear, awe, or other early tonal pathways.
+- The smallest vertical slice proving the fantasy is the ability to move around the island with B&W-like controls while casting miracles as the god.
+- Golems can never cast miracles. Only the god can cast miracles.
+- Golems may perform many non-miracle physical actions the god can perform, such as picking things up and moving them, but much slower and as delegated automation.
+- Golem triggers may include proximity, time of day, village resource need, villager requests, and enemy presence.
+- Golems should cost belief/faith/worship as a persistent running cost, scaling with macro complexity.
+- Golem construction costs should use material resources. Wood-like materials suit labor-focused golems; hardened materials suit combat, structural, or serious-duty golems.
+- Villagers should physically react and emote comfortably, with stylized emoji-like readable expression cues allowed.
+- Rival/opposition space may include new gods, other gods, old gods, and different gods. A new god may appear partway through a campaign level.
+- UI target is basically no UI except the hand. Any unavoidable information should be minimal, diegetic, or subordinate to hand/world play.
+- A major rewrite is likely, and Fable is expected to be used for planning it.
+
+Doctrine:
+```text
+Parable's core play should be stable, direct, and god-centered. Learned miracles are always available. Grabbable things remain consistently grabbable. Interaction rules do not drift by arbitrary mode. The hand-control grammar should chase Black & White-style physicality: hold, drag, throw with momentum, pan, zoom, orbit, and act directly on a living island. The opening should dramatize the birth of a god through belief emerging from a villager dream that spreads socially. Golems may automate many non-miracle physical actions, but they can never cast miracles. Only the god casts miracles. Golems cost material resources to build and belief/faith/worship to keep running, with macro complexity increasing the ongoing cost. The UI should be nearly absent except for the hand and world-space feedback.
+```
+
+Bugs / Blockers:
+- No gameplay implementation was changed in this entry.
+- The current prototype does not yet prove Black & White-like hand control, invariant grabbing, momentum throwing, minimal UI, or birth-of-god opening.
+- The current runtime's golem behavior remains much simpler than the desired macro-trigger/resource-cost design.
+
+Open Questions Raised:
+- What exact learned-miracle list exists in the first real vertical slice?
+- What are the legal/practical boundaries for closely chasing the Black & White control grammar without copying protected implementation or content?
+- What is the exact dream-input structure in the opening: how many choices, what tones, what downstream effects?
+- What physical object classes can both god and golems manipulate in the first slice?
+- What are the first golem materials and how do they map to labor, defense, structure, combat, or other duties?
+- How is belief/faith/worship generated, stored, spent, and drained by active golem macros?
+- How should minimal hand-only UI communicate miracle availability, golem macro cost, resource need, and villager emotion without becoming a dashboard?
+- What engine/platform best proves the hand-control feel fastest if significant rewrite is likely?
+
+Correction:
+- Entries 4 and 5 remain valid and are made more concrete: the Black & White-like control target now specifically includes stable grabbing, momentum throwing, scroll/pan/zoom/orbit grammar, always-available learned miracles, and almost no UI except the hand.
+- Entries 2 and 3 remain valid and are made more concrete: golems are optional automation/presence tools, cannot cast miracles, can perform non-miracle physical actions slowly, and are powered by material build costs plus ongoing belief/faith/worship cost.
+
+State After Completion:
+- Parable's authoritative project bible now records the core interaction laws, opening concept, golem action boundaries, golem economy direction, opposition concept, and minimal-UI target.
+
+Next Step / Handoff:
+- Future Fable work should synthesize these entries into a rewrite-ready design plan, not code.
+- The next artifact should be a Fable-ready context packet or prompt for a `Parable Direct Godhood Rewrite Plan`, focused on hand controls, miracle access, first-five-minutes birth-of-god opening, golem macro boundaries, and a vertical slice architecture.
