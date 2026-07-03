@@ -8,7 +8,7 @@ const PITCH_MIN := deg_to_rad(-80.0)
 const PITCH_MAX := deg_to_rad(-15.0)
 const DIST_MIN := 7.0
 const DIST_MAX := 55.0
-const ZOOM_STEP_SCROLL := 1.4
+const ZOOM_STEP_SCROLL := 1.75
 const ZOOM_STEP_KEYBOARD := 0.85
 const SCREEN_PAN_SCALE := 0.026
 const KEY_ORBIT_RATE := 1.2
@@ -20,7 +20,7 @@ const DEFAULT_DIST := 26.0
 
 var camera: Camera3D
 var locked := false            # true during gesture drawing + temple transitions
-var control_scale := 1.0       # reduced while carrying
+var control_scale := 1.0       # reserved for scripted/test scaling; carrying does not slow camera
 var dist := 26.0
 
 var _pitch: Node3D
@@ -115,6 +115,15 @@ func camera_mode() -> String:
 	if is_orbiting():
 		return "orbit"
 	return "free"
+
+func clear_transient_input() -> void:
+	_orbiting = false
+	_orbit_fallback = false
+	_middle_button_down = false
+	_orbit_source = "none"
+	_yaw_target = rotation.y
+	_pitch_target = _pitch.rotation.x
+	_dist_target = dist
 
 func orbit_step(direction: float) -> void:
 	_yaw_target += direction * control_scale

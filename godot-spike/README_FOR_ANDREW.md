@@ -26,6 +26,7 @@ hovered object, held object, right-mouse state, miracle armed, last recognizer r
 path length, rotation/loop, shrine awake, and temple chamber.
 If the cursor does not return when your mouse leaves the game window, report that.
 Plain clicking should not move or zoom the camera.
+Right mouse only grabs the currently highlighted object; it should never move or zoom the camera.
 If gesture/shrine progression breaks, press `F3`, then use:
 `Space` = debug arm miracle mode
 `C` = debug cast blessing

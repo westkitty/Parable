@@ -36,6 +36,7 @@ func snapshot_lines() -> Array[String]:
 	if hand:
 		var d: Dictionary = hand.get_debug()
 		lines.append("input state: %s" % d.get("state", "?"))
+		lines.append("input mode: %s" % d.get("input_mode", "?"))
 		lines.append("hovered: %s" % d.get("hovered", "-"))
 		lines.append("held: %s (%s)" % [d.get("held", "-"), d.get("held_mass", "-")])
 		lines.append("right mouse down: %s" % str(d.get("right_mouse_down", false)))

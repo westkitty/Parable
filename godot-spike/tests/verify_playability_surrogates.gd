@@ -28,9 +28,14 @@ func _run() -> void:
 	_check(main.mouse_hidden_for_play() == true, "cursor hide call path exists in world boot path")
 	_check(main.has_method("cursor_policy_state"), "cursor policy helper exists")
 	_check(main.has_method("cursor_focus_state"), "cursor focus helper exists")
+	_check(main.has_method("simulate_focus_loss_for_test"), "world exposes focus-loss surrogate helper")
+	_check(main.has_method("simulate_focus_gain_for_test"), "world exposes focus-gain surrogate helper")
 	_check(rig.has_method("middle_button_down"), "camera middle-button helper exists")
 	_check(rig.has_method("orbit_source"), "camera orbit-source helper exists")
+	_check(rig.has_method("clear_transient_input"), "camera transient input clear helper exists")
+	_check(hand.has_method("simulate_right_mouse_press_for_test"), "hand exposes right-click hover contract helper")
 	_check(trace.has_method("active_mote_count"), "gesture trace exposes bounded mote helper")
+	await _assert_patch08_input_contract(hand, rig, main)
 	await _assert_stable_hold_and_release_modes(hand)
 	await _assert_throw_threshold_edges(hand)
 	await _assert_camera_motion_preserves_hold(hand, rig)
@@ -100,6 +105,7 @@ func _assert_camera_motion_preserves_hold(hand: Node, rig: Node) -> void:
 	if rock == null:
 		return
 	_check(hand.simulate_grab(rock), "camera surrogate grab succeeds")
+	_check(absf(float(rig.control_scale) - 1.0) < 0.001, "carrying does not slow camera controls")
 	var before: Dictionary = rig.save_state()
 	rig.pan_by(Vector3(3.0, 0.0, -2.5))
 	rig.simulate_orbit_drag(Vector2(42.0, -18.0))
@@ -191,6 +197,52 @@ func _assert_camera_motion_preserves_hold(hand: Node, rig: Node) -> void:
 	hand.simulate_release_for_test(Vector3.ZERO, true)
 	await physics_frame
 
+func _assert_patch08_input_contract(hand: Node, rig: Node, main: Node) -> void:
+	var rock := _find_grabbable("rock")
+	_check(rock != null, "rock exists for Patch 08 input contract")
+	if rock == null:
+		return
+	hand.clear_hover_for_test()
+	var empty_before: Dictionary = rig.save_state()
+	_check(hand.simulate_right_mouse_press_for_test() == false, "right mouse without hovered grabbable is a no-op")
+	var empty_after: Dictionary = rig.save_state()
+	_check(_camera_state_close(empty_before, empty_after), "right mouse no-hover path does not move camera")
+	_check(hand.is_carrying() == false, "right mouse no-hover path does not acquire nearest object")
+	hand.force_hover_for_test(rock)
+	var hover_before: Dictionary = rig.save_state()
+	_check(hand.simulate_right_mouse_press_for_test() == true, "right mouse grabs only the hovered grabbable")
+	var hover_after: Dictionary = rig.save_state()
+	_check(_camera_state_close(hover_before, hover_after), "right mouse hovered grab does not move camera")
+	_check(hand.is_carrying() == true, "right mouse hovered grab starts carry")
+	_check(absf(float(rig.control_scale) - 1.0) < 0.001, "right mouse carry keeps camera control scale unchanged")
+	hand.simulate_release_for_test(Vector3.ZERO, true)
+	await physics_frame
+
+	var middle_press := InputEventMouseButton.new()
+	middle_press.button_index = MOUSE_BUTTON_MIDDLE
+	middle_press.pressed = true
+	rig._input(middle_press)
+	_check(rig.is_orbiting(), "focus-loss setup activates middle orbit")
+	_check(hand.simulate_grab(rock), "focus-loss setup can hold object")
+	hand.force_hover_for_test(rock)
+	main.simulate_focus_loss_for_test()
+	await physics_frame
+	var lost_debug: Dictionary = hand.get_debug()
+	_check(main.mouse_hidden_for_play() == false, "focus loss restores visible cursor")
+	_check(rig.is_orbiting() == false, "focus loss clears active orbit mode")
+	_check(rig.middle_button_down() == false, "focus loss clears middle-button state")
+	_check(hand.is_carrying() == false, "focus loss clears stuck right-button carry")
+	_check(String(lost_debug.get("hovered", "?")) == "-", "focus loss clears stale hover")
+	_check(String(lost_debug.get("input_mode", "?")) == "hover", "focus loss returns input mode to hover")
+	var gain_before: Dictionary = rig.save_state()
+	main.simulate_focus_gain_for_test()
+	await physics_frame
+	var gain_after: Dictionary = rig.save_state()
+	_check(main.mouse_hidden_for_play() == true, "focus gain hides cursor when mouse is inside")
+	_check(rig.is_orbiting() == false, "focus gain does not start orbit")
+	_check(hand.is_carrying() == false, "focus gain does not auto-grab")
+	_check(_camera_state_close(gain_before, gain_after), "focus gain resync does not move camera")
+
 func _assert_safe_cancel_clears_state(hand: Node) -> void:
 	var tree := _find_grabbable("tree")
 	_check(tree != null, "tree exists for cancel surrogate")
@@ -274,6 +326,7 @@ func _assert_temple_and_diagnostics_contract(main: Node, diagnostics: CanvasLaye
 	_check(text.contains("temple chamber: right"), "diagnostics expose temple chamber")
 	_check(text.contains("camera:"), "diagnostics expose camera state")
 	_check(text.contains("pan active:"), "diagnostics expose pan state")
+	_check(text.contains("input mode:"), "diagnostics expose input mode")
 	_check(text.contains("bolt learned:"), "diagnostics expose bolt learned state")
 	var label_texts := _label_texts(temple)
 	_check("SYMBOL" in label_texts, "temple exposes SYMBOL label")
@@ -318,6 +371,12 @@ func _mesh_color(node: Node) -> Color:
 		if child is MeshInstance3D and child.material_override is StandardMaterial3D:
 			return child.material_override.albedo_color
 	return Color.BLACK
+
+func _camera_state_close(a: Dictionary, b: Dictionary) -> bool:
+	return a.pos.distance_to(b.pos) < 0.001 \
+		and absf(float(a.yaw) - float(b.yaw)) < 0.001 \
+		and absf(float(a.pitch) - float(b.pitch)) < 0.001 \
+		and absf(float(a.dist) - float(b.dist)) < 0.001
 
 func _label_texts(node: Node) -> Array[String]:
 	var out: Array[String] = []

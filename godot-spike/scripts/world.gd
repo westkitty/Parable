@@ -76,19 +76,47 @@ func _notification(what: int) -> void:
 		NOTIFICATION_WM_WINDOW_FOCUS_IN:
 			_window_focused = true
 			_set_game_cursor_active(_mouse_inside)
+			_resync_focus_state()
 		NOTIFICATION_WM_WINDOW_FOCUS_OUT:
 			_window_focused = false
 			_set_game_cursor_active(false)
+			_clear_focus_transients()
 		NOTIFICATION_WM_MOUSE_ENTER:
 			_mouse_inside = true
 			_set_game_cursor_active(_window_focused)
+			_resync_focus_state()
 		NOTIFICATION_WM_MOUSE_EXIT:
 			_mouse_inside = false
 			_set_game_cursor_active(false)
+			_clear_focus_transients()
 
 func _set_game_cursor_active(active: bool) -> void:
 	_cursor_hidden = active and _window_focused and _mouse_inside
 	Input.set_mouse_mode(Input.MOUSE_MODE_HIDDEN if _cursor_hidden else Input.MOUSE_MODE_VISIBLE)
+
+func simulate_focus_loss_for_test() -> void:
+	_window_focused = false
+	_mouse_inside = false
+	_set_game_cursor_active(false)
+	_clear_focus_transients()
+
+func simulate_focus_gain_for_test() -> void:
+	_window_focused = true
+	_mouse_inside = true
+	_set_game_cursor_active(true)
+	_resync_focus_state()
+
+func _clear_focus_transients() -> void:
+	if _rig and _rig.has_method("clear_transient_input"):
+		_rig.clear_transient_input()
+	if _hand and _hand.has_method("clear_transient_input_for_focus"):
+		_hand.clear_transient_input_for_focus()
+
+func _resync_focus_state() -> void:
+	if _rig and _rig.has_method("clear_transient_input"):
+		_rig.clear_transient_input()
+	if _hand and _hand.has_method("resync_after_focus"):
+		_hand.resync_after_focus()
 
 func scene_label() -> String:
 	return "temple" if _in_temple else "world"

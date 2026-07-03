@@ -14,7 +14,7 @@ const PICK_RADIUS := 0.9            # screen-space forgiveness now owns pickup
 const CLICK_DRAG_THRESHOLD_PX := 10.0
 const THROW_MIN_SPEED := 1.8        # below this, release = gentle drop
 const THROW_VERTICAL_LIFT := 2.35   # modest extra loft, validated by Andrew later
-const CARRY_CAMERA_SCALE := 0.6
+const CARRY_CAMERA_SCALE := 1.0
 const HOVER_HEIGHT := 0.82
 const PRESS_HEIGHT := 0.28
 const RAY_LENGTH := 400.0
@@ -39,11 +39,13 @@ var _visual: Node3D
 var _trace: Node3D
 var _diagnostics: CanvasLayer
 var _shrine: Node
+var _grabbables: Array[Node] = []
 
 var _ground_point := Vector3.ZERO
 var _hand_target := Vector3.ZERO
 var _hovered: Node = null
 var _held: Node = null
+var _input_suspended := false
 var _sampler := ThrowSampler.new()
 var _time := 0.0
 
@@ -100,6 +102,8 @@ func _physics_process(delta: float) -> void:
 	_lazy_refs()
 	if _rig == null or _island == null:
 		return
+	if _input_suspended:
+		return
 
 	var mouse := get_viewport().get_mouse_position()
 
@@ -119,16 +123,7 @@ func _world_frame(mouse: Vector2, _delta: float) -> void:
 	var space := get_world_3d().direct_space_state
 
 	# Ground point under the mouse (terrain, layer 1).
-	var ground := _ray_hit(space, from, dir, 1, false)
-	var ground_valid := not ground.is_empty()
-	if not ground.is_empty():
-		_ground_point = ground.position
-	else:
-		# Off-island: intersect the sea plane so the hand never vanishes.
-		if absf(dir.y) > 0.0001:
-			var t := -from.y / dir.y
-			if t > 0.0:
-				_ground_point = from + dir * t
+	var ground_valid := _update_ground_point(from, dir)
 
 	# Hover follows the visible palm/grip point rather than the raw cursor.
 	var new_hover: Node = null
@@ -217,8 +212,6 @@ func _world_frame(mouse: Vector2, _delta: float) -> void:
 	if _press_kind == "pan":
 		hand_h = PRESS_HEIGHT
 	var target := _ground_point + Vector3(0.0, hand_h, 0.0)
-	if _hovered != null and _held == null:
-		target = _origin_for_hover_anchor(_hovered.pick_anchor_point())
 	if _held != null:
 		target = _origin_for_hover_anchor(_ground_point + Vector3(0.0, _carry_anchor_height(), 0.0))
 	_hand_target = target
@@ -308,6 +301,34 @@ func _cancel_everything() -> void:
 	_press_kind = ""
 	_pending_click_target = null
 	_cancel_miracle(true)
+
+func clear_transient_input_for_focus() -> void:
+	_input_suspended = true
+	if _held != null and is_instance_valid(_held):
+		_release_held(true)
+	_press_kind = ""
+	_pending_click_target = null
+	_pan_source = "none"
+	_pan_using_ground = false
+	_sampler.clear()
+	_set_hovered(null)
+	_cancel_miracle(false)
+	state = "hover"
+
+func resync_after_focus() -> void:
+	_lazy_refs()
+	if _rig == null:
+		return
+	_input_suspended = false
+	var mouse := get_viewport().get_mouse_position()
+	var ray: Array = _rig.screen_ray(mouse)
+	_update_ground_point(ray[0], ray[1])
+	_press_screen = mouse
+	_pan_last_mouse = mouse
+	_hand_target = _ground_point + Vector3(0.0, HOVER_HEIGHT, 0.0)
+	global_position = _hand_target
+	if _held == null and _press_kind == "":
+		_set_hovered(_screen_pick_grabbable(mouse))
 
 func _update_miracle_tracking(mouse: Vector2) -> void:
 	if _rig == null or _island == null:
@@ -451,6 +472,18 @@ func simulate_grab(obj: Node) -> bool:
 	_begin_carry(obj)
 	return _held == obj
 
+func simulate_right_mouse_press_for_test() -> bool:
+	if _hovered == null or not is_instance_valid(_hovered):
+		return false
+	_begin_carry(_hovered)
+	return true
+
+func clear_hover_for_test() -> void:
+	_set_hovered(null)
+
+func force_hover_for_test(obj: Node) -> void:
+	_set_hovered(obj)
+
 func simulate_release_for_test(world_velocity: Vector3, force_gentle := false) -> void:
 	if _held == null:
 		return
@@ -501,6 +534,7 @@ func armed_timer_remaining() -> float:
 func get_debug() -> Dictionary:
 	return {
 		"state": state,
+		"input_mode": _press_kind if _press_kind != "" else state,
 		"hovered": _hovered.display_name if (_hovered != null and is_instance_valid(_hovered)) else "-",
 		"held": _held.display_name if (_held != null and is_instance_valid(_held)) else "-",
 		"held_mass": ["light", "medium", "heavy"][_held.mass_category] if (_held != null and is_instance_valid(_held)) else "-",
@@ -551,6 +585,8 @@ func _lazy_refs() -> void:
 		_diagnostics = get_tree().get_first_node_in_group("diagnostics")
 	if _shrine == null:
 		_shrine = get_tree().get_first_node_in_group("shrine")
+	if _grabbables.is_empty():
+		_refresh_grabbables()
 
 func _current_hand_speed() -> float:
 	return _sampler.velocity().length()
@@ -563,6 +599,23 @@ func _ray_hit(space: PhysicsDirectSpaceState3D, from: Vector3, dir: Vector3,
 	params.collide_with_bodies = not areas
 	return space.intersect_ray(params)
 
+func _update_ground_point(from: Vector3, dir: Vector3) -> bool:
+	var space := get_world_3d().direct_space_state
+	var ground := _ray_hit(space, from, dir, 1, false)
+	if not ground.is_empty():
+		_ground_point = ground.position
+		return true
+	if absf(dir.y) > 0.0001:
+		var t := -from.y / dir.y
+		if t > 0.0:
+			_ground_point = from + dir * t
+	return false
+
+func _refresh_grabbables() -> void:
+	_grabbables.clear()
+	for g in get_tree().get_nodes_in_group("grabbable"):
+		_grabbables.append(g)
+
 func _screen_pick_grabbable(mouse: Vector2) -> Node:
 	if _rig == null or _rig.camera == null:
 		return null
@@ -571,8 +624,12 @@ func _screen_pick_grabbable(mouse: Vector2) -> Node:
 	var grip_screen: Vector2 = mouse
 	if _visual and _visual.has_method("grip_socket_world"):
 		grip_screen = _rig.camera.unproject_position(_visual.grip_socket_world())
-	for g in get_tree().get_nodes_in_group("grabbable"):
+	for g in _grabbables:
+		if g == null or not is_instance_valid(g) or not g.is_in_group("grabbable"):
+			continue
 		if g == _held:
+			continue
+		if "consumed" in g and g.consumed:
 			continue
 		var anchor: Vector3 = g.pick_anchor_point()
 		var screen_pos: Vector2 = _rig.camera.unproject_position(anchor)
