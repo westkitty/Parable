@@ -25,6 +25,7 @@ If the game launches but an interaction chain breaks, press `F3` and report:
 hovered object, held object, right-mouse state, miracle armed, last recognizer result,
 path length, rotation/loop, shrine awake, and temple chamber.
 If the cursor does not return when your mouse leaves the game window, report that.
+Plain clicking should not move or zoom the camera.
 If gesture/shrine progression breaks, press `F3`, then use:
 `Space` = debug arm miracle mode
 `C` = debug cast blessing
@@ -87,11 +88,11 @@ The controls (this is everything):
 | **Middle mouse button + drag** | Orbit the camera |
 | **Shift + left drag** | Orbit fallback only |
 | **Option/Alt + left drag** | Orbit fallback only if middle mouse is unreliable on this Mac |
-| **Q / E** | Orbit fallback left / right |
-| **W / S** | Camera pitch fallback up / down |
+| **Q / E** | Slow orbit fallback left / right |
+| **W / S** | Slow camera pitch fallback up / down |
 | **Scroll wheel** | Zoom in/out |
-| **= / +** | Zoom in fallback |
-| **-** | Zoom out fallback |
+| **= / +** | Slow zoom in fallback |
+| **-** | Slow zoom out fallback |
 | **Draw a clockwise spiral with the hand** | Arms miracle-casting mode |
 | **After the spiral, draw a circle or zigzag** | Cast the learned miracle |
 | **R** | Reset camera to the safe default |

@@ -3,16 +3,17 @@ extends Node3D
 ## (LMB ground-grip); orbit and zoom are handled here. The rig never moves
 ## on its own except the scripted temple transitions driven by world.gd.
 
-const ORBIT_SENS := 0.008
+const ORBIT_SENS := 0.0036
 const PITCH_MIN := deg_to_rad(-80.0)
 const PITCH_MAX := deg_to_rad(-15.0)
 const DIST_MIN := 7.0
 const DIST_MAX := 55.0
-const ZOOM_FACTOR := 1.12
-const ZOOM_PULL := 0.3
-const SCREEN_PAN_SCALE := 0.018
-const KEY_ORBIT_STEP := 0.095
-const KEY_PITCH_STEP := 0.06
+const ZOOM_STEP_SCROLL := 1.4
+const ZOOM_STEP_KEYBOARD := 0.85
+const SCREEN_PAN_SCALE := 0.026
+const KEY_ORBIT_RATE := 1.2
+const KEY_PITCH_RATE := 0.9
+const CAMERA_SMOOTH := 12.0
 const DEFAULT_POS := Vector3(0.0, 6.0, 3.5)
 const DEFAULT_PITCH := -56.0
 const DEFAULT_DIST := 26.0
@@ -24,6 +25,8 @@ var dist := 26.0
 
 var _pitch: Node3D
 var _dist_target := 26.0
+var _yaw_target := 0.0
+var _pitch_target := deg_to_rad(DEFAULT_PITCH)
 var _orbiting := false
 var _orbit_fallback := false
 var _middle_button_down := false
@@ -39,10 +42,28 @@ func _ready() -> void:
 	camera.position = Vector3(0.0, 0.0, dist)
 	camera.far = 300.0
 	_dist_target = dist
+	_yaw_target = rotation.y
+	_pitch_target = _pitch.rotation.x
 	_default_state = save_state()
 
 func _process(delta: float) -> void:
-	dist = lerpf(dist, _dist_target, 1.0 - exp(-10.0 * delta))
+	var smooth := 1.0 - exp(-CAMERA_SMOOTH * delta)
+	if not locked:
+		if Input.is_key_pressed(KEY_Q):
+			orbit_step(-KEY_ORBIT_RATE * delta)
+		if Input.is_key_pressed(KEY_E):
+			orbit_step(KEY_ORBIT_RATE * delta)
+		if Input.is_key_pressed(KEY_W):
+			pitch_step(KEY_PITCH_RATE * delta)
+		if Input.is_key_pressed(KEY_S):
+			pitch_step(-KEY_PITCH_RATE * delta)
+		if Input.is_key_pressed(KEY_EQUAL) or Input.is_key_pressed(KEY_PLUS) or Input.is_key_pressed(KEY_KP_ADD):
+			_zoom(-ZOOM_STEP_KEYBOARD)
+		if Input.is_key_pressed(KEY_MINUS) or Input.is_key_pressed(KEY_KP_SUBTRACT):
+			_zoom(ZOOM_STEP_KEYBOARD)
+	rotation.y = lerp_angle(rotation.y, _yaw_target, smooth)
+	_pitch.rotation.x = lerpf(_pitch.rotation.x, _pitch_target, smooth)
+	dist = lerpf(dist, _dist_target, smooth)
 	camera.position = Vector3(0.0, 0.0, dist)
 
 func _input(event: InputEvent) -> void:
@@ -60,9 +81,9 @@ func _input(event: InputEvent) -> void:
 			elif not event.pressed and not _middle_button_down:
 				_orbit_source = "none"
 		elif event.pressed and event.button_index == MOUSE_BUTTON_WHEEL_UP:
-			_zoom(1.0 / ZOOM_FACTOR)
+			_zoom(-ZOOM_STEP_SCROLL)
 		elif event.pressed and event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-			_zoom(ZOOM_FACTOR)
+			_zoom(ZOOM_STEP_SCROLL)
 	elif event is InputEventMouseMotion:
 		var middle_motion := bool(event.button_mask & MOUSE_BUTTON_MASK_MIDDLE)
 		if middle_motion and not _middle_button_down:
@@ -73,20 +94,8 @@ func _input(event: InputEvent) -> void:
 			_apply_orbit(event.relative)
 	elif event is InputEventKey and event.pressed and not event.echo:
 		match event.keycode:
-			KEY_Q:
-				orbit_step(-1.0)
-			KEY_E:
-				orbit_step(1.0)
-			KEY_W:
-				pitch_step(1.0)
-			KEY_S:
-				pitch_step(-1.0)
 			KEY_R:
 				reset_to_safe_default()
-			KEY_EQUAL, KEY_PLUS, KEY_KP_ADD:
-				_zoom(1.0 / ZOOM_FACTOR)
-			KEY_MINUS, KEY_KP_SUBTRACT:
-				_zoom(ZOOM_FACTOR)
 
 func is_orbiting() -> bool:
 	return (_orbiting or _orbit_fallback) and not locked
@@ -108,11 +117,11 @@ func camera_mode() -> String:
 	return "free"
 
 func orbit_step(direction: float) -> void:
-	rotation.y += KEY_ORBIT_STEP * direction * control_scale
+	_yaw_target += direction * control_scale
 	_orbit_source = "key"
 
 func pitch_step(direction: float) -> void:
-	_pitch.rotation.x = clampf(_pitch.rotation.x - KEY_PITCH_STEP * direction * control_scale, PITCH_MIN, PITCH_MAX)
+	_pitch_target = clampf(_pitch_target - direction * control_scale, PITCH_MIN, PITCH_MAX)
 
 func pan_screen_delta(delta: Vector2) -> void:
 	if locked:
@@ -123,7 +132,7 @@ func pan_screen_delta(delta: Vector2) -> void:
 	forward.y = 0.0
 	right = right.normalized()
 	forward = forward.normalized()
-	var scale := maxf(dist * SCREEN_PAN_SCALE * control_scale, 0.01)
+	var scale := SCREEN_PAN_SCALE * control_scale
 	var offset := (-right * delta.x + forward * delta.y) * scale
 	pan_by(offset)
 
@@ -134,32 +143,25 @@ func simulate_orbit_drag(delta: Vector2) -> void:
 	_apply_orbit(delta)
 
 func simulate_zoom_factor(factor: float) -> void:
-	_zoom(factor)
-
-func _zoom(factor: float) -> void:
 	_dist_target = clampf(_dist_target * factor, DIST_MIN, DIST_MAX)
-	if factor < 1.0:
-		# Zoom-to-hand: drift the pivot toward the point under the hand.
-		var hand := get_tree().get_first_node_in_group("divine_hand")
-		if hand:
-			var target: Vector3 = hand.global_position
-			var offset := Vector3(target.x - position.x, 0.0, target.z - position.z)
-			position += offset * ZOOM_PULL * control_scale
+
+func _zoom(delta_step: float) -> void:
+	_dist_target = clampf(_dist_target + delta_step, DIST_MIN, DIST_MAX)
 
 func pan_by(offset: Vector3) -> void:
 	if locked:
 		return
 	position += Vector3(offset.x, 0.0, offset.z)
-	position.x = clampf(position.x, -40.0, 40.0)
-	position.z = clampf(position.z, -40.0, 40.0)
+	position.x = clampf(position.x, -60.0, 60.0)
+	position.z = clampf(position.z, -60.0, 60.0)
 
 func reset_to_safe_default() -> void:
 	restore_state(_default_state)
 
 func _apply_orbit(delta: Vector2) -> void:
-	rotation.y -= delta.x * ORBIT_SENS * control_scale
-	_pitch.rotation.x = clampf(
-		_pitch.rotation.x - delta.y * ORBIT_SENS * control_scale,
+	_yaw_target -= delta.x * ORBIT_SENS * control_scale
+	_pitch_target = clampf(
+		_pitch_target - delta.y * ORBIT_SENS * control_scale,
 		PITCH_MIN, PITCH_MAX)
 
 ## Ray from the active camera through a screen position.
@@ -168,14 +170,16 @@ func screen_ray(screen_pos: Vector2) -> Array:
 
 func save_state() -> Dictionary:
 	return {
-		"pos": position, "yaw": rotation.y,
+		"pos": position, "yaw": _yaw_target,
 		"pitch": _pitch.rotation.x, "dist": _dist_target,
 	}
 
 func restore_state(s: Dictionary) -> void:
 	position = s.pos
 	rotation.y = s.yaw
+	_yaw_target = s.yaw
 	_pitch.rotation.x = s.pitch
+	_pitch_target = s.pitch
 	_dist_target = s.dist
 	dist = s.dist
 

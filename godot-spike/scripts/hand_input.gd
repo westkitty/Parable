@@ -11,7 +11,7 @@ extends Node3D
 ## States: hover | pan | carry | miracle
 
 const PICK_RADIUS := 0.9            # screen-space forgiveness now owns pickup
-const CLICK_DRAG_THRESHOLD_PX := 6.0
+const CLICK_DRAG_THRESHOLD_PX := 10.0
 const THROW_MIN_SPEED := 1.8        # below this, release = gentle drop
 const THROW_VERTICAL_LIFT := 2.35   # modest extra loft, validated by Andrew later
 const CARRY_CAMERA_SCALE := 0.6
@@ -49,7 +49,7 @@ var _time := 0.0
 
 # Press bookkeeping
 var _press_screen := Vector2.ZERO
-var _press_kind := ""          # "" | "pan" | "carry" | "pending_click"
+var _press_kind := ""          # "" | "pan" | "carry" | "pending_click" | "pending_pan"
 var _pending_click_target: Node = null
 var _pan_last_ground := Vector3.ZERO
 var _pan_last_mouse := Vector2.ZERO
@@ -140,6 +140,9 @@ func _world_frame(mouse: Vector2, _delta: float) -> void:
 	if Input.is_action_just_pressed("grab_action") and not _rig.is_orbiting():
 		if _miracle_armed:
 			_cancel_miracle(false)
+		_press_kind = ""
+		_pending_click_target = null
+		_pan_source = "none"
 		_press_screen = mouse
 		if _hovered != null:
 			_begin_carry(_hovered)
@@ -162,15 +165,21 @@ func _world_frame(mouse: Vector2, _delta: float) -> void:
 		if not inter.is_empty():
 			_press_kind = "pending_click"
 			_pending_click_target = inter.collider
-		else:
-			_press_kind = "pan"
+		elif _hovered == null:
+			_press_kind = "pending_pan"
 			_pan_using_ground = ground_valid
 			_pan_last_ground = _ground_point
-			_pan_source = "ground" if ground_valid else "screen"
+			_pan_source = "none"
 			_cancel_miracle(false)
 
 	if Input.is_action_pressed("pan_action"):
 		match _press_kind:
+			"pending_pan":
+				if mouse.distance_to(_press_screen) >= CLICK_DRAG_THRESHOLD_PX:
+					_press_kind = "pan"
+					_pan_last_mouse = mouse
+					_pan_last_ground = _ground_point
+					_pan_source = "ground" if (ground_valid and _pan_using_ground) else "screen"
 			"pan":
 				state = "pan"
 				if ground_valid and _pan_using_ground:
@@ -193,6 +202,8 @@ func _world_frame(mouse: Vector2, _delta: float) -> void:
 						and _pending_click_target.has_method("on_god_click"):
 					_pending_click_target.on_god_click(_world)
 				_pending_click_target = null
+			"pending_pan":
+				pass
 		_press_kind = ""
 		_pan_source = "none"
 		if state != "carry":

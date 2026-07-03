@@ -104,7 +104,8 @@ func _assert_camera_motion_preserves_hold(hand: Node, rig: Node) -> void:
 	rig.pan_by(Vector3(3.0, 0.0, -2.5))
 	rig.simulate_orbit_drag(Vector2(42.0, -18.0))
 	rig.simulate_zoom_factor(1.0 / 1.12)
-	await physics_frame
+	for _i in 6:
+		await physics_frame
 	var after: Dictionary = rig.save_state()
 	_check(before.pos != after.pos, "camera pan changes rig position")
 	_check(absf(float(before.yaw) - float(after.yaw)) > 0.001, "camera orbit changes yaw")
@@ -112,6 +113,25 @@ func _assert_camera_motion_preserves_hold(hand: Node, rig: Node) -> void:
 	_check(absf(float(before.dist) - float(after.dist)) > 0.001, "camera zoom changes distance target")
 	_check(hand.is_carrying(), "camera motion does not drop held object")
 	_check(rock.is_held == true, "camera motion does not corrupt held object state")
+	var click_before: Dictionary = rig.save_state()
+	var left_press := InputEventMouseButton.new()
+	left_press.button_index = MOUSE_BUTTON_LEFT
+	left_press.pressed = true
+	rig._input(left_press)
+	var left_release := InputEventMouseButton.new()
+	left_release.button_index = MOUSE_BUTTON_LEFT
+	left_release.pressed = false
+	rig._input(left_release)
+	var right_press := InputEventMouseButton.new()
+	right_press.button_index = MOUSE_BUTTON_RIGHT
+	right_press.pressed = true
+	rig._input(right_press)
+	var right_release := InputEventMouseButton.new()
+	right_release.button_index = MOUSE_BUTTON_RIGHT
+	right_release.pressed = false
+	rig._input(right_release)
+	var click_after: Dictionary = rig.save_state()
+	_check(absf(float(click_before.dist) - float(click_after.dist)) < 0.001, "plain mouse button clicks do not zoom")
 	var fallback_press := InputEventMouseButton.new()
 	fallback_press.button_index = MOUSE_BUTTON_LEFT
 	fallback_press.pressed = true
@@ -140,26 +160,31 @@ func _assert_camera_motion_preserves_hold(hand: Node, rig: Node) -> void:
 	rig._input(middle_press)
 	_check(rig.middle_button_down(), "middle mouse explicit press is tracked")
 	_check(rig.orbit_source() == "middle", "middle mouse is primary orbit source")
+	var middle_state: Dictionary = rig.save_state()
 	var middle_release := InputEventMouseButton.new()
 	middle_release.button_index = MOUSE_BUTTON_MIDDLE
 	middle_release.pressed = false
 	rig._input(middle_release)
-	var q_press := InputEventKey.new()
-	q_press.keycode = KEY_Q
-	q_press.pressed = true
-	rig._input(q_press)
-	var e_press := InputEventKey.new()
-	e_press.keycode = KEY_E
-	e_press.pressed = true
-	rig._input(e_press)
-	var w_press := InputEventKey.new()
-	w_press.keycode = KEY_W
-	w_press.pressed = true
-	rig._input(w_press)
-	var s_press := InputEventKey.new()
-	s_press.keycode = KEY_S
-	s_press.pressed = true
-	rig._input(s_press)
+	var middle_after: Dictionary = rig.save_state()
+	_check(absf(float(middle_state.dist) - float(middle_after.dist)) < 0.001, "middle mouse orbit does not change zoom")
+	rig.orbit_step(-0.2)
+	for _i in 4:
+		await physics_frame
+	rig.orbit_step(0.2)
+	for _i in 4:
+		await physics_frame
+	rig.pitch_step(0.12)
+	for _i in 4:
+		await physics_frame
+	rig.pitch_step(-0.12)
+	for _i in 4:
+		await physics_frame
+	var settled_a: Dictionary = rig.save_state()
+	for _i in 8:
+		await physics_frame
+	var settled_b: Dictionary = rig.save_state()
+	_check(settled_a.pos.distance_to(settled_b.pos) < 0.001, "camera has no residual pan drift after input")
+	_check(absf(float(settled_a.dist) - float(settled_b.dist)) < 0.001, "camera has no residual zoom drift after input")
 	rig.reset_to_safe_default()
 	var reset_state: Dictionary = rig.save_state()
 	_check(absf(float(reset_state.yaw)) < 0.001 and absf(float(reset_state.dist) - 26.0) < 0.01, "camera reset returns to safe default")
