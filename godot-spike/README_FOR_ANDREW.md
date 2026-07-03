@@ -84,7 +84,7 @@ The controls (this is everything):
 | **Right mouse button on an object** | Grab it. Keep holding to carry it |
 | Release right mouse while moving fast | **Throw** (momentum matters) |
 | Release right mouse while still | Set down gently |
-| **Left mouse button on the ground + drag** | Grip the world and pan it |
+| **Left mouse button drag on empty space** | Pan the camera |
 | **Left mouse button click** | Interact with the temple doorway, shrine choices, ritual symbols |
 | **Middle mouse button + drag** | Orbit the camera |
 | **Shift + left drag** | Orbit fallback only |
@@ -105,10 +105,10 @@ Now the actual test, step by step:
 
 1. **Just move the mouse** for ten seconds. Does the hand feel like a
    body, or like a cursor?
-2. **Pan** by dragging the ground. **Orbit** with the middle mouse button.
-   **Zoom** with the wheel. Try keeping the hand near a villager while
+2. **Pan** by left-dragging anywhere empty. **Orbit** with the middle mouse button.
+   **Zoom** with the scroll wheel. Try keeping the hand near a villager while
    orbiting around them.
-3. **Pick up a rock with the right button.** Carry it around. Set it down gently. Then pick
+3. **Pick up a rock with the right button.** It should visibly sit in the hand; press F3 to show grip/socket markers. Carry it around. Set it down gently. Then pick
    it up and *fling* it. Watch the arc. Try to hit a spot on purpose.
 4. **Pick up a tree** (it uproots). Feel how much heavier it throws.
 5. **Pick up a villager.** Feel the squirm. Set them down *gently* —

@@ -31,7 +31,8 @@ signal released(obj: Grabbable, mode: String, at: Vector3, speed: float)
 var mass_category: int = MassCategory.MEDIUM
 var display_name := "object"
 var hold_profile := "object"
-var hold_offset := Vector3(0.0, -0.7, 0.0)
+var hold_offset := Vector3.ZERO
+var hold_anchor_offset := Vector3.ZERO
 var pick_anchor_offset := Vector3.ZERO
 var hover_screen_radius := 54.0
 var ground_clearance := 0.7
@@ -49,6 +50,7 @@ var _hold_target := Vector3.ZERO
 var _wiggle_t := 0.0
 var _hover_mats: Array[StandardMaterial3D] = []
 var _held_visual := false
+var _hold_anchor: Node3D
 
 func _ready() -> void:
 	add_to_group("grabbable")
@@ -58,7 +60,11 @@ func _ready() -> void:
 	max_contacts_reported = 4
 	body_entered.connect(_on_body_entered)
 	_configure()
+	_hold_anchor = Node3D.new()
+	_hold_anchor.name = "HoldAnchor"
+	add_child(_hold_anchor)
 	_build_body()
+	_set_hold_anchor(hold_anchor_offset)
 	if start_frozen:
 		freeze_mode = RigidBody3D.FREEZE_MODE_KINEMATIC
 		freeze = true
@@ -75,11 +81,8 @@ func _physics_process(delta: float) -> void:
 	var island := get_tree().get_first_node_in_group("island")
 	_guard_surface_recovery(island)
 	if is_held:
-		var target: Vector3 = _hold_target
-		if held_wiggle_amp > 0.0:
-			_wiggle_t += delta * 9.0
-			target += Vector3(sin(_wiggle_t) * held_wiggle_amp, 0.0, cos(_wiggle_t * 1.3) * held_wiggle_amp)
-		global_position = target
+		_wiggle_t += delta * 9.0
+		global_position = _hold_target
 
 func set_hold_target(pos: Vector3) -> void:
 	_hold_target = pos
@@ -88,6 +91,18 @@ func set_hold_target(pos: Vector3) -> void:
 
 func pick_anchor_point() -> Vector3:
 	return global_position + pick_anchor_offset
+
+func hold_anchor_point() -> Vector3:
+	return _hold_anchor.global_position if _hold_anchor else global_position
+
+func hold_anchor_local() -> Vector3:
+	return _hold_anchor.position if _hold_anchor else hold_anchor_offset
+
+func root_for_hold_anchor_world(world_point: Vector3) -> Vector3:
+	return world_point - global_transform.basis * hold_anchor_local()
+
+func align_for_hold(hand_yaw: float) -> void:
+	global_rotation = Vector3(0.0, hand_yaw, 0.0)
 
 func set_hover(on: bool) -> void:
 	for m in _hover_mats:
@@ -212,3 +227,9 @@ func _add_collider(shape: Shape3D, pos := Vector3.ZERO) -> void:
 	col.shape = shape
 	col.position = pos
 	add_child(col)
+
+func _set_hold_anchor(pos: Vector3) -> void:
+	hold_anchor_offset = pos
+	hold_offset = pos
+	if _hold_anchor:
+		_hold_anchor.position = pos

@@ -6,6 +6,7 @@ var _fingers: Array[Node3D] = []   # pivot nodes (4 fingers)
 var _thumb: Node3D
 var _palm: MeshInstance3D
 var _grip_socket: Node3D
+var _grip_cup: Node3D
 var _skin_mats: Array[StandardMaterial3D] = []
 var _aura: OmniLight3D
 var _pose := "open"
@@ -37,6 +38,7 @@ func _ready() -> void:
 	_grip_socket.name = "GripSocket"
 	_grip_socket.position = _grip_socket_target
 	add_child(_grip_socket)
+	_build_grip_cup(skin)
 
 	for i in 4:
 		var pivot := Node3D.new()
@@ -105,6 +107,8 @@ func set_tracking_feedback(on: bool) -> void:
 func set_hold_profile(kind: String) -> void:
 	scale = Vector3.ONE
 	_active_hold_profile = kind if kind != "" else "-"
+	if _grip_cup:
+		_grip_cup.visible = kind != ""
 	_grip_socket_target = Vector3(0.0, -0.04, -0.18)
 	match kind:
 		"rock":
@@ -146,19 +150,50 @@ func origin_for_grip_world(world_point: Vector3) -> Vector3:
 func _carry_targets() -> void:
 	match _active_hold_profile:
 		"rock":
-			_targets(1.35, 1.15, 0.04, 0.72)
+			_targets(1.75, 1.45, 0.08, 0.56)
 		"villager":
-			_targets(1.05, 0.95, 0.02, 0.82)
+			_targets(1.45, 1.2, 0.05, 0.66)
 		"offering":
-			_targets(1.22, 1.0, 0.04, 0.78)
+			_targets(1.6, 1.3, 0.07, 0.62)
 		"tree":
-			_targets(1.42, 1.18, 0.03, 0.68)
+			_targets(1.9, 1.5, 0.06, 0.5)
 		_:
-			_targets(1.1, 0.9, 0.04, 0.82)
+			_targets(1.5, 1.2, 0.06, 0.65)
+
+func carry_curl_value() -> float:
+	return _curl_target
+
+func _build_grip_cup(skin: Material) -> void:
+	_grip_cup = Node3D.new()
+	_grip_cup.name = "GripCup"
+	_grip_cup.visible = false
+	add_child(_grip_cup)
+	for i in 3:
+		var seg := MeshInstance3D.new()
+		var mesh := CapsuleMesh.new()
+		mesh.radius = 0.06
+		mesh.height = 0.42
+		seg.mesh = mesh
+		seg.material_override = skin
+		seg.position = Vector3(-0.18 + i * 0.18, 0.0, -0.1)
+		seg.rotation_degrees.x = 78.0
+		_grip_cup.add_child(seg)
+	var thumb_cup := MeshInstance3D.new()
+	var thumb_mesh := CapsuleMesh.new()
+	thumb_mesh.radius = 0.065
+	thumb_mesh.height = 0.36
+	thumb_cup.mesh = thumb_mesh
+	thumb_cup.material_override = skin
+	thumb_cup.position = Vector3(0.31, 0.0, 0.05)
+	thumb_cup.rotation_degrees = Vector3(72.0, -34.0, 16.0)
+	_grip_cup.add_child(thumb_cup)
 
 func _process(delta: float) -> void:
 	var k := 1.0 - exp(-12.0 * delta)
 	_grip_socket.position = _grip_socket.position.lerp(_grip_socket_target, k)
+	if _grip_cup:
+		_grip_cup.position = _grip_socket.position
+		_grip_cup.scale = Vector3.ONE * (1.18 if _active_hold_profile == "rock" else 1.0)
 	for i in _fingers.size():
 		var curl := _curl_target
 		if _pose == "point" and i == 1:

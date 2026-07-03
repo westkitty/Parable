@@ -33,7 +33,11 @@ func _run() -> void:
 	_check(rig.has_method("middle_button_down"), "camera middle-button helper exists")
 	_check(rig.has_method("orbit_source"), "camera orbit-source helper exists")
 	_check(rig.has_method("clear_transient_input"), "camera transient input clear helper exists")
+	_check(rig.has_method("simulate_zoom_step_for_test"), "camera bounded zoom-step helper exists")
 	_check(hand.has_method("simulate_right_mouse_press_for_test"), "hand exposes right-click hover contract helper")
+	_check(hand.has_method("simulate_empty_left_drag_for_test"), "hand exposes empty-left-drag pan surrogate helper")
+	_check(hand.has_method("hold_debug_marker_path_exists_for_test"), "hand exposes pooled hold-debug marker helper")
+	_check(hand.hold_debug_marker_path_exists_for_test(), "F3 hold-debug marker path exists")
 	_check(trace.has_method("active_mote_count"), "gesture trace exposes bounded mote helper")
 	await _assert_patch08_input_contract(hand, rig, main)
 	await _assert_stable_hold_and_release_modes(hand)
@@ -63,27 +67,30 @@ func _assert_stable_hold_and_release_modes(hand: Node) -> void:
 		var visual: Node = hand.get_node("HandVisual")
 		var debug: Dictionary = hand.get_debug()
 		_check(String(obj.hold_profile) == kind, "%s has explicit hold profile" % kind)
+		_check(obj.get_node_or_null("HoldAnchor") != null, "%s has HoldAnchor node" % kind)
 		_check(String(debug.get("hold_profile", "-")) == kind, "%s activates matching hold profile" % kind)
 		_check(String(debug.get("hand_pose", "-")) == "carry", "%s closes hand into carry pose" % kind)
+		_check(float(debug.get("carry_curl", 0.0)) >= 1.4, "%s carry pose has readable curl" % kind)
 		_check(obj.pick_anchor_offset != Vector3.ZERO, "%s pick anchor offset configured" % kind)
 		_check(obj.hover_screen_radius <= 80.0, "%s pickup radius is not absurdly large" % kind)
-		_check(obj.hold_offset != Vector3(0.0, -0.7, 0.0), "%s hold socket differs from default" % kind)
-		_check(_profile_matches_visible_hold(kind, obj.hold_offset), "%s hold offset matches visible grip intent" % kind)
+		_check(obj.hold_anchor_local() != Vector3.ZERO, "%s hold anchor differs from root" % kind)
+		_check(_profile_matches_visible_hold(kind, obj.hold_anchor_local()), "%s HoldAnchor matches visible grip intent" % kind)
 		var color_before := _mesh_color(obj)
 		for _i in 5:
 			await physics_frame
 		_check(hand.is_carrying(), "%s remains held across physics frames" % kind)
 		_check(obj.is_held == true, "%s owner state remains held" % kind)
-		var expected_hold: Vector3 = visual.grip_socket_world(obj.hold_offset)
-		var grip_dist: float = obj.global_position.distance_to(expected_hold)
-		_check(grip_dist < 0.12, "%s held object follows GripSocket target" % kind)
+		var grip_dist: float = obj.hold_anchor_point().distance_to(visual.grip_socket_world())
+		_check(grip_dist < 0.06, "%s HoldAnchor aligns to GripSocket" % kind)
 		_check(_mesh_color(obj) == color_before, "%s held state does not recolor base material" % kind)
 		debug = hand.get_debug()
 		_check(Vector3(debug.get("grip_point", Vector3.ZERO)).distance_to(visual.grip_socket_world()) < 0.01,
 			"%s diagnostics report grip socket position" % kind)
 		_check(Vector3(debug.get("held_position", Vector3.ZERO)).distance_to(obj.global_position) < 0.01,
 			"%s diagnostics report held object position" % kind)
-		_check(float(debug.get("hold_distance", 99.0)) < 0.12, "%s diagnostics report small grip distance" % kind)
+		_check(Vector3(debug.get("hold_anchor", Vector3.ZERO)).distance_to(obj.hold_anchor_point()) < 0.01,
+			"%s diagnostics report hold anchor position" % kind)
+		_check(float(debug.get("hold_distance", 99.0)) < 0.06, "%s diagnostics report small grip-anchor distance" % kind)
 		hand.simulate_release_for_test(Vector3.ZERO, true)
 		for _i in 2:
 			await physics_frame
@@ -119,18 +126,22 @@ func _assert_camera_motion_preserves_hold(hand: Node, rig: Node) -> void:
 	_check(hand.simulate_grab(rock), "camera surrogate grab succeeds")
 	_check(absf(float(rig.control_scale) - 1.0) < 0.001, "carrying does not slow camera controls")
 	var before: Dictionary = rig.save_state()
+	rig.pan_screen_delta(Vector2(36.0, -28.0))
 	rig.pan_by(Vector3(3.0, 0.0, -2.5))
 	rig.simulate_orbit_drag(Vector2(42.0, -18.0))
-	rig.simulate_zoom_factor(1.0 / 1.12)
+	var zoom_before: Dictionary = rig.save_state()
+	rig.simulate_zoom_step_for_test(-rig.scroll_zoom_step_for_test())
 	for _i in 6:
 		await physics_frame
 	var after: Dictionary = rig.save_state()
 	_check(before.pos != after.pos, "camera pan changes rig position")
 	_check(absf(float(before.yaw) - float(after.yaw)) > 0.001, "camera orbit changes yaw")
 	_check(absf(float(before.pitch) - float(after.pitch)) > 0.001, "camera orbit changes pitch")
-	_check(absf(float(before.dist) - float(after.dist)) > 0.001, "camera zoom changes distance target")
+	_check(absf(float(zoom_before.dist) - float(after.dist)) > 0.001, "camera scroll-step zoom changes distance target")
 	_check(hand.is_carrying(), "camera motion does not drop held object")
 	_check(rock.is_held == true, "camera motion does not corrupt held object state")
+	_check(rock.hold_anchor_point().distance_to(hand.get_node("HandVisual").grip_socket_world()) < 0.08,
+		"camera movement does not detach held HoldAnchor")
 	var click_before: Dictionary = rig.save_state()
 	var left_press := InputEventMouseButton.new()
 	left_press.button_index = MOUSE_BUTTON_LEFT
@@ -229,6 +240,15 @@ func _assert_patch08_input_contract(hand: Node, rig: Node, main: Node) -> void:
 	_check(absf(float(rig.control_scale) - 1.0) < 0.001, "right mouse carry keeps camera control scale unchanged")
 	hand.simulate_release_for_test(Vector3.ZERO, true)
 	await physics_frame
+
+	var small_pan_before: Dictionary = rig.save_state()
+	_check(hand.simulate_empty_left_drag_for_test(Vector2(3.0, 2.0)) == false, "plain small left drag stays below pan threshold")
+	var small_pan_after: Dictionary = rig.save_state()
+	_check(_camera_state_close(small_pan_before, small_pan_after), "plain small left drag does not move camera")
+	var edge_pan_before: Dictionary = rig.save_state()
+	_check(hand.simulate_empty_left_drag_for_test(Vector2(55.0, -42.0)) == true, "left drag beyond threshold pans with screen-space fallback")
+	var edge_pan_after: Dictionary = rig.save_state()
+	_check(edge_pan_before.pos.distance_to(edge_pan_after.pos) > 0.2, "screen-space left drag changes camera target")
 
 	var middle_press := InputEventMouseButton.new()
 	middle_press.button_index = MOUSE_BUTTON_MIDDLE
@@ -340,9 +360,11 @@ func _assert_temple_and_diagnostics_contract(main: Node, diagnostics: CanvasLaye
 	_check(text.contains("pan active:"), "diagnostics expose pan state")
 	_check(text.contains("input mode:"), "diagnostics expose input mode")
 	_check(text.contains("grip point:"), "diagnostics expose grip socket position")
+	_check(text.contains("hold anchor:"), "diagnostics expose hold anchor position")
 	_check(text.contains("held object position:"), "diagnostics expose held object position")
 	_check(text.contains("hold profile:"), "diagnostics expose active hold profile")
-	_check(text.contains("grip dist"), "diagnostics expose grip distance")
+	_check(text.contains("grip-anchor dist"), "diagnostics expose grip-anchor distance")
+	_check(text.contains("hold debug markers:"), "diagnostics expose hold-debug marker state")
 	_check(text.contains("bolt learned:"), "diagnostics expose bolt learned state")
 	var label_texts := _label_texts(temple)
 	_check("SYMBOL" in label_texts, "temple exposes SYMBOL label")
@@ -397,13 +419,13 @@ func _camera_state_close(a: Dictionary, b: Dictionary) -> bool:
 func _profile_matches_visible_hold(kind: String, offset: Vector3) -> bool:
 	match kind:
 		"rock":
-			return absf(offset.y) <= 0.08 and absf(offset.z) <= 0.08
+			return offset.y >= 0.08 and offset.y <= 0.24 and absf(offset.z) <= 0.08
 		"villager":
-			return offset.y <= -0.58 and offset.y >= -0.78
+			return offset.y >= 0.62 and offset.y <= 0.82
 		"offering":
-			return offset.y <= -0.24 and offset.y >= -0.46 and absf(offset.z) <= 0.08
+			return offset.y >= 0.72 and offset.y <= 1.0 and absf(offset.z) <= 0.08
 		"tree":
-			return offset.y <= -0.82 and offset.y >= -1.02
+			return offset.y >= 0.86 and offset.y <= 1.16
 	return false
 
 func _label_texts(node: Node) -> Array[String]:

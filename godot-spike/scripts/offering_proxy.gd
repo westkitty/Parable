@@ -10,7 +10,7 @@ func _configure() -> void:
 	mass = 3.0
 	display_name = "offering"
 	hold_profile = "offering"
-	hold_offset = Vector3(0.0, -0.34, -0.03)
+	hold_anchor_offset = Vector3(0.0, 0.86, 0.0)
 	pick_anchor_offset = Vector3(0.0, 0.92, 0.0)
 	hover_screen_radius = 52.0
 	ground_clearance = 0.95
@@ -40,6 +40,7 @@ func _build_body() -> void:
 	halo.material_override = mat
 	halo.position = Vector3(0.0, 0.96, 0.0)
 	add_child(halo)
+	_set_hold_anchor(Vector3(0.0, 0.86, 0.0))
 	var shape := BoxShape3D.new()
 	shape.size = Vector3(0.78, 1.6, 0.78)
 	_add_collider(shape, Vector3(0.0, 0.8, 0.0))

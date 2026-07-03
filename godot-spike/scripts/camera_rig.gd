@@ -8,11 +8,11 @@ const PITCH_MIN := deg_to_rad(-80.0)
 const PITCH_MAX := deg_to_rad(-15.0)
 const DIST_MIN := 7.0
 const DIST_MAX := 55.0
-const ZOOM_STEP_SCROLL := 1.75
-const ZOOM_STEP_KEYBOARD := 0.85
-const SCREEN_PAN_SCALE := 0.026
-const KEY_ORBIT_RATE := 1.2
-const KEY_PITCH_RATE := 0.9
+const ZOOM_STEP_SCROLL := 2.4
+const ZOOM_STEP_KEYBOARD := 1.2
+const SCREEN_PAN_SCALE := 0.044
+const KEY_ORBIT_RATE := 1.55
+const KEY_PITCH_RATE := 1.1
 const CAMERA_SMOOTH := 12.0
 const DEFAULT_POS := Vector3(0.0, 6.0, 3.5)
 const DEFAULT_PITCH := -56.0
@@ -144,6 +144,12 @@ func pan_screen_delta(delta: Vector2) -> void:
 	var scale := SCREEN_PAN_SCALE * control_scale
 	var offset := (-right * delta.x + forward * delta.y) * scale
 	pan_by(offset)
+
+func simulate_zoom_step_for_test(delta_step: float) -> void:
+	_zoom(delta_step)
+
+func scroll_zoom_step_for_test() -> float:
+	return ZOOM_STEP_SCROLL
 
 func target_position() -> Vector3:
 	return position

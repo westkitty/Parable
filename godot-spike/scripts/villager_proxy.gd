@@ -33,7 +33,7 @@ func _configure() -> void:
 	mass = 9.0
 	display_name = "villager"
 	hold_profile = "villager"
-	hold_offset = Vector3(0.0, -0.66, -0.02)
+	hold_anchor_offset = Vector3(0.0, 0.72, 0.0)
 	pick_anchor_offset = Vector3(0.0, 0.78, 0.0)
 	hover_screen_radius = 58.0
 	ground_clearance = 0.85
@@ -68,6 +68,7 @@ func _build_body() -> void:
 	head.position = Vector3(0.0, 0.72, 0.0)
 	head.material_override = mat
 	_pivot.add_child(head)
+	_set_hold_anchor(Vector3(0.0, 0.72, 0.0))
 	_add_collider(_make_capsule_shape())
 	_question = Label3D.new()
 	_question.text = "Who are you?"

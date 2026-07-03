@@ -40,6 +40,11 @@ var _trace: Node3D
 var _diagnostics: CanvasLayer
 var _shrine: Node
 var _grabbables: Array[Node] = []
+var _hold_debug_root: Node3D
+var _grip_marker: MeshInstance3D
+var _anchor_marker: MeshInstance3D
+var _anchor_line: MeshInstance3D
+var _anchor_line_mesh: ImmediateMesh
 
 var _ground_point := Vector3.ZERO
 var _hand_target := Vector3.ZERO
@@ -103,6 +108,7 @@ func _physics_process(delta: float) -> void:
 	if _rig == null or _island == null:
 		return
 	if _input_suspended:
+		_update_hold_debug_markers(false)
 		return
 
 	var mouse := get_viewport().get_mouse_position()
@@ -113,6 +119,7 @@ func _physics_process(delta: float) -> void:
 	_miracle_override = Input.is_action_pressed("gesture_mode")
 
 	_world_frame(mouse, delta)
+	_update_hold_debug_markers(_diagnostics_visible())
 
 # --- Normal world interaction ----------------------------------------------
 
@@ -123,7 +130,7 @@ func _world_frame(mouse: Vector2, _delta: float) -> void:
 	var space := get_world_3d().direct_space_state
 
 	# Ground point under the mouse (terrain, layer 1).
-	var ground_valid := _update_ground_point(from, dir)
+	_update_ground_point(from, dir)
 
 	# Hover follows the visible palm/grip point rather than the raw cursor.
 	var new_hover: Node = null
@@ -162,7 +169,7 @@ func _world_frame(mouse: Vector2, _delta: float) -> void:
 			_pending_click_target = inter.collider
 		elif _hovered == null:
 			_press_kind = "pending_pan"
-			_pan_using_ground = ground_valid
+			_pan_using_ground = false
 			_pan_last_ground = _ground_point
 			_pan_source = "none"
 			_cancel_miracle(false)
@@ -174,17 +181,12 @@ func _world_frame(mouse: Vector2, _delta: float) -> void:
 					_press_kind = "pan"
 					_pan_last_mouse = mouse
 					_pan_last_ground = _ground_point
-					_pan_source = "ground" if (ground_valid and _pan_using_ground) else "screen"
+					_pan_source = "screen"
 			"pan":
 				state = "pan"
-				if ground_valid and _pan_using_ground:
-					_rig.pan_by(_pan_last_ground - _ground_point)
-					_pan_last_ground = _ground_point
-					_pan_source = "ground"
-				else:
-					_pan_using_ground = false
-					_rig.pan_screen_delta(mouse - _pan_last_mouse)
-					_pan_source = "screen"
+				_pan_using_ground = false
+				_rig.pan_screen_delta(mouse - _pan_last_mouse)
+				_pan_source = "screen"
 				_pan_last_mouse = mouse
 			"pending_click":
 				pass
@@ -228,6 +230,9 @@ func _world_frame(mouse: Vector2, _delta: float) -> void:
 		_:
 			_visual.set_pose("grip" if _hovered != null else "open")
 
+	if _press_kind == "carry":
+		_update_carry()
+
 	# Sample hand motion in rig-local space (camera motion contributes zero).
 	var local_pos: Vector3 = _rig.global_transform.affine_inverse() * _hand_target
 	_sampler.add_sample(local_pos, _time)
@@ -260,9 +265,10 @@ func _update_carry() -> void:
 		_held = null
 		_press_kind = ""
 		return
-	var target: Vector3 = _visual.grip_socket_world(_held.hold_offset) if _visual and _visual.has_method("grip_socket_world") else global_position + _held.hold_offset
-	var floor_y: float = _island.height_at(target.x, target.z) + _held.ground_clearance
-	target.y = maxf(target.y, floor_y)
+	if _held.has_method("align_for_hold"):
+		_held.align_for_hold(rotation.y)
+	var grip_world: Vector3 = _visual.grip_socket_world() if _visual and _visual.has_method("grip_socket_world") else global_position
+	var target: Vector3 = _held.root_for_hold_anchor_world(grip_world) if _held.has_method("root_for_hold_anchor_world") else grip_world
 	_held.set_hold_target(target)
 
 func _release_held(force_gentle := false) -> void:
@@ -486,6 +492,18 @@ func clear_hover_for_test() -> void:
 func force_hover_for_test(obj: Node) -> void:
 	_set_hovered(obj)
 
+func simulate_empty_left_drag_for_test(delta: Vector2) -> bool:
+	_lazy_refs()
+	if _rig == null or delta.length() < CLICK_DRAG_THRESHOLD_PX:
+		return false
+	_press_kind = "pan"
+	_pan_source = "screen"
+	_pan_using_ground = false
+	_rig.pan_screen_delta(delta)
+	_press_kind = ""
+	state = "hover"
+	return true
+
 func simulate_release_for_test(world_velocity: Vector3, force_gentle := false) -> void:
 	if _held == null:
 		return
@@ -568,10 +586,13 @@ func get_debug() -> Dictionary:
 		"hand_target": _hand_target,
 		"grip_point": _visual.grip_socket_world() if (_visual and _visual.has_method("grip_socket_world")) else global_position,
 		"held_position": _held.global_position if (_held != null and is_instance_valid(_held)) else Vector3.ZERO,
-		"hold_offset": _held.hold_offset if (_held != null and is_instance_valid(_held)) else Vector3.ZERO,
-		"hold_distance": _held.global_position.distance_to(_visual.grip_socket_world(_held.hold_offset)) if (_held != null and is_instance_valid(_held) and _visual and _visual.has_method("grip_socket_world")) else 0.0,
+		"hold_anchor": _held.hold_anchor_point() if (_held != null and is_instance_valid(_held) and _held.has_method("hold_anchor_point")) else Vector3.ZERO,
+		"hold_offset": _held.hold_anchor_local() if (_held != null and is_instance_valid(_held) and _held.has_method("hold_anchor_local")) else Vector3.ZERO,
+		"hold_distance": _held.hold_anchor_point().distance_to(_visual.grip_socket_world()) if (_held != null and is_instance_valid(_held) and _held.has_method("hold_anchor_point") and _visual and _visual.has_method("grip_socket_world")) else 0.0,
 		"hold_profile": _visual.active_hold_profile() if (_visual and _visual.has_method("active_hold_profile")) else "-",
 		"hand_pose": _visual.pose_name() if (_visual and _visual.has_method("pose_name")) else "-",
+		"carry_curl": _visual.carry_curl_value() if (_visual and _visual.has_method("carry_curl_value")) else 0.0,
+		"hold_debug_markers": _hold_debug_root != null,
 		"hover_anchor": _hovered.pick_anchor_point() if (_hovered != null and is_instance_valid(_hovered) and _hovered.has_method("pick_anchor_point")) else Vector3.ZERO,
 	}
 
@@ -655,8 +676,74 @@ func _origin_for_hover_anchor(anchor: Vector3) -> Vector3:
 func _carry_anchor_height() -> float:
 	if _held == null or not is_instance_valid(_held):
 		return HAND_DIRECT_CARRY_HEIGHT
-	var needed: float = _held.ground_clearance - HOVER_GRIP_LIFT.y - _held.hold_offset.y
-	return maxf(HAND_DIRECT_CARRY_HEIGHT, needed)
+	return maxf(HOVER_HEIGHT, HAND_DIRECT_CARRY_HEIGHT)
+
+func _ensure_hold_debug_markers() -> void:
+	if _hold_debug_root != null:
+		return
+	_hold_debug_root = Node3D.new()
+	_hold_debug_root.name = "HoldDebug"
+	_hold_debug_root.top_level = true
+	add_child(_hold_debug_root)
+	var grip_mat := _debug_marker_material(Color(0.2, 1.0, 0.2))
+	var anchor_mat := _debug_marker_material(Color(1.0, 0.75, 0.15))
+	var line_mat := _debug_marker_material(Color(1.0, 0.2, 0.2))
+	_grip_marker = _debug_sphere_marker("GripSocketMarker", grip_mat)
+	_anchor_marker = _debug_sphere_marker("HoldAnchorMarker", anchor_mat)
+	_anchor_line_mesh = ImmediateMesh.new()
+	_anchor_line = MeshInstance3D.new()
+	_anchor_line.name = "GripToAnchorLine"
+	_anchor_line.mesh = _anchor_line_mesh
+	_anchor_line.material_override = line_mat
+	_hold_debug_root.add_child(_anchor_line)
+	_update_hold_debug_markers(false)
+
+func _debug_sphere_marker(marker_name: String, mat: Material) -> MeshInstance3D:
+	var marker := MeshInstance3D.new()
+	marker.name = marker_name
+	var mesh := SphereMesh.new()
+	mesh.radius = 0.09
+	mesh.height = 0.18
+	marker.mesh = mesh
+	marker.material_override = mat
+	_hold_debug_root.add_child(marker)
+	return marker
+
+func _debug_marker_material(color: Color) -> StandardMaterial3D:
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = color
+	mat.emission_enabled = true
+	mat.emission = color
+	mat.emission_energy_multiplier = 1.6
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	return mat
+
+func _update_hold_debug_markers(show: bool) -> void:
+	if show and _hold_debug_root == null:
+		_ensure_hold_debug_markers()
+	if _hold_debug_root == null:
+		return
+	var active := show and _held != null and is_instance_valid(_held) and _visual != null
+	_hold_debug_root.visible = active
+	if not active:
+		if _anchor_line_mesh:
+			_anchor_line_mesh.clear_surfaces()
+		return
+	var grip: Vector3 = _visual.grip_socket_world()
+	var anchor: Vector3 = _held.hold_anchor_point() if _held.has_method("hold_anchor_point") else _held.global_position
+	_grip_marker.global_position = grip
+	_anchor_marker.global_position = anchor
+	_anchor_line_mesh.clear_surfaces()
+	_anchor_line_mesh.surface_begin(Mesh.PRIMITIVE_LINES, _anchor_line.material_override)
+	_anchor_line_mesh.surface_add_vertex(grip)
+	_anchor_line_mesh.surface_add_vertex(anchor)
+	_anchor_line_mesh.surface_end()
+
+func hold_debug_marker_path_exists_for_test() -> bool:
+	_ensure_hold_debug_markers()
+	return _hold_debug_root.get_node_or_null("GripSocketMarker") != null \
+		and _hold_debug_root.get_node_or_null("HoldAnchorMarker") != null \
+		and _hold_debug_root.get_node_or_null("GripToAnchorLine") != null
 
 func _push_stroke_point(screen_point: Vector2, world_point: Vector3) -> void:
 	_stroke_screen.append(screen_point)
