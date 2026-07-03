@@ -45,6 +45,8 @@ var _grip_marker: MeshInstance3D
 var _anchor_marker: MeshInstance3D
 var _anchor_line: MeshInstance3D
 var _anchor_line_mesh: ImmediateMesh
+var _anchor_label: Label3D
+var _hold_debug_active := false
 
 var _ground_point := Vector3.ZERO
 var _hand_target := Vector3.ZERO
@@ -584,15 +586,18 @@ func get_debug() -> Dictionary:
 		"bolt_learned": _world.identity.learned_bolt if (_world and _world.identity) else false,
 		"ray_target": _ground_point,
 		"hand_target": _hand_target,
+		"palm_center": _visual.palm_center_world() if (_visual and _visual.has_method("palm_center_world")) else global_position,
 		"grip_point": _visual.grip_socket_world() if (_visual and _visual.has_method("grip_socket_world")) else global_position,
 		"held_position": _held.global_position if (_held != null and is_instance_valid(_held)) else Vector3.ZERO,
+		"grip_contact": _held.grip_contact_point() if (_held != null and is_instance_valid(_held) and _held.has_method("grip_contact_point")) else Vector3.ZERO,
 		"hold_anchor": _held.hold_anchor_point() if (_held != null and is_instance_valid(_held) and _held.has_method("hold_anchor_point")) else Vector3.ZERO,
-		"hold_offset": _held.hold_anchor_local() if (_held != null and is_instance_valid(_held) and _held.has_method("hold_anchor_local")) else Vector3.ZERO,
-		"hold_distance": _held.hold_anchor_point().distance_to(_visual.grip_socket_world()) if (_held != null and is_instance_valid(_held) and _held.has_method("hold_anchor_point") and _visual and _visual.has_method("grip_socket_world")) else 0.0,
+		"hold_offset": _held.grip_contact_local() if (_held != null and is_instance_valid(_held) and _held.has_method("grip_contact_local")) else Vector3.ZERO,
+		"hold_distance": _held.grip_contact_point().distance_to(_visual.grip_socket_world()) if (_held != null and is_instance_valid(_held) and _held.has_method("grip_contact_point") and _visual and _visual.has_method("grip_socket_world")) else 0.0,
 		"hold_profile": _visual.active_hold_profile() if (_visual and _visual.has_method("active_hold_profile")) else "-",
 		"hand_pose": _visual.pose_name() if (_visual and _visual.has_method("pose_name")) else "-",
 		"carry_curl": _visual.carry_curl_value() if (_visual and _visual.has_method("carry_curl_value")) else 0.0,
-		"hold_debug_markers": _hold_debug_root != null,
+		"grip_cup_visible": _visual.grip_cup_visible_for_test() if (_visual and _visual.has_method("grip_cup_visible_for_test")) else false,
+		"hold_debug_markers": _hold_debug_active,
 		"hover_anchor": _hovered.pick_anchor_point() if (_hovered != null and is_instance_valid(_hovered) and _hovered.has_method("pick_anchor_point")) else Vector3.ZERO,
 	}
 
@@ -696,6 +701,14 @@ func _ensure_hold_debug_markers() -> void:
 	_anchor_line.mesh = _anchor_line_mesh
 	_anchor_line.material_override = line_mat
 	_hold_debug_root.add_child(_anchor_line)
+	_anchor_label = Label3D.new()
+	_anchor_label.name = "GripDebugLabel"
+	_anchor_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	_anchor_label.font_size = 72
+	_anchor_label.pixel_size = 0.006
+	_anchor_label.modulate = Color(1.0, 0.95, 0.68)
+	_anchor_label.outline_size = 10
+	_hold_debug_root.add_child(_anchor_label)
 	_update_hold_debug_markers(false)
 
 func _debug_sphere_marker(marker_name: String, mat: Material) -> MeshInstance3D:
@@ -724,15 +737,26 @@ func _update_hold_debug_markers(show: bool) -> void:
 	if _hold_debug_root == null:
 		return
 	var active := show and _held != null and is_instance_valid(_held) and _visual != null
+	_hold_debug_active = active
 	_hold_debug_root.visible = active
 	if not active:
 		if _anchor_line_mesh:
 			_anchor_line_mesh.clear_surfaces()
+		if _anchor_label:
+			_anchor_label.text = ""
 		return
 	var grip: Vector3 = _visual.grip_socket_world()
-	var anchor: Vector3 = _held.hold_anchor_point() if _held.has_method("hold_anchor_point") else _held.global_position
+	var anchor: Vector3 = _held.grip_contact_point() if _held.has_method("grip_contact_point") else _held.global_position
+	var dist := grip.distance_to(anchor)
 	_grip_marker.global_position = grip
 	_anchor_marker.global_position = anchor
+	_anchor_label.global_position = grip + Vector3(0.0, 0.38, 0.0)
+	_anchor_label.text = "HELD: %s\nPROFILE: %s\nGRIP DIST: %.3f\nALIGNMENT: %s" % [
+		_held.display_name,
+		_held.hold_profile,
+		dist,
+		"OK" if dist < 0.08 else "GAP",
+	]
 	_anchor_line_mesh.clear_surfaces()
 	_anchor_line_mesh.surface_begin(Mesh.PRIMITIVE_LINES, _anchor_line.material_override)
 	_anchor_line_mesh.surface_add_vertex(grip)
@@ -743,7 +767,17 @@ func hold_debug_marker_path_exists_for_test() -> bool:
 	_ensure_hold_debug_markers()
 	return _hold_debug_root.get_node_or_null("GripSocketMarker") != null \
 		and _hold_debug_root.get_node_or_null("HoldAnchorMarker") != null \
-		and _hold_debug_root.get_node_or_null("GripToAnchorLine") != null
+		and _hold_debug_root.get_node_or_null("GripToAnchorLine") != null \
+		and _hold_debug_root.get_node_or_null("GripDebugLabel") != null
+
+func hold_debug_visible_for_test() -> bool:
+	return _hold_debug_root != null and _hold_debug_root.visible
+
+func clear_debug_visuals_for_temple() -> void:
+	_update_hold_debug_markers(false)
+	_cancel_miracle(false)
+	if _trace and _trace.has_method("clear_now"):
+		_trace.clear_now()
 
 func _push_stroke_point(screen_point: Vector2, world_point: Vector3) -> void:
 	_stroke_screen.append(screen_point)

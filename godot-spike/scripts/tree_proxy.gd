@@ -8,7 +8,7 @@ func _configure() -> void:
 	mass = 120.0
 	display_name = "tree"
 	hold_profile = "tree"
-	hold_anchor_offset = Vector3(0.0, 1.02, 0.0)
+	hold_anchor_offset = Vector3(0.0, 1.03, -0.05)
 	pick_anchor_offset = Vector3(0.0, 1.35, 0.0)
 	hover_screen_radius = 72.0
 	ground_clearance = 1.28
@@ -20,7 +20,7 @@ func _build_body() -> void:
 	trunk.bottom_radius = 0.22
 	trunk.height = 1.8
 	_add_mesh(trunk, Color(0.36, 0.25, 0.15), Vector3(0.0, 0.9, 0.0))
-	_set_hold_anchor(Vector3(0.0, 1.02, 0.0))
+	_set_hold_anchor(Vector3(0.0, 1.03, -0.05))
 	var crown := SphereMesh.new()
 	crown.radius = 0.85
 	crown.height = 1.7

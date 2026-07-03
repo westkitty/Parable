@@ -51,6 +51,7 @@ var _wiggle_t := 0.0
 var _hover_mats: Array[StandardMaterial3D] = []
 var _held_visual := false
 var _hold_anchor: Node3D
+var _grip_contact: Node3D
 
 func _ready() -> void:
 	add_to_group("grabbable")
@@ -60,9 +61,12 @@ func _ready() -> void:
 	max_contacts_reported = 4
 	body_entered.connect(_on_body_entered)
 	_configure()
+	_grip_contact = Node3D.new()
+	_grip_contact.name = "GripContact"
+	add_child(_grip_contact)
 	_hold_anchor = Node3D.new()
 	_hold_anchor.name = "HoldAnchor"
-	add_child(_hold_anchor)
+	_grip_contact.add_child(_hold_anchor)
 	_build_body()
 	_set_hold_anchor(hold_anchor_offset)
 	if start_frozen:
@@ -93,13 +97,19 @@ func pick_anchor_point() -> Vector3:
 	return global_position + pick_anchor_offset
 
 func hold_anchor_point() -> Vector3:
-	return _hold_anchor.global_position if _hold_anchor else global_position
+	return grip_contact_point()
 
 func hold_anchor_local() -> Vector3:
-	return _hold_anchor.position if _hold_anchor else hold_anchor_offset
+	return grip_contact_local()
+
+func grip_contact_point() -> Vector3:
+	return _grip_contact.global_position if _grip_contact else global_position
+
+func grip_contact_local() -> Vector3:
+	return _grip_contact.position if _grip_contact else hold_anchor_offset
 
 func root_for_hold_anchor_world(world_point: Vector3) -> Vector3:
-	return world_point - global_transform.basis * hold_anchor_local()
+	return world_point - global_transform.basis * grip_contact_local()
 
 func align_for_hold(hand_yaw: float) -> void:
 	global_rotation = Vector3(0.0, hand_yaw, 0.0)
@@ -231,5 +241,7 @@ func _add_collider(shape: Shape3D, pos := Vector3.ZERO) -> void:
 func _set_hold_anchor(pos: Vector3) -> void:
 	hold_anchor_offset = pos
 	hold_offset = pos
+	if _grip_contact:
+		_grip_contact.position = pos
 	if _hold_anchor:
-		_hold_anchor.position = pos
+		_hold_anchor.position = Vector3.ZERO

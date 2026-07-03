@@ -58,6 +58,7 @@ func _run() -> void:
 		quit(1)
 
 func _assert_stable_hold_and_release_modes(hand: Node) -> void:
+	var diagnostics: CanvasLayer = get_first_node_in_group("diagnostics")
 	for kind in ["rock", "villager", "tree", "offering"]:
 		var obj := _find_grabbable(kind)
 		_check(obj != null, "%s exists for hold surrogate" % kind)
@@ -67,36 +68,50 @@ func _assert_stable_hold_and_release_modes(hand: Node) -> void:
 		var visual: Node = hand.get_node("HandVisual")
 		var debug: Dictionary = hand.get_debug()
 		_check(String(obj.hold_profile) == kind, "%s has explicit hold profile" % kind)
-		_check(obj.get_node_or_null("HoldAnchor") != null, "%s has HoldAnchor node" % kind)
+		_check(obj.get_node_or_null("GripContact") != null, "%s has GripContact node" % kind)
+		_check(obj.get_node_or_null("GripContact/HoldAnchor") != null, "%s has HoldAnchor compatibility node" % kind)
 		_check(String(debug.get("hold_profile", "-")) == kind, "%s activates matching hold profile" % kind)
 		_check(String(debug.get("hand_pose", "-")) == "carry", "%s closes hand into carry pose" % kind)
 		_check(float(debug.get("carry_curl", 0.0)) >= 1.4, "%s carry pose has readable curl" % kind)
+		_check(bool(debug.get("grip_cup_visible", false)) == true, "%s contact grip geometry appears only while held" % kind)
 		_check(obj.pick_anchor_offset != Vector3.ZERO, "%s pick anchor offset configured" % kind)
 		_check(obj.hover_screen_radius <= 80.0, "%s pickup radius is not absurdly large" % kind)
 		_check(obj.hold_anchor_local() != Vector3.ZERO, "%s hold anchor differs from root" % kind)
-		_check(_profile_matches_visible_hold(kind, obj.hold_anchor_local()), "%s HoldAnchor matches visible grip intent" % kind)
+		_check(_profile_matches_visible_hold(kind, obj.grip_contact_local()), "%s GripContact matches visible grip intent" % kind)
 		var color_before := _mesh_color(obj)
 		for _i in 5:
 			await physics_frame
 		_check(hand.is_carrying(), "%s remains held across physics frames" % kind)
 		_check(obj.is_held == true, "%s owner state remains held" % kind)
-		var grip_dist: float = obj.hold_anchor_point().distance_to(visual.grip_socket_world())
-		_check(grip_dist < 0.06, "%s HoldAnchor aligns to GripSocket" % kind)
+		var grip_world: Vector3 = visual.grip_socket_world()
+		var grip_dist: float = obj.grip_contact_point().distance_to(grip_world)
+		_check(grip_dist < 0.06, "%s GripContact aligns to hand grip contact" % kind)
+		_check(obj.global_position.distance_to(grip_world) > 0.28, "%s root remains visibly offset from hand contact" % kind)
+		_check(obj.global_position.y < grip_world.y - 0.18, "%s body hangs below grip contact instead of storing in palm" % kind)
 		_check(_mesh_color(obj) == color_before, "%s held state does not recolor base material" % kind)
 		debug = hand.get_debug()
 		_check(Vector3(debug.get("grip_point", Vector3.ZERO)).distance_to(visual.grip_socket_world()) < 0.01,
 			"%s diagnostics report grip socket position" % kind)
 		_check(Vector3(debug.get("held_position", Vector3.ZERO)).distance_to(obj.global_position) < 0.01,
 			"%s diagnostics report held object position" % kind)
-		_check(Vector3(debug.get("hold_anchor", Vector3.ZERO)).distance_to(obj.hold_anchor_point()) < 0.01,
-			"%s diagnostics report hold anchor position" % kind)
-		_check(float(debug.get("hold_distance", 99.0)) < 0.06, "%s diagnostics report small grip-anchor distance" % kind)
+		_check(Vector3(debug.get("grip_contact", Vector3.ZERO)).distance_to(obj.grip_contact_point()) < 0.01,
+			"%s diagnostics report object grip contact position" % kind)
+		_check(float(debug.get("hold_distance", 99.0)) < 0.06, "%s diagnostics report small grip-contact distance" % kind)
+		_check(hand.hold_debug_visible_for_test() == false, "%s F3 grip markers stay hidden while diagnostics are off" % kind)
+		if diagnostics:
+			diagnostics.visible = true
+			await physics_frame
+			_check(hand.hold_debug_visible_for_test() == true, "%s F3 grip markers appear while diagnostics are on" % kind)
+			diagnostics.visible = false
+			await physics_frame
+			_check(hand.hold_debug_visible_for_test() == false, "%s F3 grip markers hide again when diagnostics turn off" % kind)
 		hand.simulate_release_for_test(Vector3.ZERO, true)
 		for _i in 2:
 			await physics_frame
 		_check(obj.last_release_mode == "drop", "%s gentle release records drop" % kind)
 		_check(obj.recent_gentle_release == true, "%s gentle release flag stays true" % kind)
 		_check(hand.is_carrying() == false, "%s gentle release clears hand state" % kind)
+		_check(bool(hand.get_debug().get("grip_cup_visible", true)) == false, "%s contact grip geometry hides after release" % kind)
 		_check(hand.simulate_grab(obj), "%s regrab succeeds after gentle release" % kind)
 		hand.simulate_release_for_test(Vector3(7.5, 4.0, 0.0))
 		await physics_frame
@@ -140,8 +155,8 @@ func _assert_camera_motion_preserves_hold(hand: Node, rig: Node) -> void:
 	_check(absf(float(zoom_before.dist) - float(after.dist)) > 0.001, "camera scroll-step zoom changes distance target")
 	_check(hand.is_carrying(), "camera motion does not drop held object")
 	_check(rock.is_held == true, "camera motion does not corrupt held object state")
-	_check(rock.hold_anchor_point().distance_to(hand.get_node("HandVisual").grip_socket_world()) < 0.08,
-		"camera movement does not detach held HoldAnchor")
+	_check(rock.grip_contact_point().distance_to(hand.get_node("HandVisual").grip_socket_world()) < 0.08,
+		"camera movement does not detach held GripContact")
 	var click_before: Dictionary = rig.save_state()
 	var left_press := InputEventMouseButton.new()
 	left_press.button_index = MOUSE_BUTTON_LEFT
@@ -335,6 +350,7 @@ func _assert_glyph_learning_contract(hand: Node, main: Node, shrine: Node) -> vo
 	_check(hand.simulate_debug_bolt_for_test() == true, "debug bolt-cast fallback succeeds")
 
 func _assert_temple_and_diagnostics_contract(main: Node, diagnostics: CanvasLayer, shrine: Node, trace: Node) -> void:
+	var hand: Node = main.get_node("DivineHand")
 	var temple: Node = load("res://scenes/TempleInterior.tscn").instantiate()
 	root.add_child(temple)
 	await process_frame
@@ -359,12 +375,12 @@ func _assert_temple_and_diagnostics_contract(main: Node, diagnostics: CanvasLaye
 	_check(text.contains("camera:"), "diagnostics expose camera state")
 	_check(text.contains("pan active:"), "diagnostics expose pan state")
 	_check(text.contains("input mode:"), "diagnostics expose input mode")
-	_check(text.contains("grip point:"), "diagnostics expose grip socket position")
-	_check(text.contains("hold anchor:"), "diagnostics expose hold anchor position")
+	_check(text.contains("hand grip contact:"), "diagnostics expose hand grip contact position")
+	_check(text.contains("object grip contact:"), "diagnostics expose object grip contact position")
 	_check(text.contains("held object position:"), "diagnostics expose held object position")
 	_check(text.contains("hold profile:"), "diagnostics expose active hold profile")
-	_check(text.contains("grip-anchor dist"), "diagnostics expose grip-anchor distance")
-	_check(text.contains("hold debug markers:"), "diagnostics expose hold-debug marker state")
+	_check(text.contains("grip-contact dist"), "diagnostics expose grip-contact distance")
+	_check(text.contains("hold debug markers active:"), "diagnostics expose hold-debug marker state")
 	_check(text.contains("bolt learned:"), "diagnostics expose bolt learned state")
 	var label_texts := _label_texts(temple)
 	_check("SYMBOL" in label_texts, "temple exposes SYMBOL label")
@@ -373,7 +389,10 @@ func _assert_temple_and_diagnostics_contract(main: Node, diagnostics: CanvasLaye
 	_check(temple.get_node_or_null("SymbolChamber") != null, "temple exposes physical symbol chamber node")
 	_check(temple.get_node_or_null("GlyphChamber") != null, "temple exposes physical glyph chamber node")
 	_check(temple.get_node_or_null("ExitChamber") != null, "temple exposes physical exit chamber node")
+	_check(temple.get_node_or_null("GlyphChamber/CircleGlyphPedestal/CircleGlyph") != null, "temple circle glyph is pedestal-bound")
+	_check(temple.get_node_or_null("GlyphChamber/CircleGlyphPedestal/CircleGlyphLabel") != null, "temple circle glyph is labeled")
 	_check(trace.active_mote_count() <= 28, "gesture trace active motes stay bounded")
+	_check(hand.hold_debug_visible_for_test() == false, "hold debug markers are hidden during temple diagnostics by default")
 	_check(main.mouse_hidden_for_play() == true, "temple flow does not restore cursor policy")
 	_check(_temple_labels_face_camera(temple), "temple labels are camera-visible from center")
 	shrine.state = shrine.ShrineState.DORMANT
@@ -419,13 +438,13 @@ func _camera_state_close(a: Dictionary, b: Dictionary) -> bool:
 func _profile_matches_visible_hold(kind: String, offset: Vector3) -> bool:
 	match kind:
 		"rock":
-			return offset.y >= 0.08 and offset.y <= 0.24 and absf(offset.z) <= 0.08
+			return offset.y >= 0.45 and offset.y <= 0.68 and offset.z < -0.1
 		"villager":
-			return offset.y >= 0.62 and offset.y <= 0.82
+			return offset.y >= 0.7 and offset.y <= 0.9 and offset.z <= 0.0
 		"offering":
-			return offset.y >= 0.72 and offset.y <= 1.0 and absf(offset.z) <= 0.08
+			return offset.y >= 0.82 and offset.y <= 1.02 and offset.z <= 0.0
 		"tree":
-			return offset.y >= 0.86 and offset.y <= 1.16
+			return offset.y >= 0.9 and offset.y <= 1.16 and offset.z <= 0.0
 	return false
 
 func _label_texts(node: Node) -> Array[String]:

@@ -23,6 +23,7 @@ var _exit_marker: StandardMaterial3D
 var _symbol_chamber: Node3D
 var _glyph_chamber: Node3D
 var _exit_chamber: Node3D
+var _circle_glyph_pedestal: Node3D
 
 func _ready() -> void:
 	add_to_group("temple_interior")
@@ -210,11 +211,26 @@ func _build_chamber() -> void:
 	# --- Right chamber (-X side → yaw -90 looks toward +X).
 	# Miracle / Glyph alcove: circle glyph lit, zigzag dim until learned.
 	_arch(_glyph_chamber, Vector3(5.25, 2.0, -0.2), Color(0.2, 0.42, 0.38), Vector3(2.8, 4.0, 1.1))
-	_floor_ring(_glyph_chamber, Vector3(4.75, 0.02, -0.15), Color(0.28, 0.95, 0.88), 1.3, 1.65)
-	var circle_slot := SymbolForms.build("ring", 2.6)
-	circle_slot.position = Vector3(5.7, 2.2, -0.8)
+	_floor_ring(_glyph_chamber, Vector3(4.75, 0.02, -0.15), Color(0.16, 0.42, 0.39), 0.92, 1.12)
+	_circle_glyph_pedestal = Node3D.new()
+	_circle_glyph_pedestal.name = "CircleGlyphPedestal"
+	_circle_glyph_pedestal.position = Vector3(5.72, 1.55, -0.78)
+	_circle_glyph_pedestal.rotation_degrees.y = -90.0
+	_glyph_chamber.add_child(_circle_glyph_pedestal)
+	var circle_slot := SymbolForms.build("ring", 1.35)
+	circle_slot.name = "CircleGlyph"
+	circle_slot.position = Vector3.ZERO
 	circle_slot.rotation_degrees.y = -90.0
-	_glyph_chamber.add_child(circle_slot)
+	_circle_glyph_pedestal.add_child(circle_slot)
+	var circle_label := Label3D.new()
+	circle_label.name = "CircleGlyphLabel"
+	circle_label.text = "CIRCLE"
+	circle_label.font_size = 56
+	circle_label.pixel_size = 0.006
+	circle_label.modulate = Color(0.9, 0.95, 0.82)
+	circle_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	circle_label.position = Vector3(0.0, -0.62, 0.0)
+	_circle_glyph_pedestal.add_child(circle_label)
 
 	_bolt_glyph_mat = StandardMaterial3D.new()
 	_bolt_glyph_mat.albedo_color = Color(0.9, 0.75, 0.4)

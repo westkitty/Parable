@@ -15,7 +15,7 @@ func _build_body() -> void:
 	var s := randf_range(0.72, 0.96)
 	ground_clearance = s + 0.08
 	pick_anchor_offset = Vector3(0.0, s * 0.38, 0.0)
-	_set_hold_anchor(Vector3(0.0, s * 0.18, 0.0))
+	_set_hold_anchor(Vector3(0.0, s * 0.64, -s * 0.24))
 	sph.radius = s
 	sph.height = s * 1.7
 	_add_mesh(sph, Color(0.72, 0.72, 0.7))

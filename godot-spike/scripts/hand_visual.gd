@@ -5,6 +5,7 @@ extends Node3D
 var _fingers: Array[Node3D] = []   # pivot nodes (4 fingers)
 var _thumb: Node3D
 var _palm: MeshInstance3D
+var _palm_center: Node3D
 var _grip_socket: Node3D
 var _grip_cup: Node3D
 var _skin_mats: Array[StandardMaterial3D] = []
@@ -34,8 +35,12 @@ func _ready() -> void:
 	_palm.material_override = skin
 	add_child(_palm)
 
+	_palm_center = Node3D.new()
+	_palm_center.name = "PalmCenter"
+	add_child(_palm_center)
+
 	_grip_socket = Node3D.new()
-	_grip_socket.name = "GripSocket"
+	_grip_socket.name = "GripContactSocket"
 	_grip_socket.position = _grip_socket_target
 	add_child(_grip_socket)
 	_build_grip_cup(skin)
@@ -113,16 +118,16 @@ func set_hold_profile(kind: String) -> void:
 	match kind:
 		"rock":
 			scale = Vector3.ONE * 1.08
-			_grip_socket_target = Vector3(0.0, -0.08, -0.18)
+			_grip_socket_target = Vector3(0.0, -0.18, -0.34)
 		"offering":
 			scale = Vector3.ONE * 1.08
-			_grip_socket_target = Vector3(0.0, -0.08, -0.15)
+			_grip_socket_target = Vector3(0.0, -0.12, -0.24)
 		"villager":
 			scale = Vector3.ONE * 1.16
-			_grip_socket_target = Vector3(0.0, -0.04, -0.12)
+			_grip_socket_target = Vector3(0.0, -0.13, -0.26)
 		"tree":
 			scale = Vector3.ONE * 1.22
-			_grip_socket_target = Vector3(0.0, -0.03, -0.08)
+			_grip_socket_target = Vector3(0.0, -0.10, -0.19)
 	_grip_socket.position = _grip_socket_target
 
 func active_hold_profile() -> String:
@@ -143,6 +148,12 @@ func grip_socket_local() -> Vector3:
 func grip_socket_world(local_offset: Vector3 = Vector3.ZERO) -> Vector3:
 	return _grip_socket.to_global(local_offset)
 
+func palm_center_world() -> Vector3:
+	return _palm_center.global_position
+
+func grip_contact_socket_world() -> Vector3:
+	return grip_socket_world()
+
 func origin_for_grip_world(world_point: Vector3) -> Vector3:
 	var basis := global_transform.basis
 	return world_point - basis * grip_socket_local()
@@ -162,6 +173,9 @@ func _carry_targets() -> void:
 
 func carry_curl_value() -> float:
 	return _curl_target
+
+func grip_cup_visible_for_test() -> bool:
+	return _grip_cup != null and _grip_cup.visible
 
 func _build_grip_cup(skin: Material) -> void:
 	_grip_cup = Node3D.new()
@@ -193,7 +207,17 @@ func _process(delta: float) -> void:
 	_grip_socket.position = _grip_socket.position.lerp(_grip_socket_target, k)
 	if _grip_cup:
 		_grip_cup.position = _grip_socket.position
-		_grip_cup.scale = Vector3.ONE * (1.18 if _active_hold_profile == "rock" else 1.0)
+		match _active_hold_profile:
+			"rock":
+				_grip_cup.scale = Vector3(1.3, 0.8, 0.9)
+			"villager":
+				_grip_cup.scale = Vector3(0.82, 0.75, 0.8)
+			"offering":
+				_grip_cup.scale = Vector3(0.9, 0.85, 0.8)
+			"tree":
+				_grip_cup.scale = Vector3(0.72, 0.9, 0.72)
+			_:
+				_grip_cup.scale = Vector3.ONE
 	for i in _fingers.size():
 		var curl := _curl_target
 		if _pose == "point" and i == 1:

@@ -21,6 +21,7 @@ var director: Node
 var _island: Node
 var _hand: Node
 var _rig: Node
+var _trace: Node
 var _shrine: Node
 var _doorway: Node
 var _fade: ColorRect
@@ -51,6 +52,7 @@ func _ready() -> void:
 	_island = $Island
 	_hand = $DivineHand
 	_rig = $CameraRig
+	_trace = $GestureTrace
 	_shrine = $Shrine
 	_doorway = $TempleDoorway
 	_setup_environment()
@@ -348,6 +350,10 @@ func enter_temple() -> void:
 	if _in_temple:
 		return
 	_in_temple = true
+	if _trace and _trace.has_method("clear_now"):
+		_trace.clear_now()
+	if _hand and _hand.has_method("clear_debug_visuals_for_temple"):
+		_hand.clear_debug_visuals_for_temple()
 	_hand.enabled = false
 	_hand.visible = false
 	_saved_rig_state = _rig.save_state()
