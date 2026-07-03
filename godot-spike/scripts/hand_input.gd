@@ -23,10 +23,11 @@ const MIRACLE_IDLE_RESET := 0.95
 const MIRACLE_GLYPH_TIMEOUT := 6.0
 const MIRACLE_ARM_WINDOW := 3.2
 const MIRACLE_ARMED_DURATION := 6.2
-const DEBUG_SPACE_ARM_DURATION := 5.0
+const DEBUG_SPACE_ARM_DURATION := 10.0
 const HAND_TRACKING_FEEDBACK_LENGTH := 26.0
 const HAND_DIRECT_CARRY_HEIGHT := 0.06
 const HOVER_GRIP_LIFT := Vector3(0.0, 0.38, 0.0)
+const MAX_STROKE_POINTS := 48
 
 var enabled := true
 var state := "hover"
@@ -36,6 +37,8 @@ var _island: Node
 var _world: Node
 var _visual: Node3D
 var _trace: Node3D
+var _diagnostics: CanvasLayer
+var _shrine: Node
 
 var _ground_point := Vector3.ZERO
 var _hand_target := Vector3.ZERO
@@ -48,7 +51,10 @@ var _time := 0.0
 var _press_screen := Vector2.ZERO
 var _press_kind := ""          # "" | "pan" | "carry" | "pending_click"
 var _pending_click_target: Node = null
-var _pan_anchor := Vector3.ZERO
+var _pan_last_ground := Vector3.ZERO
+var _pan_last_mouse := Vector2.ZERO
+var _pan_using_ground := false
+var _pan_source := "none"
 
 # Miracle bookkeeping
 var _miracle_armed := false
@@ -67,10 +73,25 @@ var _last_throw_vector := Vector3.ZERO
 var _last_cast_result := "-"
 var _armed_until := 0.0
 var _miracle_debug_loops := 0.0
+var _last_arm_source := "-"
 
 func _ready() -> void:
 	add_to_group("divine_hand")
 	_visual = $HandVisual
+
+func _input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo and _diagnostics_visible():
+		match event.keycode:
+			KEY_SPACE:
+				_force_arm_for_debug()
+			KEY_C:
+				_debug_cast_blessing()
+			KEY_H:
+				_debug_awaken_shrine()
+			KEY_B:
+				_debug_learn_bolt()
+			KEY_Z:
+				_debug_cast_bolt()
 
 func _physics_process(delta: float) -> void:
 	if not enabled:
@@ -86,8 +107,6 @@ func _physics_process(delta: float) -> void:
 		_cancel_everything()
 
 	_miracle_override = Input.is_action_pressed("gesture_mode")
-	if Input.is_action_just_pressed("gesture_mode") and _diagnostics_visible():
-		_force_arm_for_debug()
 
 	_world_frame(mouse, delta)
 
@@ -101,6 +120,7 @@ func _world_frame(mouse: Vector2, _delta: float) -> void:
 
 	# Ground point under the mouse (terrain, layer 1).
 	var ground := _ray_hit(space, from, dir, 1, false)
+	var ground_valid := not ground.is_empty()
 	if not ground.is_empty():
 		_ground_point = ground.position
 	else:
@@ -110,15 +130,10 @@ func _world_frame(mouse: Vector2, _delta: float) -> void:
 			if t > 0.0:
 				_ground_point = from + dir * t
 
-	# Hover: direct ray hit on a grabbable, else nearest grabbable near the
-	# hand point (forgiveness radius).
+	# Hover follows the visible palm/grip point rather than the raw cursor.
 	var new_hover: Node = null
 	if _held == null and _press_kind == "":
-		var hit := _ray_hit(space, from, dir, 2, false)
-		if not hit.is_empty() and hit.collider.is_in_group("grabbable"):
-			new_hover = hit.collider
-		else:
-			new_hover = _screen_pick_grabbable(mouse)
+		new_hover = _screen_pick_grabbable(mouse)
 	_set_hovered(new_hover)
 
 	# Presses.
@@ -142,26 +157,31 @@ func _world_frame(mouse: Vector2, _delta: float) -> void:
 
 	if Input.is_action_just_pressed("pan_action") and not _rig.is_orbiting() and not _rig.orbit_modifier_active() and _held == null:
 		_press_screen = mouse
+		_pan_last_mouse = mouse
 		var inter := _ray_hit(space, from, dir, 4, true)
 		if not inter.is_empty():
 			_press_kind = "pending_click"
 			_pending_click_target = inter.collider
 		else:
 			_press_kind = "pan"
-			_pan_anchor = _ground_point
+			_pan_using_ground = ground_valid
+			_pan_last_ground = _ground_point
+			_pan_source = "ground" if ground_valid else "screen"
 			_cancel_miracle(false)
 
 	if Input.is_action_pressed("pan_action"):
 		match _press_kind:
 			"pan":
 				state = "pan"
-				# Keep the grabbed ground point under the hand: intersect the
-				# mouse ray with the anchor's height plane and pull the rig.
-				if absf(dir.y) > 0.0001:
-					var t2 := (_pan_anchor.y - from.y) / dir.y
-					if t2 > 0.0:
-						var now := from + dir * t2
-						_rig.pan_by(_pan_anchor - now)
+				if ground_valid and _pan_using_ground:
+					_rig.pan_by(_pan_last_ground - _ground_point)
+					_pan_last_ground = _ground_point
+					_pan_source = "ground"
+				else:
+					_pan_using_ground = false
+					_rig.pan_screen_delta(mouse - _pan_last_mouse)
+					_pan_source = "screen"
+				_pan_last_mouse = mouse
 			"pending_click":
 				pass
 	elif Input.is_action_just_released("pan_action"):
@@ -174,6 +194,7 @@ func _world_frame(mouse: Vector2, _delta: float) -> void:
 					_pending_click_target.on_god_click(_world)
 				_pending_click_target = null
 		_press_kind = ""
+		_pan_source = "none"
 		if state != "carry":
 			state = "hover"
 
@@ -220,6 +241,9 @@ func _begin_carry(obj: Node) -> void:
 	_held.begin_hold()
 	_rig.control_scale = CARRY_CAMERA_SCALE
 	_sampler.clear()
+	if _visual and _visual.has_method("set_hold_profile"):
+		_visual.set_hold_profile(_held.display_name)
+	_update_carry()
 	if not _held.is_in_group("villager"):
 		var director := get_tree().get_first_node_in_group("witness_director")
 		if director:
@@ -257,6 +281,8 @@ func _release_held(force_gentle := false) -> void:
 	var obj := _held
 	_held = null
 	_rig.control_scale = 1.0
+	if _visual and _visual.has_method("set_hold_profile"):
+		_visual.set_hold_profile("")
 	obj.clamp_above_ground(_island)
 
 	obj.release(v_world, THROW_MIN_SPEED)
@@ -290,8 +316,7 @@ func _update_miracle_tracking(mouse: Vector2) -> void:
 				_trace.begin()
 		else:
 			_stroke_length += mouse.distance_to(_stroke_screen[-1])
-		_stroke_screen.append(mouse)
-		_stroke_world.append(global_position)
+		_push_stroke_point(mouse, global_position)
 		_stroke_last_move_at = _time
 		if _trace:
 			_trace.add_point(global_position)
@@ -318,10 +343,11 @@ func _update_miracle_tracking(mouse: Vector2) -> void:
 	if _time - _stroke_last_move_at > MIRACLE_IDLE_RESET and _stroke_screen.size() >= GestureRecognizer.MIN_POINTS:
 		_finish_stroke()
 
-func _arm_miracle(spiral: Dictionary) -> void:
+func _arm_miracle(spiral: Dictionary, source := "SPIRAL") -> void:
 	_miracle_armed = true
 	state = "miracle"
 	_armed_until = _time + MIRACLE_ARMED_DURATION
+	_last_arm_source = source
 	_miracle_debug_loops = spiral.get("loop_estimate", 0.0)
 	_last_glyph = {
 		"kind": "spiral",
@@ -343,17 +369,21 @@ func _arm_miracle(spiral: Dictionary) -> void:
 	if _visual:
 		_visual.set_tracking_feedback(false)
 		_visual.set_miracle_armed(true)
-	_last_cast_result = "debug_arm" if _diagnostics_visible() and _miracle_override else "spiral_arm"
+		if _visual.has_method("pulse_debug_arm"):
+			_visual.pulse_debug_arm()
+	_last_cast_result = "debug_arm" if source == "DEBUG_SPACE" else "spiral_arm"
 
 func _force_arm_for_debug() -> void:
 	if _miracle_armed:
 		_armed_until = maxf(_armed_until, _time + DEBUG_SPACE_ARM_DURATION)
+		_last_arm_source = "DEBUG_SPACE"
 		return
 	_arm_miracle({
 		"rotation": -TAU,
 		"radius_swing": 0.2,
 		"loop_estimate": 1.0,
-	})
+	}, "DEBUG_SPACE")
+	_armed_until = maxf(_armed_until, _time + DEBUG_SPACE_ARM_DURATION)
 
 func _finish_stroke() -> void:
 	var result := GestureRecognizer.classify(_stroke_screen)
@@ -381,6 +411,7 @@ func _cancel_miracle(with_fail_fx: bool) -> void:
 	_miracle_armed = false
 	_armed_until = 0.0
 	_miracle_debug_loops = 0.0
+	_last_arm_source = "-"
 	if _visual:
 		_visual.set_tracking_feedback(false)
 		_visual.set_miracle_armed(false)
@@ -429,6 +460,27 @@ func simulate_glyph_for_test(kind: String, target: Vector3) -> bool:
 	_armed_until = _time + MIRACLE_ARMED_DURATION
 	return _world.cast_glyph(kind, target) if _world else false
 
+func simulate_debug_blessing_for_test() -> bool:
+	_force_arm_for_debug()
+	var target: Vector3 = _island.ground_point(_hand_target.x, _hand_target.z)
+	return _world.cast_glyph("circle", target) if _world else false
+
+func simulate_debug_awaken_shrine_for_test() -> bool:
+	if _shrine and _shrine.has_method("debug_awaken"):
+		_shrine.debug_awaken()
+		return _shrine.is_awakened()
+	return false
+
+func simulate_debug_learn_bolt_for_test() -> bool:
+	_debug_learn_bolt()
+	return _world != null and _world.identity != null and _world.identity.learned_bolt
+
+func simulate_debug_bolt_for_test() -> bool:
+	_force_arm_for_debug()
+	_debug_learn_bolt()
+	var target: Vector3 = _island.ground_point(_hand_target.x, _hand_target.z)
+	return _world.cast_glyph("zigzag", target) if _world else false
+
 func throw_min_speed_for_test() -> float:
 	return THROW_MIN_SPEED
 
@@ -449,10 +501,11 @@ func get_debug() -> Dictionary:
 		"last_release_mode": _last_release_mode,
 		"last_release_speed": _last_release_speed,
 		"gesture_mode": _miracle_armed or _miracle_override,
-		"debug_force_arm": _diagnostics_visible() and _miracle_override,
+		"debug_force_arm": _last_arm_source == "DEBUG_SPACE",
 		"trace_length": _stroke_length,
 		"trace_armed": _miracle_armed,
 		"armed_timer": armed_timer_remaining(),
+		"last_arm_source": _last_arm_source,
 		"cast_result": _last_cast_result,
 		"glyph_kind": _last_glyph.get("kind", "-"),
 		"glyph_rotation": _last_glyph.get("rotation", 0.0),
@@ -460,6 +513,10 @@ func get_debug() -> Dictionary:
 		"glyph_reversals": _last_glyph.get("reversals", 0),
 		"glyph_radius_swing": _last_glyph.get("radius_swing", 0.0),
 		"glyph_loops": _miracle_debug_loops,
+		"pan_active": _press_kind == "pan",
+		"pan_source": _pan_source,
+		"camera_target": _rig.target_position() if (_rig and _rig.has_method("target_position")) else Vector3.ZERO,
+		"bolt_learned": _world.identity.learned_bolt if (_world and _world.identity) else false,
 		"ray_target": _ground_point,
 		"hand_target": _hand_target,
 		"grip_point": _visual.grip_socket_world() if (_visual and _visual.has_method("grip_socket_world")) else global_position,
@@ -479,6 +536,10 @@ func _lazy_refs() -> void:
 		_world = get_tree().get_first_node_in_group("world")
 	if _trace == null:
 		_trace = get_tree().get_first_node_in_group("gesture_trace")
+	if _diagnostics == null:
+		_diagnostics = get_tree().get_first_node_in_group("diagnostics")
+	if _shrine == null:
+		_shrine = get_tree().get_first_node_in_group("shrine")
 
 func _current_hand_speed() -> float:
 	return _sampler.velocity().length()
@@ -491,21 +552,9 @@ func _ray_hit(space: PhysicsDirectSpaceState3D, from: Vector3, dir: Vector3,
 	params.collide_with_bodies = not areas
 	return space.intersect_ray(params)
 
-func _nearest_grabbable(point: Vector3, radius: float) -> Node:
-	var best: Node = null
-	var best_d := radius
-	for g in get_tree().get_nodes_in_group("grabbable"):
-		if g == _held:
-			continue
-		var d: float = g.global_position.distance_to(point)
-		if d < best_d:
-			best_d = d
-			best = g
-	return best
-
 func _screen_pick_grabbable(mouse: Vector2) -> Node:
 	if _rig == null or _rig.camera == null:
-		return _nearest_grabbable(_ground_point, PICK_RADIUS)
+		return null
 	var best: Node = null
 	var best_score := INF
 	var grip_screen: Vector2 = mouse
@@ -536,6 +585,13 @@ func _carry_anchor_height() -> float:
 	var needed: float = _held.ground_clearance - HOVER_GRIP_LIFT.y - _held.hold_offset.y
 	return maxf(HAND_DIRECT_CARRY_HEIGHT, needed)
 
+func _push_stroke_point(screen_point: Vector2, world_point: Vector3) -> void:
+	_stroke_screen.append(screen_point)
+	_stroke_world.append(world_point)
+	while _stroke_screen.size() > MAX_STROKE_POINTS:
+		_stroke_screen.remove_at(0)
+		_stroke_world.remove_at(0)
+
 func _set_hovered(obj: Node) -> void:
 	if obj == _hovered:
 		return
@@ -546,5 +602,30 @@ func _set_hovered(obj: Node) -> void:
 		_hovered.set_hover(true)
 
 func _diagnostics_visible() -> bool:
-	var diag := get_tree().get_first_node_in_group("diagnostics")
-	return diag != null and diag.visible
+	return _diagnostics != null and _diagnostics.visible
+
+func _debug_cast_blessing() -> void:
+	if not _miracle_armed or _world == null:
+		return
+	var target: Vector3 = _island.ground_point(_hand_target.x, _hand_target.z)
+	var ok: bool = _world.cast_glyph("circle", target)
+	_last_cast_result = "debug_blessing" if ok else "reject_debug_blessing"
+	if ok:
+		_cancel_miracle(false)
+
+func _debug_awaken_shrine() -> void:
+	if _shrine and _shrine.has_method("debug_awaken"):
+		_shrine.debug_awaken()
+
+func _debug_learn_bolt() -> void:
+	if _world and _world.identity:
+		_world.identity.learn_bolt()
+
+func _debug_cast_bolt() -> void:
+	if not _miracle_armed or _world == null or _world.identity == null or not _world.identity.learned_bolt:
+		return
+	var target: Vector3 = _island.ground_point(_hand_target.x, _hand_target.z)
+	var ok: bool = _world.cast_glyph("zigzag", target)
+	_last_cast_result = "debug_bolt" if ok else "reject_debug_bolt"
+	if ok:
+		_cancel_miracle(false)

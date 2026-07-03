@@ -20,6 +20,9 @@ var _bolt_glyph_mat: StandardMaterial3D
 var _left_marker: StandardMaterial3D
 var _right_marker: StandardMaterial3D
 var _exit_marker: StandardMaterial3D
+var _symbol_chamber: Node3D
+var _glyph_chamber: Node3D
+var _exit_chamber: Node3D
 
 func _ready() -> void:
 	add_to_group("temple_interior")
@@ -151,7 +154,19 @@ func _build_chamber() -> void:
 	glow.position = Vector3(0.0, 4.0, 0.0)
 	add_child(glow)
 
+	_exit_chamber = Node3D.new()
+	_exit_chamber.name = "ExitChamber"
+	add_child(_exit_chamber)
+	_symbol_chamber = Node3D.new()
+	_symbol_chamber.name = "SymbolChamber"
+	add_child(_symbol_chamber)
+	_glyph_chamber = Node3D.new()
+	_glyph_chamber.name = "GlyphChamber"
+	add_child(_glyph_chamber)
+
 	# --- Center (forward, -Z): the exit door back to the world.
+	_arch(_exit_chamber, Vector3(0.0, 2.0, -5.8), Color(0.16, 0.28, 0.4), Vector3(3.0, 4.0, 0.35))
+	_floor_ring(_exit_chamber, Vector3(0.0, 0.02, -4.85), Color(0.34, 0.82, 1.0), 2.0, 2.35)
 	var door := MeshInstance3D.new()
 	var door_mesh := BoxMesh.new()
 	door_mesh.size = Vector3(1.8, 3.0, 0.25)
@@ -164,12 +179,15 @@ func _build_chamber() -> void:
 	door.material_override = door_mat
 	_exit_marker = door_mat
 	door.position = Vector3(0.0, 1.6, -6.6)
-	add_child(door)
+	_exit_chamber.add_child(door)
 	_hotspot("ExitDoor", Vector3(0.0, 1.6, -6.5), Vector3(2.2, 3.4, 1.0))
 
 	# --- Left chamber (+X side when facing -Z → yaw +90 looks toward -X).
 	# Symbol / Identity alcove sits at -X.
+	_arch(_symbol_chamber, Vector3(-5.25, 2.0, -0.2), Color(0.56, 0.36, 0.18), Vector3(2.8, 4.0, 1.1))
+	_floor_ring(_symbol_chamber, Vector3(-4.75, 0.02, -0.15), Color(0.98, 0.8, 0.46), 1.3, 1.65)
 	var sym_pedestal := MeshInstance3D.new()
+	sym_pedestal.name = "SymbolPedestal"
 	var ped := CylinderMesh.new()
 	ped.top_radius = 0.5
 	ped.bottom_radius = 0.7
@@ -177,24 +195,26 @@ func _build_chamber() -> void:
 	sym_pedestal.mesh = ped
 	sym_pedestal.material_override = stone
 	sym_pedestal.position = Vector3(-5.6, 0.5, 0.0)
-	add_child(sym_pedestal)
+	_symbol_chamber.add_child(sym_pedestal)
 	_left_marker = _marker(Vector3(-3.1, 2.7, -4.4), "SYMBOL")
 	_symbol_slot = Node3D.new()
 	_symbol_slot.position = Vector3(-5.6, 2.0, 0.0)
 	_symbol_slot.rotation_degrees.y = 90.0
-	add_child(_symbol_slot)
+	_symbol_chamber.add_child(_symbol_slot)
 	_candidate_slot = Node3D.new()
 	_candidate_slot.position = Vector3(-5.6, 1.8, 0.0)
 	_candidate_slot.rotation_degrees.y = 90.0
-	add_child(_candidate_slot)
+	_symbol_chamber.add_child(_candidate_slot)
 	_hotspot("LeftHotspot", Vector3(-5.4, 1.6, 0.0), Vector3(2.4, 4.2, 4.4))
 
 	# --- Right chamber (-X side → yaw -90 looks toward +X).
 	# Miracle / Glyph alcove: circle glyph lit, zigzag dim until learned.
+	_arch(_glyph_chamber, Vector3(5.25, 2.0, -0.2), Color(0.2, 0.42, 0.38), Vector3(2.8, 4.0, 1.1))
+	_floor_ring(_glyph_chamber, Vector3(4.75, 0.02, -0.15), Color(0.28, 0.95, 0.88), 1.3, 1.65)
 	var circle_slot := SymbolForms.build("ring", 2.6)
 	circle_slot.position = Vector3(5.7, 2.2, -0.8)
 	circle_slot.rotation_degrees.y = -90.0
-	add_child(circle_slot)
+	_glyph_chamber.add_child(circle_slot)
 
 	_bolt_glyph_mat = StandardMaterial3D.new()
 	_bolt_glyph_mat.albedo_color = Color(0.9, 0.75, 0.4)
@@ -207,9 +227,10 @@ func _build_chamber() -> void:
 		Vector2(0.25, -0.45), Vector2(-0.25, -0.8),
 	]
 	_glyph_slot = Node3D.new()
+	_glyph_slot.name = "GlyphPedestal"
 	_glyph_slot.position = Vector3(5.7, 2.3, 0.9)
 	_glyph_slot.rotation_degrees.y = -90.0
-	add_child(_glyph_slot)
+	_glyph_chamber.add_child(_glyph_slot)
 	for i in range(zig_points.size() - 1):
 		var a: Vector2 = zig_points[i]
 		var b: Vector2 = zig_points[i + 1]
@@ -257,6 +278,12 @@ func _refresh_markers() -> void:
 		_right_marker.emission_energy_multiplier = 2.8 if _facing == "right" else 1.2
 	if _exit_marker:
 		_exit_marker.emission_energy_multiplier = 2.0 if _facing == "center" else 0.8
+	if _symbol_chamber:
+		_symbol_chamber.scale = Vector3.ONE * (1.04 if _facing == "left" else 1.0)
+	if _glyph_chamber:
+		_glyph_chamber.scale = Vector3.ONE * (1.04 if _facing == "right" else 1.0)
+	if _exit_chamber:
+		_exit_chamber.scale = Vector3.ONE * (1.03 if _facing == "center" else 1.0)
 
 func _hotspot(hname: String, pos: Vector3, size: Vector3) -> void:
 	var area := Area3D.new()
@@ -271,3 +298,41 @@ func _hotspot(hname: String, pos: Vector3, size: Vector3) -> void:
 	area.add_child(col)
 	area.position = pos
 	add_child(area)
+
+func _arch(parent: Node3D, pos: Vector3, color: Color, size: Vector3) -> void:
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = color
+	mat.roughness = 0.72
+	mat.emission_enabled = true
+	mat.emission = color.lightened(0.3)
+	mat.emission_energy_multiplier = 0.8
+	var back := MeshInstance3D.new()
+	var back_box := BoxMesh.new()
+	back_box.size = size
+	back.mesh = back_box
+	back.material_override = mat
+	back.position = pos
+	parent.add_child(back)
+	var top := MeshInstance3D.new()
+	var top_box := BoxMesh.new()
+	top_box.size = Vector3(size.x + 0.45, 0.34, size.z + 0.18)
+	top.mesh = top_box
+	top.material_override = mat
+	top.position = pos + Vector3(0.0, 1.78, 0.0)
+	parent.add_child(top)
+
+func _floor_ring(parent: Node3D, pos: Vector3, color: Color, inner: float, outer: float) -> void:
+	var mi := MeshInstance3D.new()
+	var torus := TorusMesh.new()
+	torus.inner_radius = inner
+	torus.outer_radius = outer
+	mi.mesh = torus
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = color
+	mat.emission_enabled = true
+	mat.emission = color
+	mat.emission_energy_multiplier = 2.1
+	mi.material_override = mat
+	mi.rotation_degrees.x = 90.0
+	mi.position = pos
+	parent.add_child(mi)

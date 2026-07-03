@@ -10,6 +10,9 @@ const DIST_MIN := 7.0
 const DIST_MAX := 55.0
 const ZOOM_FACTOR := 1.12
 const ZOOM_PULL := 0.3
+const SCREEN_PAN_SCALE := 0.018
+const KEY_ORBIT_STEP := 0.095
+const KEY_PITCH_STEP := 0.06
 const DEFAULT_POS := Vector3(0.0, 6.0, 3.5)
 const DEFAULT_PITCH := -56.0
 const DEFAULT_DIST := 26.0
@@ -54,7 +57,7 @@ func _input(event: InputEvent) -> void:
 			_orbit_fallback = event.pressed and (event.alt_pressed or event.shift_pressed)
 			if _orbit_fallback:
 				_orbit_source = "alt_left" if event.alt_pressed else "shift_left"
-			elif not _middle_button_down:
+			elif not event.pressed and not _middle_button_down:
 				_orbit_source = "none"
 		elif event.pressed and event.button_index == MOUSE_BUTTON_WHEEL_UP:
 			_zoom(1.0 / ZOOM_FACTOR)
@@ -67,12 +70,17 @@ func _input(event: InputEvent) -> void:
 			_orbiting = true
 			_orbit_source = "middle"
 		if is_orbiting():
-			rotation.y -= event.relative.x * ORBIT_SENS * control_scale
-			_pitch.rotation.x = clampf(
-				_pitch.rotation.x - event.relative.y * ORBIT_SENS * control_scale,
-				PITCH_MIN, PITCH_MAX)
+			_apply_orbit(event.relative)
 	elif event is InputEventKey and event.pressed and not event.echo:
 		match event.keycode:
+			KEY_Q:
+				orbit_step(-1.0)
+			KEY_E:
+				orbit_step(1.0)
+			KEY_W:
+				pitch_step(1.0)
+			KEY_S:
+				pitch_step(-1.0)
 			KEY_R:
 				reset_to_safe_default()
 			KEY_EQUAL, KEY_PLUS, KEY_KP_ADD:
@@ -99,11 +107,31 @@ func camera_mode() -> String:
 		return "orbit"
 	return "free"
 
+func orbit_step(direction: float) -> void:
+	rotation.y += KEY_ORBIT_STEP * direction * control_scale
+	_orbit_source = "key"
+
+func pitch_step(direction: float) -> void:
+	_pitch.rotation.x = clampf(_pitch.rotation.x - KEY_PITCH_STEP * direction * control_scale, PITCH_MIN, PITCH_MAX)
+
+func pan_screen_delta(delta: Vector2) -> void:
+	if locked:
+		return
+	var right := camera.global_transform.basis.x
+	var forward := -camera.global_transform.basis.z
+	right.y = 0.0
+	forward.y = 0.0
+	right = right.normalized()
+	forward = forward.normalized()
+	var scale := maxf(dist * SCREEN_PAN_SCALE * control_scale, 0.01)
+	var offset := (-right * delta.x + forward * delta.y) * scale
+	pan_by(offset)
+
+func target_position() -> Vector3:
+	return position
+
 func simulate_orbit_drag(delta: Vector2) -> void:
-	rotation.y -= delta.x * ORBIT_SENS * control_scale
-	_pitch.rotation.x = clampf(
-		_pitch.rotation.x - delta.y * ORBIT_SENS * control_scale,
-		PITCH_MIN, PITCH_MAX)
+	_apply_orbit(delta)
 
 func simulate_zoom_factor(factor: float) -> void:
 	_zoom(factor)
@@ -127,6 +155,12 @@ func pan_by(offset: Vector3) -> void:
 
 func reset_to_safe_default() -> void:
 	restore_state(_default_state)
+
+func _apply_orbit(delta: Vector2) -> void:
+	rotation.y -= delta.x * ORBIT_SENS * control_scale
+	_pitch.rotation.x = clampf(
+		_pitch.rotation.x - delta.y * ORBIT_SENS * control_scale,
+		PITCH_MIN, PITCH_MAX)
 
 ## Ray from the active camera through a screen position.
 func screen_ray(screen_pos: Vector2) -> Array:

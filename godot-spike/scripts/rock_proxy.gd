@@ -5,7 +5,7 @@ func _configure() -> void:
 	mass_category = MassCategory.MEDIUM
 	mass = 40.0
 	display_name = "rock"
-	hold_offset = Vector3(0.0, -0.02, -0.03)
+	hold_offset = Vector3(0.0, -0.12, -0.18)
 	pick_anchor_offset = Vector3(0.0, 0.18, 0.0)
 	hover_screen_radius = 46.0
 	start_frozen = true

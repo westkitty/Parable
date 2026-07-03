@@ -9,7 +9,7 @@ func _configure() -> void:
 	mass_category = MassCategory.LIGHT
 	mass = 3.0
 	display_name = "offering"
-	hold_offset = Vector3(0.0, -0.06, -0.04)
+	hold_offset = Vector3(0.0, -0.18, -0.12)
 	pick_anchor_offset = Vector3(0.0, 0.92, 0.0)
 	hover_screen_radius = 52.0
 	ground_clearance = 0.95

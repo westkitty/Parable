@@ -9,6 +9,7 @@ const LEARN_RADIUS := 9.0
 const OFFER_RADIUS := 5.4
 const OFFER_REJECT_RADIUS := 7.0
 const PREVIEW_RADIUS := 8.0
+const RELEASE_FALLBACK_WINDOW := 0.55
 
 var state: int = ShrineState.DORMANT
 
@@ -19,6 +20,8 @@ var _reject_mat: StandardMaterial3D
 var _altar_mat: StandardMaterial3D
 var _last_reject := "-"
 var _drop_ring: MeshInstance3D
+var _recent_offering: Node = null
+var _recent_release_timer := 0.0
 
 func _ready() -> void:
 	add_to_group("shrine")
@@ -31,6 +34,8 @@ func _process(delta: float) -> void:
 	var preview := false
 	if hand and hand.has_method("held_object_name") and hand.held_object_name() == "offering":
 		preview = hand.global_position.distance_to(altar_point()) <= PREVIEW_RADIUS
+	if _recent_release_timer > 0.0:
+		_recent_release_timer = maxf(_recent_release_timer - delta, 0.0)
 	if _drop_ring:
 		_drop_ring.visible = preview
 		_drop_ring.rotation.y += delta * 0.8
@@ -38,11 +43,10 @@ func _process(delta: float) -> void:
 		_altar_mat.emission_energy_multiplier = maxf(_altar_mat.emission_energy_multiplier, 2.2 if state == ShrineState.DORMANT else 2.8)
 	if preview and _glyph_mat and state == ShrineState.DORMANT:
 		_glyph_mat.emission_energy_multiplier = maxf(_glyph_mat.emission_energy_multiplier, 1.2)
-	if state == ShrineState.DORMANT:
-		for g in get_tree().get_nodes_in_group("grabbable"):
-			if g.display_name == "offering" and g.recent_gentle_release and not g.consumed and within_offer_range(g.global_position):
-				receive_offering(g)
-				break
+	if state == ShrineState.DORMANT and _recent_release_timer > 0.0 and _recent_offering != null and is_instance_valid(_recent_offering):
+		if _recent_offering.display_name == "offering" and _recent_offering.recent_gentle_release and not _recent_offering.consumed and within_offer_range(_recent_offering.global_position):
+			receive_offering(_recent_offering)
+			_recent_release_timer = 0.0
 
 func is_awakened() -> bool:
 	return state == ShrineState.AWAKENED
@@ -66,17 +70,7 @@ func receive_offering(offering: Node) -> void:
 	if state != ShrineState.DORMANT:
 		return
 	offering.consume_at(altar_point())
-	state = ShrineState.AWAKENED
-	_last_reject = "-"
-	if _altar_mat:
-		_altar_mat.emission_enabled = true
-		_altar_mat.emission = Color(0.28, 1.0, 0.9)
-		_altar_mat.emission_energy_multiplier = 2.4
-	_pulse = create_tween().set_loops()
-	_pulse.tween_property(_glyph_mat, "emission_energy_multiplier", 3.2, 0.9) \
-		.set_trans(Tween.TRANS_SINE)
-	_pulse.tween_property(_glyph_mat, "emission_energy_multiplier", 1.4, 0.9) \
-		.set_trans(Tween.TRANS_SINE)
+	_set_awakened_state()
 
 func teach(identity: Node, director: Node) -> void:
 	if state != ShrineState.AWAKENED:
@@ -106,6 +100,8 @@ func reject_attempt(reason := "reject") -> void:
 func process_offering_release(offering: Node, mode: String, at: Vector3) -> bool:
 	if offering == null or offering.display_name != "offering" or offering.consumed:
 		return false
+	_recent_offering = offering
+	_recent_release_timer = RELEASE_FALLBACK_WINDOW
 	var d := at.distance_to(altar_point())
 	if mode == "drop" and d <= OFFER_RADIUS:
 		receive_offering(offering)
@@ -113,6 +109,11 @@ func process_offering_release(offering: Node, mode: String, at: Vector3) -> bool
 	if d <= OFFER_REJECT_RADIUS:
 		reject_attempt("offering_" + mode)
 	return false
+
+func debug_awaken() -> void:
+	if state != ShrineState.DORMANT:
+		return
+	_set_awakened_state()
 
 func _build() -> void:
 	var stone := StandardMaterial3D.new()
@@ -187,3 +188,18 @@ func _block(size: Vector3, pos: Vector3, mat: StandardMaterial3D) -> void:
 	mi.material_override = mat
 	mi.position = pos
 	add_child(mi)
+
+func _set_awakened_state() -> void:
+	state = ShrineState.AWAKENED
+	_last_reject = "-"
+	if _altar_mat:
+		_altar_mat.emission_enabled = true
+		_altar_mat.emission = Color(0.28, 1.0, 0.9)
+		_altar_mat.emission_energy_multiplier = 2.8
+	if _pulse:
+		_pulse.kill()
+	_pulse = create_tween().set_loops()
+	_pulse.tween_property(_glyph_mat, "emission_energy_multiplier", 3.8, 0.75) \
+		.set_trans(Tween.TRANS_SINE)
+	_pulse.tween_property(_glyph_mat, "emission_energy_multiplier", 1.6, 0.75) \
+		.set_trans(Tween.TRANS_SINE)

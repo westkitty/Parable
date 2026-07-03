@@ -25,8 +25,13 @@ If the game launches but an interaction chain breaks, press `F3` and report:
 hovered object, held object, right-mouse state, miracle armed, last recognizer result,
 path length, rotation/loop, shrine awake, and temple chamber.
 If the cursor does not return when your mouse leaves the game window, report that.
-If gesture recognition still fails but you need to keep testing, press `F3`,
-then press `Space` for the debug arm fallback.
+If gesture/shrine progression breaks, press `F3`, then use:
+`Space` = debug arm miracle mode
+`C` = debug cast blessing
+`H` = debug awaken shrine
+`B` = debug learn bolt
+`Z` = debug cast bolt
+These are debug-only, not gameplay.
 Use this three-line format so the failure is actionable:
 `1. I tried: ...`
 `2. I expected: ...`
@@ -82,6 +87,8 @@ The controls (this is everything):
 | **Middle mouse button + drag** | Orbit the camera |
 | **Shift + left drag** | Orbit fallback only |
 | **Option/Alt + left drag** | Orbit fallback only if middle mouse is unreliable on this Mac |
+| **Q / E** | Orbit fallback left / right |
+| **W / S** | Camera pitch fallback up / down |
 | **Scroll wheel** | Zoom in/out |
 | **= / +** | Zoom in fallback |
 | **-** | Zoom out fallback |

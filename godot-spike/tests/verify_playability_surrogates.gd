@@ -23,19 +23,21 @@ func _run() -> void:
 	var rig: Node = main.get_node("CameraRig")
 	var shrine: Node = main.get_node("Shrine")
 	var diagnostics: CanvasLayer = main.get_node("DevDiagnostics")
+	var trace: Node = main.get_node("GestureTrace")
 
 	_check(main.mouse_hidden_for_play() == true, "cursor hide call path exists in world boot path")
 	_check(main.has_method("cursor_policy_state"), "cursor policy helper exists")
 	_check(main.has_method("cursor_focus_state"), "cursor focus helper exists")
 	_check(rig.has_method("middle_button_down"), "camera middle-button helper exists")
 	_check(rig.has_method("orbit_source"), "camera orbit-source helper exists")
+	_check(trace.has_method("active_mote_count"), "gesture trace exposes bounded mote helper")
 	await _assert_stable_hold_and_release_modes(hand)
 	await _assert_throw_threshold_edges(hand)
 	await _assert_camera_motion_preserves_hold(hand, rig)
 	await _assert_safe_cancel_clears_state(hand)
 	await _assert_shrine_release_contract(hand, main, shrine)
 	await _assert_glyph_learning_contract(hand, main, shrine)
-	await _assert_temple_and_diagnostics_contract(main, diagnostics, shrine)
+	await _assert_temple_and_diagnostics_contract(main, diagnostics, shrine, trace)
 
 	if _failures.is_empty():
 		print("PLAYABILITY SURROGATE VERIFY: ALL CHECKS PASSED")
@@ -142,6 +144,22 @@ func _assert_camera_motion_preserves_hold(hand: Node, rig: Node) -> void:
 	middle_release.button_index = MOUSE_BUTTON_MIDDLE
 	middle_release.pressed = false
 	rig._input(middle_release)
+	var q_press := InputEventKey.new()
+	q_press.keycode = KEY_Q
+	q_press.pressed = true
+	rig._input(q_press)
+	var e_press := InputEventKey.new()
+	e_press.keycode = KEY_E
+	e_press.pressed = true
+	rig._input(e_press)
+	var w_press := InputEventKey.new()
+	w_press.keycode = KEY_W
+	w_press.pressed = true
+	rig._input(w_press)
+	var s_press := InputEventKey.new()
+	s_press.keycode = KEY_S
+	s_press.pressed = true
+	rig._input(s_press)
 	rig.reset_to_safe_default()
 	var reset_state: Dictionary = rig.save_state()
 	_check(absf(float(reset_state.yaw)) < 0.001 and absf(float(reset_state.dist) - 26.0) < 0.01, "camera reset returns to safe default")
@@ -195,13 +213,19 @@ func _assert_glyph_learning_contract(hand: Node, main: Node, shrine: Node) -> vo
 	hand.simulate_arm_for_test()
 	var debug_arm: Dictionary = hand.get_debug()
 	_check(bool(debug_arm.get("trace_armed", false)) == true, "F3 + Space force-arm path can set armed state")
+	_check(String(debug_arm.get("last_arm_source", "-")) == "DEBUG_SPACE", "debug arm records DEBUG_SPACE source")
 	shrine.state = shrine.ShrineState.AWAKENED
 	hand.global_position = shrine.global_position + Vector3(0.0, 1.2, 0.0)
 	_check(hand.simulate_glyph_for_test("zigzag", shrine.global_position) == true, "awakened shrine teaches zigzag")
 	_check(main.identity.learned_bolt == true, "zigzag teaching flips learned_bolt")
 	_check(hand.simulate_glyph_for_test("zigzag", Vector3(6.0, 0.0, 6.0)) == true, "learned zigzag casts away from shrine")
+	_check(hand.simulate_debug_blessing_for_test() == true, "debug blessing fallback can cast")
+	shrine.state = shrine.ShrineState.DORMANT
+	_check(hand.simulate_debug_awaken_shrine_for_test() == true, "debug shrine fallback awakens shrine")
+	_check(hand.simulate_debug_learn_bolt_for_test() == true, "debug bolt-learn fallback succeeds")
+	_check(hand.simulate_debug_bolt_for_test() == true, "debug bolt-cast fallback succeeds")
 
-func _assert_temple_and_diagnostics_contract(main: Node, diagnostics: CanvasLayer, shrine: Node) -> void:
+func _assert_temple_and_diagnostics_contract(main: Node, diagnostics: CanvasLayer, shrine: Node, trace: Node) -> void:
 	var temple: Node = load("res://scenes/TempleInterior.tscn").instantiate()
 	root.add_child(temple)
 	await process_frame
@@ -224,10 +248,16 @@ func _assert_temple_and_diagnostics_contract(main: Node, diagnostics: CanvasLaye
 	_check(text.contains("nearest offering dist:"), "diagnostics expose offering distance")
 	_check(text.contains("temple chamber: right"), "diagnostics expose temple chamber")
 	_check(text.contains("camera:"), "diagnostics expose camera state")
+	_check(text.contains("pan active:"), "diagnostics expose pan state")
+	_check(text.contains("bolt learned:"), "diagnostics expose bolt learned state")
 	var label_texts := _label_texts(temple)
 	_check("SYMBOL" in label_texts, "temple exposes SYMBOL label")
 	_check("GLYPHS" in label_texts, "temple exposes GLYPHS label")
 	_check("EXIT" in label_texts, "temple exposes EXIT label")
+	_check(temple.get_node_or_null("SymbolChamber") != null, "temple exposes physical symbol chamber node")
+	_check(temple.get_node_or_null("GlyphChamber") != null, "temple exposes physical glyph chamber node")
+	_check(temple.get_node_or_null("ExitChamber") != null, "temple exposes physical exit chamber node")
+	_check(trace.active_mote_count() <= 28, "gesture trace active motes stay bounded")
 	_check(main.mouse_hidden_for_play() == true, "temple flow does not restore cursor policy")
 	_check(_temple_labels_face_camera(temple), "temple labels are camera-visible from center")
 	shrine.state = shrine.ShrineState.DORMANT

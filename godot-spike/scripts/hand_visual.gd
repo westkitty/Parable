@@ -14,6 +14,7 @@ var _thumb_target := 0.2
 var _tilt_target := 0.0
 var _spread_target := 1.0
 var _candidate_tracking := false
+var _grip_socket_target := Vector3(0.0, -0.04, -0.18)
 
 func _ready() -> void:
 	var skin := StandardMaterial3D.new()
@@ -33,7 +34,7 @@ func _ready() -> void:
 
 	_grip_socket = Node3D.new()
 	_grip_socket.name = "GripSocket"
-	_grip_socket.position = Vector3(0.0, -0.02, -0.06)
+	_grip_socket.position = _grip_socket_target
 	add_child(_grip_socket)
 
 	for i in 4:
@@ -100,6 +101,29 @@ func set_tracking_feedback(on: bool) -> void:
 	if _aura.light_energy < 1.9:
 		_aura.light_energy = 0.45 if on else 0.0
 
+func set_hold_profile(kind: String) -> void:
+	scale = Vector3.ONE
+	_grip_socket_target = Vector3(0.0, -0.04, -0.18)
+	match kind:
+		"rock":
+			scale = Vector3.ONE * 1.12
+			_grip_socket_target = Vector3(0.0, -0.06, -0.19)
+		"offering":
+			scale = Vector3.ONE * 1.1
+			_grip_socket_target = Vector3(0.0, -0.05, -0.16)
+		"villager":
+			scale = Vector3.ONE * 1.16
+			_grip_socket_target = Vector3(0.0, -0.03, -0.12)
+		"tree":
+			scale = Vector3.ONE * 1.22
+			_grip_socket_target = Vector3(0.0, -0.02, -0.08)
+
+func pulse_debug_arm() -> void:
+	_aura.light_energy = 2.8
+	var tw := create_tween()
+	tw.tween_property(_aura, "omni_range", 6.6, 0.14)
+	tw.tween_property(_aura, "omni_range", 4.6, 0.28)
+
 func grip_socket_local() -> Vector3:
 	return _grip_socket.position
 
@@ -112,6 +136,7 @@ func origin_for_grip_world(world_point: Vector3) -> Vector3:
 
 func _process(delta: float) -> void:
 	var k := 1.0 - exp(-12.0 * delta)
+	_grip_socket.position = _grip_socket.position.lerp(_grip_socket_target, k)
 	for i in _fingers.size():
 		var curl := _curl_target
 		if _pose == "point" and i == 1:
