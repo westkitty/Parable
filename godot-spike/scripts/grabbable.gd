@@ -30,6 +30,7 @@ signal released(obj: Grabbable, mode: String, at: Vector3, speed: float)
 
 var mass_category: int = MassCategory.MEDIUM
 var display_name := "object"
+var hold_profile := "object"
 var hold_offset := Vector3(0.0, -0.7, 0.0)
 var pick_anchor_offset := Vector3.ZERO
 var hover_screen_radius := 54.0

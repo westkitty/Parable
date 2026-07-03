@@ -7,7 +7,8 @@ func _configure() -> void:
 	mass_category = MassCategory.HEAVY
 	mass = 120.0
 	display_name = "tree"
-	hold_offset = Vector3(0.0, -0.86, -0.02)
+	hold_profile = "tree"
+	hold_offset = Vector3(0.0, -0.92, -0.02)
 	pick_anchor_offset = Vector3(0.0, 1.35, 0.0)
 	hover_screen_radius = 72.0
 	ground_clearance = 1.28

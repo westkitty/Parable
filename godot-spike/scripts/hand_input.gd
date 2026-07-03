@@ -246,7 +246,9 @@ func _begin_carry(obj: Node) -> void:
 	_rig.control_scale = CARRY_CAMERA_SCALE
 	_sampler.clear()
 	if _visual and _visual.has_method("set_hold_profile"):
-		_visual.set_hold_profile(_held.display_name)
+		_visual.set_hold_profile(_held.hold_profile)
+	if _visual and _visual.has_method("set_pose"):
+		_visual.set_pose("carry")
 	_update_carry()
 	if not _held.is_in_group("villager"):
 		var director := get_tree().get_first_node_in_group("witness_director")
@@ -565,8 +567,11 @@ func get_debug() -> Dictionary:
 		"ray_target": _ground_point,
 		"hand_target": _hand_target,
 		"grip_point": _visual.grip_socket_world() if (_visual and _visual.has_method("grip_socket_world")) else global_position,
+		"held_position": _held.global_position if (_held != null and is_instance_valid(_held)) else Vector3.ZERO,
 		"hold_offset": _held.hold_offset if (_held != null and is_instance_valid(_held)) else Vector3.ZERO,
 		"hold_distance": _held.global_position.distance_to(_visual.grip_socket_world(_held.hold_offset)) if (_held != null and is_instance_valid(_held) and _visual and _visual.has_method("grip_socket_world")) else 0.0,
+		"hold_profile": _visual.active_hold_profile() if (_visual and _visual.has_method("active_hold_profile")) else "-",
+		"hand_pose": _visual.pose_name() if (_visual and _visual.has_method("pose_name")) else "-",
 		"hover_anchor": _hovered.pick_anchor_point() if (_hovered != null and is_instance_valid(_hovered) and _hovered.has_method("pick_anchor_point")) else Vector3.ZERO,
 	}
 

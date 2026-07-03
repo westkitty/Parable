@@ -15,6 +15,7 @@ var _tilt_target := 0.0
 var _spread_target := 1.0
 var _candidate_tracking := false
 var _grip_socket_target := Vector3(0.0, -0.04, -0.18)
+var _active_hold_profile := "-"
 
 func _ready() -> void:
 	var skin := StandardMaterial3D.new()
@@ -80,7 +81,7 @@ func set_pose(pose: String) -> void:
 		"open":     _targets(0.18, 0.25, 0.0, 1.0)
 		"flat":     _targets(0.05, 0.1, 0.12, 1.0)   # pressing/panning the ground
 		"grip":     _targets(1.15, 0.9, 0.15, 0.85)
-		"carry":    _targets(0.95, 0.8, 0.05, 0.85)
+		"carry":    _carry_targets()
 		"point":    _targets(1.1, 0.9, -0.08, 0.9)   # gesture mode; index stays out
 		"reach":    _targets(0.35, 0.3, -0.25, 1.0)
 		_:          _targets(0.18, 0.25, 0.0, 1.0)
@@ -103,20 +104,28 @@ func set_tracking_feedback(on: bool) -> void:
 
 func set_hold_profile(kind: String) -> void:
 	scale = Vector3.ONE
+	_active_hold_profile = kind if kind != "" else "-"
 	_grip_socket_target = Vector3(0.0, -0.04, -0.18)
 	match kind:
 		"rock":
-			scale = Vector3.ONE * 1.12
-			_grip_socket_target = Vector3(0.0, -0.06, -0.19)
+			scale = Vector3.ONE * 1.08
+			_grip_socket_target = Vector3(0.0, -0.08, -0.18)
 		"offering":
-			scale = Vector3.ONE * 1.1
-			_grip_socket_target = Vector3(0.0, -0.05, -0.16)
+			scale = Vector3.ONE * 1.08
+			_grip_socket_target = Vector3(0.0, -0.08, -0.15)
 		"villager":
 			scale = Vector3.ONE * 1.16
-			_grip_socket_target = Vector3(0.0, -0.03, -0.12)
+			_grip_socket_target = Vector3(0.0, -0.04, -0.12)
 		"tree":
 			scale = Vector3.ONE * 1.22
-			_grip_socket_target = Vector3(0.0, -0.02, -0.08)
+			_grip_socket_target = Vector3(0.0, -0.03, -0.08)
+	_grip_socket.position = _grip_socket_target
+
+func active_hold_profile() -> String:
+	return _active_hold_profile
+
+func pose_name() -> String:
+	return _pose
 
 func pulse_debug_arm() -> void:
 	_aura.light_energy = 2.8
@@ -133,6 +142,19 @@ func grip_socket_world(local_offset: Vector3 = Vector3.ZERO) -> Vector3:
 func origin_for_grip_world(world_point: Vector3) -> Vector3:
 	var basis := global_transform.basis
 	return world_point - basis * grip_socket_local()
+
+func _carry_targets() -> void:
+	match _active_hold_profile:
+		"rock":
+			_targets(1.35, 1.15, 0.04, 0.72)
+		"villager":
+			_targets(1.05, 0.95, 0.02, 0.82)
+		"offering":
+			_targets(1.22, 1.0, 0.04, 0.78)
+		"tree":
+			_targets(1.42, 1.18, 0.03, 0.68)
+		_:
+			_targets(1.1, 0.9, 0.04, 0.82)
 
 func _process(delta: float) -> void:
 	var k := 1.0 - exp(-12.0 * delta)

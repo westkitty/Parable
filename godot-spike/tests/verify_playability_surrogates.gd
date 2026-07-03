@@ -54,24 +54,36 @@ func _run() -> void:
 		quit(1)
 
 func _assert_stable_hold_and_release_modes(hand: Node) -> void:
-	for kind in ["rock", "tree", "offering"]:
+	for kind in ["rock", "villager", "tree", "offering"]:
 		var obj := _find_grabbable(kind)
 		_check(obj != null, "%s exists for hold surrogate" % kind)
 		if obj == null:
 			continue
 		_check(hand.simulate_grab(obj), "%s simulated grab succeeds" % kind)
+		var visual: Node = hand.get_node("HandVisual")
+		var debug: Dictionary = hand.get_debug()
+		_check(String(obj.hold_profile) == kind, "%s has explicit hold profile" % kind)
+		_check(String(debug.get("hold_profile", "-")) == kind, "%s activates matching hold profile" % kind)
+		_check(String(debug.get("hand_pose", "-")) == "carry", "%s closes hand into carry pose" % kind)
 		_check(obj.pick_anchor_offset != Vector3.ZERO, "%s pick anchor offset configured" % kind)
 		_check(obj.hover_screen_radius <= 80.0, "%s pickup radius is not absurdly large" % kind)
 		_check(obj.hold_offset != Vector3(0.0, -0.7, 0.0), "%s hold socket differs from default" % kind)
+		_check(_profile_matches_visible_hold(kind, obj.hold_offset), "%s hold offset matches visible grip intent" % kind)
 		var color_before := _mesh_color(obj)
 		for _i in 5:
 			await physics_frame
 		_check(hand.is_carrying(), "%s remains held across physics frames" % kind)
 		_check(obj.is_held == true, "%s owner state remains held" % kind)
-		var expected_hold: Vector3 = hand.get_node("HandVisual").grip_socket_world(obj.hold_offset)
+		var expected_hold: Vector3 = visual.grip_socket_world(obj.hold_offset)
 		var grip_dist: float = obj.global_position.distance_to(expected_hold)
-		_check(grip_dist < 0.35, "%s held object stays near grip socket" % kind)
+		_check(grip_dist < 0.12, "%s held object follows GripSocket target" % kind)
 		_check(_mesh_color(obj) == color_before, "%s held state does not recolor base material" % kind)
+		debug = hand.get_debug()
+		_check(Vector3(debug.get("grip_point", Vector3.ZERO)).distance_to(visual.grip_socket_world()) < 0.01,
+			"%s diagnostics report grip socket position" % kind)
+		_check(Vector3(debug.get("held_position", Vector3.ZERO)).distance_to(obj.global_position) < 0.01,
+			"%s diagnostics report held object position" % kind)
+		_check(float(debug.get("hold_distance", 99.0)) < 0.12, "%s diagnostics report small grip distance" % kind)
 		hand.simulate_release_for_test(Vector3.ZERO, true)
 		for _i in 2:
 			await physics_frame
@@ -327,6 +339,10 @@ func _assert_temple_and_diagnostics_contract(main: Node, diagnostics: CanvasLaye
 	_check(text.contains("camera:"), "diagnostics expose camera state")
 	_check(text.contains("pan active:"), "diagnostics expose pan state")
 	_check(text.contains("input mode:"), "diagnostics expose input mode")
+	_check(text.contains("grip point:"), "diagnostics expose grip socket position")
+	_check(text.contains("held object position:"), "diagnostics expose held object position")
+	_check(text.contains("hold profile:"), "diagnostics expose active hold profile")
+	_check(text.contains("grip dist"), "diagnostics expose grip distance")
 	_check(text.contains("bolt learned:"), "diagnostics expose bolt learned state")
 	var label_texts := _label_texts(temple)
 	_check("SYMBOL" in label_texts, "temple exposes SYMBOL label")
@@ -377,6 +393,18 @@ func _camera_state_close(a: Dictionary, b: Dictionary) -> bool:
 		and absf(float(a.yaw) - float(b.yaw)) < 0.001 \
 		and absf(float(a.pitch) - float(b.pitch)) < 0.001 \
 		and absf(float(a.dist) - float(b.dist)) < 0.001
+
+func _profile_matches_visible_hold(kind: String, offset: Vector3) -> bool:
+	match kind:
+		"rock":
+			return absf(offset.y) <= 0.08 and absf(offset.z) <= 0.08
+		"villager":
+			return offset.y <= -0.58 and offset.y >= -0.78
+		"offering":
+			return offset.y <= -0.24 and offset.y >= -0.46 and absf(offset.z) <= 0.08
+		"tree":
+			return offset.y <= -0.82 and offset.y >= -1.02
+	return false
 
 func _label_texts(node: Node) -> Array[String]:
 	var out: Array[String] = []
