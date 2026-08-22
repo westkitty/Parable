@@ -7,6 +7,7 @@ func _initialize() -> void:
 
 func _run() -> void:
 	print("== Parable spike playability surrogate verify ==")
+	root.set_size(Vector2i(1440, 900))
 	var identity: Node = load("res://scripts/god_identity.gd").new()
 	identity.name = "GodIdentity"
 	root.add_child(identity)
@@ -39,6 +40,7 @@ func _run() -> void:
 	_check(hand.has_method("hold_debug_marker_path_exists_for_test"), "hand exposes pooled hold-debug marker helper")
 	_check(hand.hold_debug_marker_path_exists_for_test(), "F3 hold-debug marker path exists")
 	_check(trace.has_method("active_mote_count"), "gesture trace exposes bounded mote helper")
+	await _assert_current_frame_input_seam(hand, rig)
 	await _assert_patch08_input_contract(hand, rig, main)
 	await _assert_stable_hold_and_release_modes(hand)
 	await _assert_throw_threshold_edges(hand)
@@ -56,6 +58,106 @@ func _run() -> void:
 		for f in _failures:
 			print("  FAIL: " + f)
 		quit(1)
+
+func _assert_current_frame_input_seam(hand: Node, rig: Node) -> void:
+	var rocks := _find_grabbables("rock")
+	_check(rocks.size() >= 3, "three rocks exist for current-frame targeting proof")
+	if rocks.size() < 3:
+		return
+
+	# Headless Godot updates button action state from parsed events, but does not
+	# deliver the OS cursor position to the viewport. Keep the decisive proof at
+	# the real hand update seam and pass each current pointer position directly.
+	hand.enabled = false
+	hand._refresh_grabbables()
+	var empty := _find_empty_screen_point(rig)
+	var rock_a: Node = rocks[0]
+	var rock_b: Node = rocks[2]
+	var point_a: Vector2 = rig.camera.unproject_position(rock_a.pick_anchor_point())
+	var point_b: Vector2 = rig.camera.unproject_position(rock_b.pick_anchor_point())
+
+	hand._world_frame(point_a, 0.0)
+	_check(String(hand.get_debug().get("hovered", "?")) == String(rock_a.display_name),
+		"current-frame first update over rock hovers that rock")
+	hand._cancel_miracle(false)
+	hand._world_frame(empty, 0.0)
+	_check(String(hand.get_debug().get("hovered", "?")) == "-",
+		"current-frame move from rock to empty clears hover immediately")
+
+	await _inject_mouse_button(MOUSE_BUTTON_RIGHT, true, point_a)
+	hand._world_frame(point_a, 0.0)
+	_check(rock_a.is_held == true and hand.is_carrying(),
+		"RMB acquires the current rock on the first attempt")
+	await _inject_mouse_button(MOUSE_BUTTON_RIGHT, false, point_a)
+	hand._world_frame(point_a, 0.0)
+	_check(hand.is_carrying() == false and rock_a.is_held == false,
+		"current-frame RMB release clears the held rock")
+	hand._cancel_miracle(false)
+
+	# Two direct updates model a rapid A -> B move; the following RMB event must
+	# observe B, not the object from the previous update.
+	hand._world_frame(point_a, 0.0)
+	hand._cancel_miracle(false)
+	hand._world_frame(point_b, 0.0)
+	_check(String(hand.get_debug().get("hovered", "?")) == String(rock_b.display_name),
+		"rapid A-to-B movement updates hover to B before RMB")
+	await _inject_mouse_button(MOUSE_BUTTON_RIGHT, true, point_b)
+	hand._world_frame(point_b, 0.0)
+	_check(rock_b.is_held == true and rock_a.is_held == false,
+		"rapid A-to-B RMB acquires B and never A")
+	await _inject_mouse_button(MOUSE_BUTTON_RIGHT, false, point_b)
+	hand._world_frame(point_b, 0.0)
+	_check(hand.is_carrying() == false, "rapid-target RMB release clears carry")
+	hand._cancel_miracle(false)
+
+	# The empty update clears hover before LMB is evaluated. The next update
+	# crosses the existing drag threshold and must move the camera immediately.
+	hand._world_frame(point_a, 0.0)
+	hand._cancel_miracle(false)
+	hand._world_frame(empty, 0.0)
+	_check(String(hand.get_debug().get("hovered", "?")) == "-",
+		"object-to-empty transition leaves no stale hover blocker for pan")
+	var camera_before: Dictionary = rig.save_state()
+	await _inject_mouse_button(MOUSE_BUTTON_LEFT, true, empty)
+	hand._world_frame(empty, 0.0)
+	await physics_frame
+	var moved := empty + Vector2(60.0, -40.0)
+	hand._world_frame(moved, 0.0)
+	var camera_after: Dictionary = rig.save_state()
+	_check(bool(hand.get_debug().get("pan_active", false)),
+		"immediate empty-ground LMB drag enters pan")
+	_check(camera_before.pos.distance_to(camera_after.pos) > 0.2,
+		"immediate empty-ground LMB drag moves the camera target")
+	await _inject_mouse_button(MOUSE_BUTTON_LEFT, false, moved)
+	hand._world_frame(moved, 0.0)
+	hand._cancel_miracle(false)
+	rig.reset_to_safe_default()
+	hand.enabled = true
+
+func _inject_mouse_button(button: MouseButton, pressed: bool, position: Vector2) -> void:
+	var event := InputEventMouseButton.new()
+	event.button_index = button
+	event.pressed = pressed
+	event.position = position
+	Input.parse_input_event(event)
+	await physics_frame
+
+func _find_empty_screen_point(rig: Node) -> Vector2:
+	var grabbables: Array[Node] = get_nodes_in_group("grabbable")
+	for y in range(80, 840, 80):
+		for x in range(80, 1360, 80):
+			var candidate := Vector2(x, y)
+			var clear := true
+			for obj in grabbables:
+				if obj == null or not is_instance_valid(obj):
+					continue
+				var anchor: Vector2 = rig.camera.unproject_position(obj.pick_anchor_point())
+				if candidate.distance_to(anchor) <= obj.hover_screen_radius + 8.0:
+					clear = false
+					break
+			if clear:
+				return candidate
+	return Vector2(1100.0, 760.0)
 
 func _assert_stable_hold_and_release_modes(hand: Node) -> void:
 	var diagnostics: CanvasLayer = get_first_node_in_group("diagnostics")

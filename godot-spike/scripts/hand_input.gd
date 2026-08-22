@@ -10,7 +10,6 @@ extends Node3D
 ##   Esc      — safe release: gentle drop, abort miracle, never throws
 ## States: hover | pan | carry | miracle
 
-const PICK_RADIUS := 0.9            # screen-space forgiveness now owns pickup
 const CLICK_DRAG_THRESHOLD_PX := 10.0
 const THROW_MIN_SPEED := 1.8        # below this, release = gentle drop
 const THROW_VERTICAL_LIFT := 2.35   # modest extra loft, validated by Andrew later
@@ -133,6 +132,9 @@ func _world_frame(mouse: Vector2, _delta: float) -> void:
 
 	# Ground point under the mouse (terrain, layer 1).
 	_update_ground_point(from, dir)
+	# Move the hand to this update's target before using its visual grip for
+	# acquisition. Otherwise the projected grip belongs to the previous frame.
+	_position_hand_for_current_input()
 
 	# Hover follows the visible palm/grip point rather than the raw cursor.
 	var new_hover: Node = null
@@ -181,9 +183,11 @@ func _world_frame(mouse: Vector2, _delta: float) -> void:
 			"pending_pan":
 				if mouse.distance_to(_press_screen) >= CLICK_DRAG_THRESHOLD_PX:
 					_press_kind = "pan"
-					_pan_last_mouse = mouse
 					_pan_last_ground = _ground_point
 					_pan_source = "screen"
+					state = "pan"
+					_rig.pan_screen_delta(mouse - _press_screen)
+					_pan_last_mouse = mouse
 			"pan":
 				state = "pan"
 				_pan_using_ground = false
@@ -211,16 +215,9 @@ func _world_frame(mouse: Vector2, _delta: float) -> void:
 	if _press_kind == "":
 		state = "hover"
 
-	# Hand placement + pose.
-	var hand_h := HOVER_HEIGHT
-	if _press_kind == "pan":
-		hand_h = PRESS_HEIGHT
-	var target := _ground_point + Vector3(0.0, hand_h, 0.0)
-	if _held != null:
-		target = _origin_for_hover_anchor(_ground_point + Vector3(0.0, _carry_anchor_height(), 0.0))
-	_hand_target = target
-	global_position = target
-	rotation.y = _rig.rotation.y
+	# Re-apply placement after the press state can change (for example, when a
+	# pending empty-ground drag becomes an active pan or a grab begins carry).
+	_position_hand_for_current_input()
 
 	match state:
 		"pan":
@@ -672,6 +669,15 @@ func _screen_pick_grabbable(mouse: Vector2) -> Node:
 			best_score = score
 			best = g
 	return best
+
+func _position_hand_for_current_input() -> void:
+	var hand_h := PRESS_HEIGHT if _press_kind == "pan" else HOVER_HEIGHT
+	var target := _ground_point + Vector3(0.0, hand_h, 0.0)
+	if _held != null:
+		target = _origin_for_hover_anchor(_ground_point + Vector3(0.0, _carry_anchor_height(), 0.0))
+	_hand_target = target
+	global_position = target
+	rotation.y = _rig.rotation.y
 
 func _origin_for_hover_anchor(anchor: Vector3) -> Vector3:
 	if _visual and _visual.has_method("origin_for_grip_world"):
