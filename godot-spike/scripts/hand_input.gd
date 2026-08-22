@@ -27,6 +27,12 @@ const HAND_TRACKING_FEEDBACK_LENGTH := 26.0
 const HAND_DIRECT_CARRY_HEIGHT := 0.06
 const HOVER_GRIP_LIFT := Vector3(0.0, 0.38, 0.0)
 const MAX_STROKE_POINTS := 48
+# Reach/contact model: while hovering, the hand leaves the raw ground point and
+# closes on the object's own grip contact so acquisition reads as reaching for
+# something rather than the object snapping into an abstract held coordinate.
+const HOVER_REACH_LIFT := Vector3(0.0, 0.12, 0.0)
+const HAND_FOLLOW_SMOOTH := 26.0
+const REACH_CONTACT_DISTANCE := 0.34
 
 var enabled := true
 var state := "hover"
@@ -49,6 +55,11 @@ var _hold_debug_active := false
 
 var _ground_point := Vector3.ZERO
 var _hand_target := Vector3.ZERO
+# The eased visual pose. Kept separately because the hand is briefly parked on
+# the pick pose every frame to resolve targeting, and that must not restart the
+# reach each frame.
+var _follow_position := Vector3.ZERO
+var _follow_ready := false
 var _hovered: Node = null
 var _held: Node = null
 var _input_suspended := false
@@ -124,7 +135,7 @@ func _physics_process(delta: float) -> void:
 
 # --- Normal world interaction ----------------------------------------------
 
-func _world_frame(mouse: Vector2, _delta: float) -> void:
+func _world_frame(mouse: Vector2, delta: float) -> void:
 	var ray: Array = _rig.screen_ray(mouse)
 	var from: Vector3 = ray[0]
 	var dir: Vector3 = ray[1]
@@ -132,9 +143,11 @@ func _world_frame(mouse: Vector2, _delta: float) -> void:
 
 	# Ground point under the mouse (terrain, layer 1).
 	_update_ground_point(from, dir)
-	# Move the hand to this update's target before using its visual grip for
+	# Put the hand on this update's pick pose before using its visual grip for
 	# acquisition. Otherwise the projected grip belongs to the previous frame.
-	_position_hand_for_current_input()
+	# Targeting always reads from this pose, never from the eased reach pose, so
+	# reaching toward an object can never feed back into what is targeted.
+	_place_hand_on_pick_pose()
 
 	# Hover follows the visible palm/grip point rather than the raw cursor.
 	var new_hover: Node = null
@@ -171,7 +184,12 @@ func _world_frame(mouse: Vector2, _delta: float) -> void:
 		if not inter.is_empty():
 			_press_kind = "pending_click"
 			_pending_click_target = inter.collider
-		elif _hovered == null:
+		else:
+			# Hover decides what RMB would grab. It must never decide whether an
+			# LMB camera gesture is allowed to exist: pressing inside a
+			# grabbable's hover halo used to leave _press_kind empty, and because
+			# just_pressed had already fired, that press could never recover into
+			# a pan for its whole duration.
 			_press_kind = "pending_pan"
 			_pan_using_ground = false
 			_pan_last_ground = _ground_point
@@ -182,12 +200,7 @@ func _world_frame(mouse: Vector2, _delta: float) -> void:
 		match _press_kind:
 			"pending_pan":
 				if mouse.distance_to(_press_screen) >= CLICK_DRAG_THRESHOLD_PX:
-					_press_kind = "pan"
-					_pan_last_ground = _ground_point
-					_pan_source = "screen"
-					state = "pan"
-					_rig.pan_screen_delta(mouse - _press_screen)
-					_pan_last_mouse = mouse
+					_begin_screen_pan(mouse)
 			"pan":
 				state = "pan"
 				_pan_using_ground = false
@@ -195,7 +208,12 @@ func _world_frame(mouse: Vector2, _delta: float) -> void:
 				_pan_source = "screen"
 				_pan_last_mouse = mouse
 			"pending_click":
-				pass
+				# A press that began on a clickable target is still a camera
+				# gesture the moment it becomes a drag. Releasing under the
+				# threshold still delivers the click.
+				if mouse.distance_to(_press_screen) >= CLICK_DRAG_THRESHOLD_PX:
+					_pending_click_target = null
+					_begin_screen_pan(mouse)
 	elif Input.is_action_just_released("pan_action"):
 		match _press_kind:
 			"pending_click":
@@ -215,9 +233,10 @@ func _world_frame(mouse: Vector2, _delta: float) -> void:
 	if _press_kind == "":
 		state = "hover"
 
-	# Re-apply placement after the press state can change (for example, when a
-	# pending empty-ground drag becomes an active pan or a grab begins carry).
-	_position_hand_for_current_input()
+	# Resolve where the hand wants to be now that the press state is settled,
+	# then ease toward it so hover -> reach -> grip is a visible movement.
+	_update_hand_target()
+	_apply_hand_follow(delta)
 
 	match state:
 		"pan":
@@ -227,7 +246,10 @@ func _world_frame(mouse: Vector2, _delta: float) -> void:
 		"miracle":
 			_visual.set_pose("point")
 		_:
-			_visual.set_pose("grip" if _hovered != null else "open")
+			if _hovered == null:
+				_visual.set_pose("open")
+			else:
+				_visual.set_pose("grip" if hand_has_reached_target() else "reach")
 
 	if _press_kind == "carry":
 		_update_carry()
@@ -333,14 +355,16 @@ func resync_after_focus() -> void:
 	_press_screen = mouse
 	_pan_last_mouse = mouse
 	_hand_target = _ground_point + Vector3(0.0, HOVER_HEIGHT, 0.0)
-	global_position = _hand_target
+	_settle_follow_pose()
 	if _held == null and _press_kind == "":
 		_set_hovered(_screen_pick_grabbable(mouse))
 
 func _update_miracle_tracking(mouse: Vector2) -> void:
 	if _rig == null or _island == null:
 		return
-	var blockers: bool = _held != null or _press_kind == "carry" or _press_kind == "pan" or _rig.is_orbiting()
+	# Any live press is a deliberate non-gesture act: a pan drag, a click, or a
+	# carry must never seed or finish a miracle stroke.
+	var blockers: bool = _held != null or _press_kind != "" or _rig.is_orbiting()
 	if blockers:
 		if _visual:
 			_visual.set_tracking_feedback(false)
@@ -670,14 +694,69 @@ func _screen_pick_grabbable(mouse: Vector2) -> Node:
 			best = g
 	return best
 
-func _position_hand_for_current_input() -> void:
+## Promote a held press into an active screen pan, applying the delta already
+## travelled so the camera starts moving on the frame the threshold is crossed.
+func _begin_screen_pan(mouse: Vector2) -> void:
+	_press_kind = "pan"
+	_pan_using_ground = false
+	_pan_last_ground = _ground_point
+	_pan_source = "screen"
+	state = "pan"
+	_set_hovered(null)
+	_cancel_miracle(false)
+	_rig.pan_screen_delta(mouse - _press_screen)
+	_pan_last_mouse = mouse
+
+## The pose targeting is measured from: directly over the cursor's ground point,
+## at the neutral hover height. Deliberately independent of the reach pose.
+func _pick_pose_position() -> Vector3:
 	var hand_h := PRESS_HEIGHT if _press_kind == "pan" else HOVER_HEIGHT
-	var target := _ground_point + Vector3(0.0, hand_h, 0.0)
-	if _held != null:
-		target = _origin_for_hover_anchor(_ground_point + Vector3(0.0, _carry_anchor_height(), 0.0))
-	_hand_target = target
-	global_position = target
+	return _ground_point + Vector3(0.0, hand_h, 0.0)
+
+func _place_hand_on_pick_pose() -> void:
 	rotation.y = _rig.rotation.y
+	if _held != null:
+		return
+	global_position = _pick_pose_position()
+
+## Where the hand wants to be this frame. Carrying and panning keep their
+## established poses; hovering reaches for the object's own grip contact.
+func _update_hand_target() -> void:
+	if _held != null:
+		_hand_target = _origin_for_hover_anchor(_ground_point + Vector3(0.0, _carry_anchor_height(), 0.0))
+		return
+	if _hovered != null and _press_kind == "" and is_instance_valid(_hovered):
+		_hand_target = reach_target_for(_hovered)
+		return
+	_hand_target = _pick_pose_position()
+
+## Grip socket lands just above the object's authored contact point, so the palm
+## rides over what it is taking instead of sitting under it.
+func reach_target_for(obj: Node) -> Vector3:
+	var contact: Vector3 = obj.grip_contact_point() if obj.has_method("grip_contact_point") else obj.global_position
+	return _origin_for_grip_world(contact + HOVER_REACH_LIFT)
+
+func _apply_hand_follow(delta: float) -> void:
+	rotation.y = _rig.rotation.y
+	if delta <= 0.0 or not _follow_ready:
+		# A zero-length update is a scripted/settled step: place exactly.
+		_settle_follow_pose()
+		return
+	_follow_position = _follow_position.lerp(_hand_target, 1.0 - exp(-HAND_FOLLOW_SMOOTH * delta))
+	global_position = _follow_position
+
+func _settle_follow_pose() -> void:
+	_follow_position = _hand_target
+	_follow_ready = true
+	global_position = _follow_position
+
+func hand_has_reached_target() -> bool:
+	return global_position.distance_to(_hand_target) <= REACH_CONTACT_DISTANCE
+
+func _origin_for_grip_world(world_point: Vector3) -> Vector3:
+	if _visual and _visual.has_method("origin_for_grip_world"):
+		return _visual.origin_for_grip_world(world_point)
+	return world_point
 
 func _origin_for_hover_anchor(anchor: Vector3) -> Vector3:
 	if _visual and _visual.has_method("origin_for_grip_world"):

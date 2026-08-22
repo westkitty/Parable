@@ -16,7 +16,12 @@ var _thumb_target := 0.2
 var _tilt_target := 0.0
 var _spread_target := 1.0
 var _candidate_tracking := false
-var _grip_socket_target := Vector3(0.0, -0.04, -0.18)
+## Grip sockets are biased downward rather than forward. A forward-biased socket
+## puts the palm nearer the camera than the thing it holds, which at the normal
+## world pitch renders the hand underneath its own grip.
+const NEUTRAL_GRIP_SOCKET := Vector3(0.0, -0.24, -0.10)
+
+var _grip_socket_target := NEUTRAL_GRIP_SOCKET
 var _active_hold_profile := "-"
 
 func _ready() -> void:
@@ -114,20 +119,20 @@ func set_hold_profile(kind: String) -> void:
 	_active_hold_profile = kind if kind != "" else "-"
 	if _grip_cup:
 		_grip_cup.visible = kind != ""
-	_grip_socket_target = Vector3(0.0, -0.04, -0.18)
+	_grip_socket_target = NEUTRAL_GRIP_SOCKET
 	match kind:
 		"rock":
 			scale = Vector3.ONE * 1.08
-			_grip_socket_target = Vector3(0.0, -0.18, -0.34)
+			_grip_socket_target = Vector3(0.0, -0.34, -0.12)
 		"offering":
 			scale = Vector3.ONE * 1.08
-			_grip_socket_target = Vector3(0.0, -0.12, -0.24)
+			_grip_socket_target = Vector3(0.0, -0.30, -0.10)
 		"villager":
 			scale = Vector3.ONE * 1.16
-			_grip_socket_target = Vector3(0.0, -0.13, -0.26)
+			_grip_socket_target = Vector3(0.0, -0.32, -0.10)
 		"tree":
 			scale = Vector3.ONE * 1.22
-			_grip_socket_target = Vector3(0.0, -0.10, -0.19)
+			_grip_socket_target = Vector3(0.0, -0.30, -0.08)
 	_grip_socket.position = _grip_socket_target
 
 func active_hold_profile() -> String:

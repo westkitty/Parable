@@ -1,5 +1,9 @@
 extends SceneTree
 
+## Minimum separation that makes a reach surrogate meaningful: below this the
+## hand is already effectively on the object and easing proves nothing.
+const REACH_STEP_MIN := 0.6
+
 var _failures: Array[String] = []
 
 func _initialize() -> void:
@@ -41,6 +45,7 @@ func _run() -> void:
 	_check(hand.hold_debug_marker_path_exists_for_test(), "F3 hold-debug marker path exists")
 	_check(trace.has_method("active_mote_count"), "gesture trace exposes bounded mote helper")
 	await _assert_current_frame_input_seam(hand, rig)
+	await _assert_m1_hands_on_the_world(hand, rig)
 	await _assert_patch08_input_contract(hand, rig, main)
 	await _assert_stable_hold_and_release_modes(hand)
 	await _assert_throw_threshold_edges(hand)
@@ -133,6 +138,235 @@ func _assert_current_frame_input_seam(hand: Node, rig: Node) -> void:
 	hand._cancel_miracle(false)
 	rig.reset_to_safe_default()
 	hand.enabled = true
+
+## Stand-in for a world target that answers a god click (temple doorway, symbol
+## choice). Used so click delivery can be proven without running the temple flow.
+class ClickProbe extends Area3D:
+	var clicks := 0
+	func on_god_click(_world: Node) -> void:
+		clicks += 1
+
+## M1 — HANDS ON THE WORLD.
+## Everything here drives the real _world_frame press arbitration rather than the
+## simulate_* shortcuts, except the four-class hold geometry sweep, whose input
+## path is already proven on the rock immediately above it.
+func _assert_m1_hands_on_the_world(hand: Node, rig: Node) -> void:
+	var rock := _find_grabbable("rock")
+	_check(rock != null, "rock exists for M1 hands-on-the-world surrogates")
+	if rock == null:
+		return
+
+	hand.enabled = false
+	hand._refresh_grabbables()
+	var empty := _find_empty_screen_point(rig)
+	var rock_screen: Vector2 = rig.camera.unproject_position(rock.pick_anchor_point())
+
+	# --- Reach reads as contact, not as burial ------------------------------
+	hand._cancel_miracle(false)
+	hand._world_frame(rock_screen, 0.0)
+	_check(String(hand.get_debug().get("hovered", "?")) == String(rock.display_name),
+		"reach pose does not disturb which object is targeted")
+	var contact: Vector3 = rock.grip_contact_point()
+	var palm: Vector3 = hand.get_debug().get("palm_center", Vector3.ZERO)
+	var grip: Vector3 = hand.get_debug().get("grip_point", Vector3.ZERO)
+	_check(palm.y > contact.y, "reaching palm rides above the rock's contact point")
+	_check(rig.camera.unproject_position(palm).y <= rig.camera.unproject_position(contact).y,
+		"reaching hand renders above its contact point, never under the rock")
+	_check(grip.distance_to(contact) < 0.5,
+		"reach lands the grip socket on the rock's own contact point")
+
+	# --- Reach is a travelled movement, not a teleport ----------------------
+	hand._cancel_miracle(false)
+	hand._world_frame(empty, 0.0)
+	var start_pos: Vector3 = hand.global_position
+	var reach_target: Vector3 = hand.reach_target_for(rock)
+	_check(start_pos.distance_to(reach_target) > REACH_STEP_MIN,
+		"reach surrogate starts genuinely away from the object")
+	hand._cancel_miracle(false)
+	hand._world_frame(rock_screen, 1.0 / 60.0)
+	var stepped: Vector3 = hand.global_position
+	_check(stepped.distance_to(reach_target) < start_pos.distance_to(reach_target),
+		"one hover frame moves the hand toward the object")
+	_check(stepped.distance_to(reach_target) > 0.01,
+		"the hand travels to the object rather than teleporting onto it")
+	_check(String(hand._visual.pose_name()) == "reach",
+		"a hand still closing on an object uses the reach pose")
+	for i in 40:
+		hand._cancel_miracle(false)
+		hand._world_frame(rock_screen, 1.0 / 60.0)
+	_check(hand.global_position.distance_to(hand.reach_target_for(rock)) < 0.05,
+		"a short reach settles onto the object's contact pose")
+	_check(hand.hand_has_reached_target(), "settled reach reports contact")
+	_check(String(hand._visual.pose_name()) == "grip",
+		"a settled reach closes the hand into a grip pose")
+
+	# --- RMB acquisition from the reached pose ------------------------------
+	await _inject_mouse_button(MOUSE_BUTTON_RIGHT, true, rock_screen)
+	hand._world_frame(rock_screen, 0.0)
+	_check(rock.is_held and hand.is_carrying(), "RMB acquires the rock the hand has reached")
+	var held_palm: Vector3 = hand.get_debug().get("palm_center", Vector3.ZERO)
+	var held_contact: Vector3 = rock.grip_contact_point()
+	# The grip socket and the contact point coincide by construction, so on screen
+	# they differ only by sub-pixel perspective. The load-bearing claim is that the
+	# palm renders above the rock's body rather than under it.
+	_check(rig.camera.unproject_position(held_palm).y
+			<= rig.camera.unproject_position(held_contact).y + 2.0,
+		"held rock keeps its contact point at the palm, not above it")
+	_check(rig.camera.unproject_position(held_palm).y
+			< rig.camera.unproject_position(rock.global_position).y,
+		"held rock hangs below the palm on screen")
+	_check(held_palm.y > held_contact.y, "held rock's contact sits under the palm in world space")
+	await _inject_mouse_button(MOUSE_BUTTON_RIGHT, false, rock_screen)
+	hand._world_frame(rock_screen, 0.0)
+	_check(hand.is_carrying() == false and rock.is_held == false, "M1 acquisition releases cleanly")
+
+	# --- The headline: LMB pan from inside a grabbable's hover halo ----------
+	hand._cancel_miracle(false)
+	hand._world_frame(rock_screen, 0.0)
+	_check(String(hand.get_debug().get("hovered", "?")) == String(rock.display_name),
+		"pan-from-hover surrogate presses genuinely inside the rock's hover halo")
+	var pan_before: Dictionary = rig.save_state()
+	await _inject_mouse_button(MOUSE_BUTTON_LEFT, true, rock_screen)
+	hand._world_frame(rock_screen, 0.0)
+	_check(String(hand.get_debug().get("input_mode", "?")) == "pending_pan",
+		"LMB pressed on a hovered grabbable arms a pan instead of dying")
+	await physics_frame
+	var dragged := rock_screen + Vector2(58.0, -44.0)
+	hand._world_frame(dragged, 0.0)
+	var pan_after: Dictionary = rig.save_state()
+	_check(bool(hand.get_debug().get("pan_active", false)),
+		"a drag begun inside a hover halo enters pan")
+	_check(pan_before.pos.distance_to(pan_after.pos) > 0.2,
+		"a drag begun inside a hover halo moves the camera")
+	_check(hand.is_carrying() == false and rock.is_held == false,
+		"panning never acquires the object under the press")
+	_check(bool(hand.get_debug().get("trace_armed", false)) == false,
+		"panning never arms a miracle")
+	await _inject_mouse_button(MOUSE_BUTTON_LEFT, false, dragged)
+	hand._world_frame(dragged, 0.0)
+	_check(hand.is_carrying() == false, "releasing a pan never drops an object into the world")
+
+	# The pan above moved the camera, so re-derive where the rock now projects.
+	rock_screen = rig.camera.unproject_position(rock.pick_anchor_point())
+
+	# --- A deliberate small press must not jog the camera -------------------
+	hand._cancel_miracle(false)
+	hand._world_frame(rock_screen, 0.0)
+	var tiny_before: Dictionary = rig.save_state()
+	await _inject_mouse_button(MOUSE_BUTTON_LEFT, true, rock_screen)
+	hand._world_frame(rock_screen, 0.0)
+	await physics_frame
+	var tiny := rock_screen + Vector2(4.0, -3.0)
+	hand._world_frame(tiny, 0.0)
+	_check(_camera_state_close(tiny_before, rig.save_state()),
+		"a sub-threshold LMB press on a grabbable does not jog the camera")
+	_check(hand.is_carrying() == false, "LMB on a grabbable never grabs")
+	await _inject_mouse_button(MOUSE_BUTTON_LEFT, false, tiny)
+	hand._world_frame(tiny, 0.0)
+
+	# --- RMB targeting stays independent of the LMB gesture -----------------
+	rock_screen = rig.camera.unproject_position(rock.pick_anchor_point())
+	hand._cancel_miracle(false)
+	hand._world_frame(rock_screen, 0.0)
+	_check(String(hand.get_debug().get("hovered", "?")) == String(rock.display_name),
+		"the rock is still targetable after a pan gesture")
+	await _inject_mouse_button(MOUSE_BUTTON_RIGHT, true, rock_screen)
+	hand._world_frame(rock_screen, 0.0)
+	_check(rock.is_held, "RMB still acquires after LMB pan gestures")
+	await _inject_mouse_button(MOUSE_BUTTON_RIGHT, false, rock_screen)
+	hand._world_frame(rock_screen, 0.0)
+	_check(hand.is_carrying() == false, "post-pan RMB release clears carry")
+
+	await _assert_m1_click_targets_survive_pan(hand, rig, rock)
+	await _assert_m1_hold_contact_geometry(hand, rig)
+
+	hand._cancel_miracle(false)
+	rig.reset_to_safe_default()
+	hand.enabled = true
+
+func _assert_m1_click_targets_survive_pan(hand: Node, rig: Node, rock: Node) -> void:
+	var probe := ClickProbe.new()
+	probe.name = "M1ClickProbe"
+	probe.collision_layer = 4
+	probe.collision_mask = 0
+	probe.monitoring = false
+	var col := CollisionShape3D.new()
+	var sphere := SphereShape3D.new()
+	sphere.radius = 1.0
+	col.shape = sphere
+	probe.add_child(col)
+	root.add_child(probe)
+	probe.global_position = rock.global_position + Vector3(0.0, 3.2, 0.0)
+	await physics_frame
+	var probe_screen: Vector2 = rig.camera.unproject_position(probe.global_position)
+
+	hand._cancel_miracle(false)
+	hand._world_frame(probe_screen, 0.0)
+	await _inject_mouse_button(MOUSE_BUTTON_LEFT, true, probe_screen)
+	hand._world_frame(probe_screen, 0.0)
+	_check(String(hand.get_debug().get("input_mode", "?")) == "pending_click",
+		"LMB on an interactive target still arms a click")
+	await _inject_mouse_button(MOUSE_BUTTON_LEFT, false, probe_screen)
+	hand._world_frame(probe_screen, 0.0)
+	_check(probe.clicks == 1, "a clean click on an interactive target still fires")
+
+	var click_before: Dictionary = rig.save_state()
+	await _inject_mouse_button(MOUSE_BUTTON_LEFT, true, probe_screen)
+	hand._world_frame(probe_screen, 0.0)
+	await physics_frame
+	var probe_drag := probe_screen + Vector2(-62.0, 38.0)
+	hand._world_frame(probe_drag, 0.0)
+	_check(bool(hand.get_debug().get("pan_active", false)),
+		"dragging away from an interactive target resolves into pan")
+	_check(click_before.pos.distance_to(rig.save_state().pos) > 0.2,
+		"a drag begun on an interactive target moves the camera")
+	await _inject_mouse_button(MOUSE_BUTTON_LEFT, false, probe_drag)
+	hand._world_frame(probe_drag, 0.0)
+	_check(probe.clicks == 1, "a drag begun on an interactive target does not also click")
+	probe.queue_free()
+	await physics_frame
+
+## Held objects must hang below the palm and stay outside it, for every class.
+func _assert_m1_hold_contact_geometry(hand: Node, rig: Node) -> void:
+	for kind in ["rock", "villager", "offering", "tree"]:
+		var obj := _find_grabbable(kind)
+		_check(obj != null, "M1 hold-contact sweep finds a " + kind)
+		if obj == null:
+			continue
+		_check(hand.simulate_grab(obj), "M1 hold-contact sweep grabs the " + kind)
+		var screen_pos: Vector2 = rig.camera.unproject_position(obj.pick_anchor_point())
+		hand._cancel_miracle(false)
+		hand._world_frame(screen_pos, 0.0)
+		var palm: Vector3 = hand.get_debug().get("palm_center", Vector3.ZERO)
+		var contact: Vector3 = obj.grip_contact_point()
+		_check(rig.camera.unproject_position(palm).y <= rig.camera.unproject_position(contact).y + 2.0,
+			"held " + kind + " renders below the palm, not on top of it")
+		_check(obj.global_position.y < palm.y,
+			"held " + kind + " hangs below the palm instead of sitting inside it")
+		_check(contact.distance_to(hand.get_debug().get("grip_point", Vector3.ZERO)) < 0.25,
+			"held " + kind + " keeps its contact point in the grip socket")
+		if kind == "tree":
+			# The canopy sits well above the grip. Rendered QA caught the hand
+			# being swallowed by it, which no state assertion could have seen.
+			_check(palm.y < _topmost_mesh_bottom(obj),
+				"held tree keeps the hand clear of its canopy")
+		hand.simulate_release_for_test(Vector3.ZERO, true)
+		await physics_frame
+
+## World Y of the underside of an object's highest mesh - the canopy, for a tree.
+func _topmost_mesh_bottom(obj: Node3D) -> float:
+	var best_center := -INF
+	var best_bottom := -INF
+	for child in obj.get_children():
+		if not (child is MeshInstance3D) or child.mesh == null:
+			continue
+		var aabb: AABB = child.mesh.get_aabb()
+		var bottom: float = obj.global_position.y + child.position.y + aabb.position.y
+		var center: float = bottom + aabb.size.y * 0.5
+		if center > best_center:
+			best_center = center
+			best_bottom = bottom
+	return best_bottom
 
 func _inject_mouse_button(button: MouseButton, pressed: bool, position: Vector2) -> void:
 	var event := InputEventMouseButton.new()
@@ -546,7 +780,9 @@ func _profile_matches_visible_hold(kind: String, offset: Vector3) -> bool:
 		"offering":
 			return offset.y >= 0.82 and offset.y <= 1.02 and offset.z <= 0.0
 		"tree":
-			return offset.y >= 0.9 and offset.y <= 1.16 and offset.z <= 0.0
+			# Low on the trunk, not mid-trunk: a mid-trunk grip put the hand
+			# inside the canopy. See the canopy-clearance check above.
+			return offset.y >= 0.32 and offset.y <= 0.58 and offset.z <= 0.0
 	return false
 
 func _label_texts(node: Node) -> Array[String]:
