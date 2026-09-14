@@ -1259,3 +1259,52 @@ This supersedes the previous practice of treating every isolated interaction
 defect as a complete project-wide blocker, and supersedes section 18's
 Phase 1 standalone hand-feel gate, section 19's gate checklist, and section
 20's next-task contract as the controlling sequencing rules.
+
+## 2026-09-14 — M1 re-verified as already complete; playtest packet refreshed
+
+**Found state, verified not assumed.** A fresh session opened on a single-branch
+clone of `main` (`remote.origin.fetch` was restricted to `main`), so the whole
+Godot spike was invisible locally and M1 looked unstarted. It was not. After
+`git fetch origin spike/godot-hand-feel-2026-07-02`, the branch tip `9336c68`
+already contained all three M1 deliverables from 2026-08-21:
+
+- `04b2f2c` targeting checkpoint — parent is exactly `d6f66b7`, touches exactly
+  `hand_input.gd` + `verify_playability_surrogates.gd`.
+- `c5bc674` M1 implementation — 6 files, +561/−31.
+- `9336c68` recovery source tracked + this section's M1 continuity entry.
+
+Nothing was re-implemented. The 2026-08-21 entry above remains the controlling
+M1 record.
+
+**Code substance re-verified by inspection** (not just commit messages): the
+`pending_pan` dead path is gone — both LMB press branches now set a non-empty
+`_press_kind`, so no dead state is reachable; `pending_click` promotes to pan
+past a 10 px threshold via `_begin_screen_pan()`, which clears hover, cancels
+miracle tracking and applies the already-travelled delta; `PICK_RADIUS` is
+absent; targeting reads `_place_hand_on_pick_pose()` while the visible reach
+uses `reach_target_for()`, so reach cannot feed back into targeting;
+`NEUTRAL_GRIP_SOCKET` is downward-biased `(0, -0.24, -0.10)`; tree hold anchor
+lowered to `0.42`. `villager_proxy.gd` and `throw_sampler.gd` were **not**
+touched by M1, so panic-shake and throw physics are intact.
+
+**Validation NOT re-run this session.** Godot is unavailable in the agent
+environment and cannot be obtained: all `*.githubusercontent.com` release-CDN
+hosts are network-blocked, `codeload` serves source only, and no `godot` distro
+package exists. Tiers 1–4 were therefore not re-executed. The 2026-08-21
+validation record (317 surrogates, `verify_headless`, `verify_contracts`,
+`verify.sh`, rendered `qa_tour_m1.gd` frames) stands as the last real run.
+Any future claim of M1 agent validation must be re-earned on a machine with
+Godot 4.7.
+
+**Gap closed this session.** `godot-spike/NEXT_PLAYTEST_PACKET.md` had last been
+touched by `d6f66b7` (pre-M1) and was never updated by `c5bc674`. It still
+listed a 9-item pre-M1 checklist including F3 grip markers and the temple CIRCLE
+glyph — both out of M1 scope. It has been replaced with the concise five-item M1
+human gate (pan, rock, A→B, throw, one representative object) plus an explicit
+"not part of this gate" list.
+
+**Human acceptance: STILL PENDING.** Andrew has not played the M1 build. M1 is
+not complete until he does. Items 2–4 are regression re-checks of behaviour he
+already verified on 2026-08-21; items 1 and 5 are the new M1 checks.
+
+**Next milestone after Andrew's acceptance: M2 — The Offering.**
