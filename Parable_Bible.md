@@ -523,3 +523,70 @@ State After Completion:
 
 Next Step / Handoff:
 - Future design work should define the four opening dream paths, their glyphs, their tutorial shrine puzzles, and at least three upgrade tiers for each starter miracle.
+
+
+### Entry 9 - Godhood acceptance machinery prepared for publication
+
+Summary:
+- Added Parable's Godhood acceptance/governance layer around the existing M1 implementation without changing gameplay code.
+- Recorded the fresh Godot 4.7.1 verifier incident as evidence-stale automation rather than falsely declaring a gameplay regression.
+- Normalized `OPERATIONAL_STATE.md` to the project operational-state schema before publication.
+
+Reason / Intent:
+- Preserve the 2026-08-21 milestone-cluster process while making protected godhood behavior, human acceptance, bounded repair, and future Fire/Water handoff explicit and durable.
+- Keep M1 human acceptance and the suspect Godot 4.7.1 synthetic-input harness separate evidence questions.
+
+Files Changed:
+- `OPERATIONAL_STATE.md`
+- `PARABLE_PROJECT_RECOVERY_SOURCE_2026-08-18.md`
+- `Parable_Bible.md`
+- `docs/PARABLE_GODHOOD_CONTRACT_2026-09-17.md`
+- `docs/PARABLE_GODHOOD_GAUNTLET_2026-09-17.md`
+- `docs/PARABLE_DIVINE_GRACE_REPAIR_GATE_2026-09-17.md`
+- `docs/PARABLE_POST_PASS_FIRE_WATER_HANDOFF_2026-09-17.md`
+
+Commands Run:
+```text
+DEX//REACH execution fingerprint and repository-info probes
+DEX//REACH reversible repository checkpoint
+read-only inspection of current project state and Bible
+```
+
+Command Intent:
+- Prove the work is occurring on Andrew's MacBook, `/Users/andrew/Parable`, branch `spike/godot-hand-feel-2026-07-02`, with origin `git@github.com:westkitty/Parable.git`.
+- Preserve the pre-publication worktree before Git staging.
+- Review the exact pending documentation scope before publication.
+
+Outputs Generated:
+- Godhood Contract with stable protected-behavior IDs.
+- Godhood Gauntlet milestone-compatible human acceptance grammar.
+- Divine Grace conditional bounded-repair gate.
+- Post-pass Fire/Water handoff guardrails.
+- Schema-normalized operational state.
+- Recovery continuity entry covering the Godot 4.7.1 verifier incident.
+
+Decisions:
+- No gameplay code is changed by this work unit.
+- M1 remains implemented but human acceptance remains pending.
+- Godot 4.7.1 playability-surrogate failures are evidence-stale automation until a gameplay regression is independently proven.
+- Do not change hand/camera gameplay merely to satisfy the suspect synthetic-input harness.
+- M2 remains blocked until acceptable automated evidence and M1 human acceptance exist.
+- The July 3 miracle addendum remains a required authority source before M4; it is not silently reconstructed into this publication set.
+- The 2026-08-21 milestone-cluster process remains controlling.
+
+Bugs / Blockers:
+- Fresh Godot 4.7.1 playability surrogate run recorded 29 failures while relevant M1 gameplay files remain unchanged from `c5bc674`.
+- Human M1 acceptance remains pending.
+- The July 3 miracle addendum remains absent from the repository.
+
+Correction:
+- The previous simple `OPERATIONAL_STATE.md` shape was replaced before publication with the required schema structure while preserving its substantive evidence.
+- Earlier standalone project-wide hand-feel gate language remains superseded by milestone-cluster sequencing.
+
+State After Completion:
+- Documentation/governance scope is ready for explicit staging, commit, and push on the Godot spike branch.
+- Runtime gameplay remains unchanged.
+
+Next Step / Handoff:
+- Publish this bounded documentation set to `origin/spike/godot-hand-feel-2026-07-02`.
+- Then resolve the stale Godot 4.7.1 automated proof path and run Andrew's M1 acceptance subset before M2.

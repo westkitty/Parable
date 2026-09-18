@@ -1259,3 +1259,73 @@ This supersedes the previous practice of treating every isolated interaction
 defect as a complete project-wide blocker, and supersedes section 18's
 Phase 1 standalone hand-feel gate, section 19's gate checklist, and section
 20's next-task contract as the controlling sequencing rules.
+
+
+## 2026-09-17 — Godhood quality machinery added
+
+**Live repository observation before this documentation pass**
+
+- Branch: `spike/godot-hand-feel-2026-07-02`
+- HEAD: `9336c68` — `docs: track recovery source and record M1 continuity update`
+- Worktree: clean before the new documentation files were written.
+
+**New controlling/supporting documents**
+
+- `docs/PARABLE_GODHOOD_CONTRACT_2026-09-17.md`
+  - compiles protected godhood behavior into stable invariant IDs and proof obligations;
+  - distinguishes human, agent, implemented-unverified, pending, and superseded evidence;
+  - requires impact-radius validation instead of project-wide ritual rechecking.
+
+- `docs/PARABLE_GODHOOD_GAUNTLET_2026-09-17.md`
+  - defines a reusable human acceptance journey;
+  - M1 uses only the Hand-on-the-World subset;
+  - later milestones extend the same action/checkpoint/expectation-gap grammar;
+  - does **not** reinstate the superseded standalone project-wide hand-feel gate.
+
+- `docs/PARABLE_DIVINE_GRACE_REPAIR_GATE_2026-09-17.md`
+  - authorizes invisible intention assistance only after a recorded PARTIAL/FAIL checkpoint;
+  - permits one bounded repair at a time;
+  - forbids using assistance to hide broken mappings, progression bugs, placeholder semantics, or engine-level performance failures.
+
+- `docs/PARABLE_POST_PASS_FIRE_WATER_HANDOFF_2026-09-17.md`
+  - preserves the correct later production miracle direction without starting it early;
+  - keeps the exact Fire family symbol unresolved;
+  - requires the July 3 miracle authority to be placed in-repo or explicitly replaced before implementation.
+
+- `OPERATIONAL_STATE.md`
+  - initialized as the current resumable control plane;
+  - records M1 as agent-validated / human acceptance pending;
+  - keeps M2 "The Offering" as the next implementation milestone after M1 acceptance.
+
+**Sequencing preserved**
+
+The 2026-08-21 milestone rule remains controlling. This update improves how milestones are accepted and protected; it does not replace the milestone sequence.
+
+**Immediate next action**
+
+Andrew runs the M1 subset of the Godhood Gauntlet and supplies PASS / PARTIAL / FAIL.
+
+**No gameplay code changed in this documentation pass.**
+
+
+## 2026-09-17 — Fresh verifier exposed Godot 4.7.1 surrogate incompatibility
+
+A fresh verification run on the live MacBook environment found:
+- Godot: `4.7.1.stable.official.a13da4feb`
+- headless import: PASS
+- headless smoke: PASS
+- contract verification: PASS
+- playability surrogate suite: FAIL (29 failures on initial run)
+
+Repository comparison established that the M1 surrogate file is byte-identical to `c5bc674`, and no relevant Godot-spike gameplay changes exist between `c5bc674` and current HEAD `9336c68`.
+
+The earliest failure chain is concentrated in synthetic mouse edge handling used by the headless playability surrogate. Historical reports recorded green runs on Godot `4.7.stable.official.5b4e0cb0f`; the machine now runs Godot `4.7.1`. Upstream Godot 4.7 has documented regressions involving `Input.parse_input_event` button handling.
+
+One bounded harness adaptation was tested, failed to restore the suite, and was reverted. No gameplay-code repair was accepted.
+
+**Current state:**
+- M1 implementation remains the current baseline.
+- M1 human acceptance remains pending.
+- The playability surrogate evidence is now marked **EVIDENCE-STALE on Godot 4.7.1** until the harness is compatibly repaired or an equivalent proof path is established.
+- Do not advance to M2 on the strength of stale automated evidence.
+- Do not alter hand/camera gameplay merely to appease the suspect harness.
