@@ -31,11 +31,16 @@ export class ItemViews {
     this.logProto = proto;
     // Fireball: a white-hot core in an orange shell with an additive corona (original procedural art).
     const fb = new THREE.Group();
-    const core = new THREE.Mesh(new THREE.SphereGeometry(0.32, 20, 14), new THREE.MeshBasicMaterial({ color: new THREE.Color(3, 2.4, 1.2) }));
+    const core = new THREE.Mesh(new THREE.SphereGeometry(0.42, 20, 14), new THREE.MeshBasicMaterial({ color: new THREE.Color(2.6, 1.5, 0.45) }));
     const shell = new THREE.Mesh(
-      new THREE.SphereGeometry(0.55, 24, 16),
-      new THREE.MeshBasicMaterial({ color: new THREE.Color(2.2, 0.75, 0.15), transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false }),
+      new THREE.SphereGeometry(0.72, 24, 16),
+      new THREE.MeshBasicMaterial({ color: new THREE.Color(1.6, 0.35, 0.05), transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false }),
     );
+    const halo = new THREE.Mesh(
+      new THREE.SphereGeometry(1.25, 20, 12),
+      new THREE.MeshBasicMaterial({ color: new THREE.Color(0.9, 0.18, 0.02), transparent: true, opacity: 0.28, blending: THREE.AdditiveBlending, depthWrite: false }),
+    );
+    fb.add(halo);
     fb.add(core, shell);
     this.fireProto = fb;
   }

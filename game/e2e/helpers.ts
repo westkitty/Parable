@@ -34,8 +34,8 @@ export const hook = <T>(page: Page, fn: string, ...args: unknown[]): Promise<T> 
 export async function shot(page: Page, name: string): Promise<string> {
   await hook(page, "setPixelRatio", 1);
   await frames(page, 2);
-  const file = path.join(EVIDENCE, `${name}.png`);
-  await page.screenshot({ path: file });
+  const file = path.join(EVIDENCE, `${name}.jpg`);
+  await page.screenshot({ path: file, type: "jpeg", quality: 82 });
   await hook(page, "setPixelRatio", 0.5);
   return file;
 }

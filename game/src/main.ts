@@ -255,21 +255,23 @@ async function boot(): Promise<void> {
         trace.clear();
         return;
       }
-      if (style === "drawing") {
+      if (style === "drawing" || style === "drawing-armed") {
+        // Only the newest segment: the glyph appears under the hand as it is drawn.
         const a = points[points.length - 2] ?? points[points.length - 1];
         const b = points[points.length - 1];
+        const hot = style === "drawing-armed";
         for (let k = 0; k < 4; k += 1) {
           const p = a.clone().lerp(b, k / 4);
-          trace.emit(p.x, p.y + 0.15, p.z, 0, 0.05, 0, 0.5, 0.7, 1.0, 0.85, 0.45, 0.35);
+          trace.emit(p.x, p.y + 0.15, p.z, 0, 0.05, 0, hot ? 0.6 : 0.5, hot ? 1.2 : 0.7, 1.0, hot ? 0.55 : 0.85, hot ? 0.15 : 0.45, hot ? 0.5 : 0.35);
         }
         return;
       }
       const life = style === "armed" ? RITUAL_ARM_MS / 1000 : 1.4;
-      const [r, g, b] = style === "armed" ? [1.0, 0.8, 0.3] : [1.0, 0.45, 0.1];
+      const [r, g, b] = style === "armed" ? [1.0, 0.8, 0.3] : [0.9, 0.4, 0.1];
       for (let i = 1; i < points.length; i += 1) {
         for (let k = 0; k < 3; k += 1) {
           const p = points[i - 1].clone().lerp(points[i], k / 3);
-          trace.emit(p.x, p.y + 0.2, p.z, 0, style === "cast" ? 1.5 : 0.05, 0, style === "cast" ? 1.1 : 0.8, life, r, g, b, 0.9);
+          trace.emit(p.x, p.y + 0.2, p.z, 0, style === "cast" ? 1.5 : 0.05, 0, style === "cast" ? 0.9 : 0.8, life, r, g, b, style === "cast" ? 0.45 : 0.9);
         }
       }
     },
@@ -359,7 +361,10 @@ async function boot(): Promise<void> {
     if (a === "door") return exitTemple();
     if (a === "save") await doSave();
     else if (a === "load") await doLoad();
-    else applyWorld(createWorld(SEED));
+    else {
+      applyWorld(createWorld(SEED));
+      note("restarted");
+    }
     exitTemple();
   }
   window.addEventListener("keydown", (e) => {
@@ -396,7 +401,13 @@ async function boot(): Promise<void> {
     const it = getItem(world, held.id);
     if (!it) return;
     const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, yaw + Math.PI / 2, 0));
-    const p: [number, number, number] = [handTarget.x, handTarget.y - (it.kind === "log" ? 0.85 : 0.75), handTarget.z];
+    // Logs hang under the palm; a fireball sits cupped at the fingertips where the camera can see it.
+    const reach = it.kind === "fireball" ? 2.1 * hand.group.scale.x : 0;
+    const p: [number, number, number] = [
+      handTarget.x - Math.sin(rig.yaw) * reach,
+      handTarget.y - (it.kind === "log" ? 0.85 : 0.7 * hand.group.scale.x),
+      handTarget.z - Math.cos(rig.yaw) * reach,
+    ];
     physics.setHeldTarget(it.id, p, [q.x, q.y, q.z, q.w]);
   }
 
@@ -649,7 +660,10 @@ async function boot(): Promise<void> {
       },
       save: () => doSave(),
       load: () => doLoad(),
-      restart: () => applyWorld(createWorld(SEED)),
+      restart: () => {
+        applyWorld(createWorld(SEED));
+        note("restarted");
+      },
       perf: () => ({ cpu: frameStats.summary(), interval: frameIntervals.summary(), physicsStepMs: physics.lastStepMs, simTickMs: lastSimMs }),
       resetPerf: () => {
         frameStats.reset();

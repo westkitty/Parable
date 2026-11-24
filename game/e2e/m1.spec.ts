@@ -378,6 +378,7 @@ test("7 persistence: save at the temple, change the world, load restores the sam
   expect(changedHash).not.toBe(savedHash);
   expect(loaded).toBe(savedHash);
   expect(reloaded).toBe(savedHash);
+  expect(restartLog.some((l) => /restarted/.test(l))).toBe(true);
 });
 
 test("8 no HUD: only the canvas is visible in normal play; F3 overlay is off by default", async ({ page }) => {

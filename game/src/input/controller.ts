@@ -30,7 +30,7 @@ export interface GameApi {
   interact(ray: THREE.Ray, ground: THREE.Vector3 | null): boolean;
   blocked(): boolean; // temple transition / chamber: world input off
   chamberPointer(ndc: THREE.Vector2, click: boolean): void;
-  onTrace(points: THREE.Vector3[], style: "drawing" | "armed" | "cast"): void;
+  onTrace(points: THREE.Vector3[], style: "drawing" | "drawing-armed" | "armed" | "cast"): void;
   onGesture(r: GestureResult): void;
 }
 
@@ -272,7 +272,7 @@ export class Controller {
     this.stroke.push({ x, y, t, w: this.ground ? this.ground.clone() : null });
     while (this.stroke.length > 2 && this.stroke[0].t < t - GESTURE_MAX_STROKE_MS) this.stroke.shift();
     if (this.stroke.length > 12 && pathLength(this.stroke) > 260) {
-      this.game.onTrace(this.worldTrace(), this.armed() ? "armed" : "drawing");
+      this.game.onTrace(this.worldTrace(), this.armed() ? "drawing-armed" : "drawing");
     }
   }
 
