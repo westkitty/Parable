@@ -23,7 +23,7 @@
     "builder": 2
   },
   "target": "Tamsin",
-  "bubble": "Tamsin, farmer — Calm, fetching a log.",
+  "bubble": "Tamsin, farmer — Calm, resting a moment.",
   "detail": "belief 31 (grateful) · lives with Corin and Wil",
   "describe": [
     {
@@ -47,7 +47,7 @@
     {
       "id": 9,
       "name": "Tamsin",
-      "line": "Tamsin, farmer — Calm, fetching a log.",
+      "line": "Tamsin, farmer — Calm, resting a moment.",
       "detail": "belief 31 (grateful) · lives with Corin and Wil"
     },
     {
@@ -83,7 +83,7 @@
     {
       "id": 15,
       "name": "Edda",
-      "line": "Edda, water — Calm, heading home.",
+      "line": "Edda, water — Calm, fetching a log.",
       "detail": "belief 34 (grateful) · lives with Pell and Rafe"
     },
     {

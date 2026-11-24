@@ -1,18 +1,18 @@
 {
-  "savedHash": "3baf8757",
-  "changed": "aefacdad",
-  "loadedHash": "3baf8757",
-  "reloadedHash": "3baf8757",
+  "savedHash": "b47f7ea1",
+  "changed": "f4d5f402",
+  "loadedHash": "b47f7ea1",
+  "reloadedHash": "b47f7ea1",
   "before": {
     "day": 1,
     "alive": 12,
-    "food": 33,
-    "belief": 33
+    "food": 34,
+    "belief": 34
   },
   "after": {
     "day": 1,
     "alive": 12,
-    "food": 33,
-    "belief": 33
+    "food": 34,
+    "belief": 34
   }
 }

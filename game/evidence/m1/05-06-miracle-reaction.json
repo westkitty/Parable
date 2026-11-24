@@ -14,26 +14,26 @@
     "id": 5
   },
   "throwRelease": {
-    "speed": 34.32888165453408,
+    "speed": 34.39029289161176,
     "gentle": false,
     "v": [
-      -14.164628763866816,
-      9.902353963997498,
-      -31.27035988972374
+      -14.189967992330153,
+      9.915864436154587,
+      -31.326299710426827
     ],
     "samples": 5,
     "staleMs": 0
   },
-  "impactLine": "121: fireball impact 11 cells",
-  "impactTick": 121,
+  "impactLine": "118: fireball impact 11 cells",
+  "impactTick": 118,
   "ticksToThreeBurning": 2,
   "burningAt3": 15,
-  "fleeTick": 122,
+  "fleeTick": 119,
   "ticksFireToFlee": 1,
   "ilseDistanceToGroveCentreAtFlee": 15.829648342845893,
   "memories": [
     {
-      "tick": 122,
+      "tick": 119,
       "kind": "saw_fire",
       "place": "the grove",
       "causedByGod": true,

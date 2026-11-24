@@ -2,18 +2,19 @@
   "lost": {
     "ended": true,
     "survived": false,
-    "tick": 900,
+    "tick": 902,
     "day": 8,
-    "alive": 6,
-    "dead": 6,
+    "alive": 8,
+    "dead": 4,
     "housesStanding": 0,
-    "belief": 59,
+    "belief": 51,
     "title": "The Dry Year broke the village",
     "lines": [
-      "6 of 12 villagers lived to see the rain; 6 died.",
-      "0 houses still standing; 30 food in the granary.",
-      "Belief in you: 59 — they sing your name.",
-      "Miracles worked: 0. Learned: fireball."
+      "8 of 12 villagers lived to see the rain; 4 died.",
+      "0 houses still standing; 11 food in the granary.",
+      "Belief in you: 51 — they pray, mostly.",
+      "Miracles worked: 0. Learned: fireball.",
+      "Remembered: Bram, burned in the wildfire; Tamsin, burned in the wildfire; Wil, burned in the wildfire; Maren, choked on the smoke."
     ]
   },
   "houses": [
@@ -55,15 +56,42 @@
       "dead": 0,
       "housesStanding": 4,
       "belief": 32,
-      "day": 1
+      "day": 1,
+      "fallen": []
     },
     {
       "survived": false,
-      "alive": 6,
-      "dead": 6,
+      "alive": 8,
+      "dead": 4,
       "housesStanding": 0,
-      "belief": 59,
-      "day": 8
+      "belief": 51,
+      "day": 8,
+      "fallen": [
+        {
+          "name": "Bram",
+          "cause": "burned in the wildfire",
+          "x": 38.9,
+          "z": 10.9
+        },
+        {
+          "name": "Tamsin",
+          "cause": "burned in the wildfire",
+          "x": 45,
+          "z": 21.6
+        },
+        {
+          "name": "Wil",
+          "cause": "burned in the wildfire",
+          "x": 17,
+          "z": 19.9
+        },
+        {
+          "name": "Maren",
+          "cause": "choked on the smoke",
+          "x": 27,
+          "z": 51
+        }
+      ]
     }
   ]
 }

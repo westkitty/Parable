@@ -22,12 +22,12 @@
     }
   ],
   "lightningDoneBefore": true,
-  "lightning": "49: lightning at -12,-29",
-  "burningAfter30": 110,
-  "burningAfter290": 75,
-  "scorched": 190,
+  "lightning": "51: lightning at -12,-29",
+  "burningAfter30": 122,
+  "burningAfter290": 68,
+  "scorched": 200,
   "wind": [
-    0.3632121659403041,
-    0.48428288792040547
+    0.3632724825582983,
+    0.4843633100777311
   ]
 }

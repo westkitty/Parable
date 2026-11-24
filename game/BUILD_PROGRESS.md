@@ -45,4 +45,6 @@ Branch `feat/m1-hand-camera-fireball` (PR #1). Never push to main, never force-p
 - Done (awe): glyph stones are 6.5 m monoliths in cleared circles with fallen companion stones; the land remembers — records keep the fallen, next year shows a cairn where each fell, the hand over it names them; end card names the dead.
 - Done: after capture in evidence/uplift/after (+ compare-before-after.jpg); Bible Entry 11; HUMAN_GATE rows U1-U3.
 - Gate fixes: m2-2 samples every 50 ticks; m3-3 holds the calendar early while the mural is painted.
-- Next: confirm the full gate on the final commit; update PR body.
+- Gate on final source (src unchanged since 54ab741): typecheck PASS, 69/69 unit PASS, build PASS. e2e: run 2 passed m2–m6 (19/19); m1 test 5 (spiral→zigzag Fireball) timed out once under SwiftShader and 3 m1 tests did not run after it; m1 spec re-run alone: 8/8 PASS. Run 1 (same gesture code) had all m1 green. Known timing flake, not a logic change.
+- Re-rendered evidence images/json committed; regenerated .webm videos (6–23 MB) deliberately left uncommitted (no new giant media).
+- Next: owner human gate U1–U3 on the Mac.
