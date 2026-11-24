@@ -1,0 +1,20 @@
+{
+  "note": "Headless Chrome + SwiftShader software WebGL on the build box, full village. Not hardware evidence.",
+  "perf": {
+    "cpu": {
+      "n": 34,
+      "median": 7.2000000001862645,
+      "p95": 9.799999999813735,
+      "fps": 138.8888888852958
+    },
+    "interval": {
+      "n": 34,
+      "median": 580.5,
+      "p95": 673.8999999994412,
+      "fps": 1.7226528854435832
+    },
+    "physicsStepMs": 0.14999999990686774,
+    "simTickMs": 0
+  },
+  "heapMB": 35.24793243408203
+}

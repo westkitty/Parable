@@ -1,0 +1,243 @@
+{
+  "days": [
+    {
+      "tick": 1006,
+      "day": 1,
+      "dryness": 0.118,
+      "alive": 12,
+      "food": 30,
+      "houses": "ssss",
+      "belief": 32,
+      "power": 94
+    },
+    {
+      "tick": 2010,
+      "day": 2,
+      "dryness": 0.173,
+      "alive": 12,
+      "food": 30,
+      "houses": "ssss",
+      "belief": 30,
+      "power": 100
+    },
+    {
+      "tick": 3012,
+      "day": 2,
+      "dryness": 0.238,
+      "alive": 12,
+      "food": 34,
+      "houses": "ssss",
+      "belief": 30,
+      "power": 100
+    },
+    {
+      "tick": 4012,
+      "day": 3,
+      "dryness": 0.309,
+      "alive": 12,
+      "food": 31,
+      "houses": "ssss",
+      "belief": 27,
+      "power": 100
+    },
+    {
+      "tick": 5014,
+      "day": 3,
+      "dryness": 0.386,
+      "alive": 12,
+      "food": 30,
+      "houses": "sssss",
+      "belief": 27,
+      "power": 100
+    },
+    {
+      "tick": 6016,
+      "day": 4,
+      "dryness": 0.467,
+      "alive": 12,
+      "food": 36,
+      "houses": "sssss",
+      "belief": 25,
+      "power": 100
+    },
+    {
+      "tick": 7016,
+      "day": 4,
+      "dryness": 0.553,
+      "alive": 12,
+      "food": 29,
+      "houses": "sssss",
+      "belief": 25,
+      "power": 100
+    },
+    {
+      "tick": 8020,
+      "day": 5,
+      "dryness": 0.643,
+      "alive": 12,
+      "food": 24,
+      "houses": "sssss",
+      "belief": 25,
+      "power": 100
+    },
+    {
+      "tick": 9022,
+      "day": 6,
+      "dryness": 0.736,
+      "alive": 12,
+      "food": 25,
+      "houses": "ssbss",
+      "belief": 28,
+      "power": 100
+    },
+    {
+      "tick": 10024,
+      "day": 6,
+      "dryness": 0.832,
+      "alive": 12,
+      "food": 18,
+      "houses": "ssrsr",
+      "belief": 34,
+      "power": 100
+    },
+    {
+      "tick": 11043,
+      "day": 7,
+      "dryness": 0.933,
+      "alive": 12,
+      "food": 14,
+      "houses": "ssrsr",
+      "belief": 33,
+      "power": 100
+    },
+    {
+      "tick": 12045,
+      "day": 7,
+      "dryness": 1,
+      "alive": 12,
+      "food": 6,
+      "houses": "ssrsr",
+      "belief": 34,
+      "power": 100
+    },
+    {
+      "tick": 13045,
+      "day": 8,
+      "dryness": 1,
+      "alive": 12,
+      "food": 1,
+      "houses": "ssssr",
+      "belief": 30,
+      "power": 100
+    },
+    {
+      "tick": 14047,
+      "day": 8,
+      "dryness": 1,
+      "alive": 12,
+      "food": 0,
+      "houses": "ssssr",
+      "belief": 30,
+      "power": 100
+    },
+    {
+      "tick": 15049,
+      "day": 9,
+      "dryness": 1,
+      "alive": 12,
+      "food": 0,
+      "houses": "sssss",
+      "belief": 27,
+      "power": 100
+    },
+    {
+      "tick": 16051,
+      "day": 9,
+      "dryness": 1,
+      "alive": 12,
+      "food": 0,
+      "houses": "sssss",
+      "belief": 27,
+      "power": 100
+    },
+    {
+      "tick": 17053,
+      "day": 10,
+      "dryness": 1,
+      "alive": 12,
+      "food": 0,
+      "houses": "sssss",
+      "belief": 24,
+      "power": 100
+    },
+    {
+      "tick": 18055,
+      "day": 11,
+      "dryness": 0.1,
+      "alive": 12,
+      "food": 0,
+      "houses": "sssss",
+      "belief": 22,
+      "power": 100
+    }
+  ],
+  "outcome": {
+    "ended": true,
+    "survived": true,
+    "tick": 18000,
+    "day": 11,
+    "alive": 12,
+    "dead": 0,
+    "housesStanding": 5,
+    "belief": 22,
+    "title": "The village endured the Dry Year",
+    "lines": [
+      "12 of 12 villagers lived to see the rain.",
+      "5 houses still standing; 0 food in the granary.",
+      "Belief in you: 22 — they doubt you.",
+      "Miracles worked: 0. Learned: fireball."
+    ]
+  },
+  "cardText": "The village endured the Dry Year\n\n12 of 12 villagers lived to see the rain.\n\n5 houses still standing; 0 food in the granary.\n\nBelief in you: 22 — they doubt you.\n\nMiracles worked: 0. Learned: fireball.\n\nBegin a new year",
+  "records": [
+    {
+      "survived": true,
+      "alive": 12,
+      "dead": 0,
+      "housesStanding": 5,
+      "belief": 22,
+      "day": 11
+    }
+  ],
+  "fresh": {
+    "day": 1,
+    "alive": 12,
+    "houses": [
+      {
+        "id": 0,
+        "state": "standing",
+        "x": 14,
+        "z": 12
+      },
+      {
+        "id": 1,
+        "state": "standing",
+        "x": 29,
+        "z": 3
+      },
+      {
+        "id": 2,
+        "state": "standing",
+        "x": 5,
+        "z": 27
+      },
+      {
+        "id": 3,
+        "state": "standing",
+        "x": 31,
+        "z": 23
+      }
+    ],
+    "outcome": null
+  }
+}
