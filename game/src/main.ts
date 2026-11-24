@@ -306,6 +306,10 @@ async function boot(): Promise<void> {
     },
     holding: () => held,
     cast(kind, stroke) {
+      // Open glyphs act where the stroke ended. The stroke can close inside an input event (the hand
+      // pauses, then moves on) before this frame refreshes lastGround, so take the end from the stroke.
+      const end = stroke[stroke.length - 1];
+      if (end) lastGround.copy(end);
       return castMiracle(kind, stroke);
     },
     interact(_ray, ground) {
