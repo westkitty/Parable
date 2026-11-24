@@ -1,0 +1,10 @@
+{
+  "startDelayTicks": 12,
+  "startDelaySeconds": 0.6,
+  "woodBefore": 0,
+  "woodAfter": 1,
+  "ticksToStack": 402,
+  "boundTicks": 550,
+  "pathLen": 24.06125728296672,
+  "itemState": "stacked"
+}

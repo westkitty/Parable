@@ -523,3 +523,130 @@ State After Completion:
 
 Next Step / Handoff:
 - Future design work should define the four opening dream paths, their glyphs, their tutorial shrine puzzles, and at least three upgrade tiers for each starter miracle.
+
+### Entry 9 - Milestone 1 implementation: Hand on the Valley (Three.js + Rapier)
+
+Summary:
+- Built Milestone 1 in a new `game/` folder: one valley, the divine hand, the god camera, one settler (Ilse) who hauls logs, the spiral -> zigzag Fireball, persistent scorch, and a temple chamber with Save / Load / Restart tablets.
+
+Reason / Intent:
+- The engine decision (restructure, stay on Three.js r185, Rapier physics, pure-TS sim, JSON saves; Unity 6 as fallback) needed a playable proof before more design work.
+- The user said "go. no creatures tho": no creature companion, no creature training, no golems in M1.
+
+Files Changed:
+- `game/**` (new; no files from the old prototype were changed)
+- `Parable_Bible.md` (this entry)
+
+Commands Run:
+```text
+npm --prefix game run gate   # tsc --noEmit, vitest, vite build, playwright e2e
+```
+
+Command Intent:
+- Prove the control grammar and the core god-game loop in the browser, with automated evidence.
+
+Outputs Generated:
+- `game/evidence/m1/` screenshots, JSON measurements, a video, and RESULTS.md.
+- `game/ASSET_LEDGER.md`: Kenney CC0 kits with SHA-256 hashes. The hand, fireball, fire, terrain and water are original procedural art.
+- `game/HUMAN_GATE_M1.md`: the owner's 10-minute play checklist.
+
+Decisions:
+- Navigation for M1 is a deterministic grid A* (2 m cells). Recast is deferred to M2.
+- The protected ritual is unchanged: a clockwise spiral arms for 5.6 s, then a vertical zigzag gives a Fireball held in the hand. Counter-clockwise does not arm (`ACCEPT_COUNTERCLOCKWISE = false`).
+- Gesture thresholds were retuned from the old prototype. The spiral length is now 3.0× its extent instead of 4.2×, and a spiral must grow in radius (loops don't count). A zigzag must have low net rotation and stay under 480 px tall. Ordinary mouse wandering gave 1 false positive in 500 strokes.
+- Logs use a faceted (rounded-box) collider so they rest on slopes. Gently placed objects settle for 1 s.
+- Ilse switches to a nearer log, such as one the god just laid down, and remembers it as a gift.
+- No HUD. The only text is Ilse's inspect bubble and the F3 overlay.
+
+Doctrine:
+```text
+Every Parable design question moves toward Black & White / B&W2: the hand is the interface, the world is the HUD, and settlers judge the god by what they witness.
+```
+
+Bugs / Blockers:
+- Real-mouse feel, trackpad behaviour and performance on the owner's M1 MacBook Air are UNVERIFIED. All automated runs used headless Chrome with SwiftShader software rendering, at a few fps.
+
+State After Completion:
+- `game/` passes the M1 gate on the build box. M1 is not accepted until the owner plays `game/HUMAN_GATE_M1.md`.
+
+Next Step / Handoff:
+- The owner plays the human gate on the Mac. After that, M2 can add recast navigation, more settlers, and a second miracle (Rain).
+
+### Entry 10 - First playable: the Dry Year, ten miracles, golems (M2–M6)
+
+Summary:
+- The village is now the default world: twelve villagers with names, trades, needs, skills, family, friends and memories, who fell, haul, build, farm, fetch water, pray and paint.
+- One Dry Year: the land dries day by day, lightning on day 5 starts a wildfire that the wind pushes at the houses, the year ends on day 10 with an end card, a carved record in the temple, and "Begin a new year".
+- Ten miracles, each a clockwise spiral followed by a finishing stroke, each with visible effects on the land and the villagers, and each learned in the world.
+- Optional wooden golems that do physical work only.
+
+Reason / Intent:
+- The owner approved going past M1 toward the full first playable, then expanded the scope: "build it all the way through having ten miracles and the golem system." No creature companion and no creature training.
+
+Files Changed:
+- `game/**` (sim: village, economy, belief, tasks, miracles, golems; render: village, miracles, marks, glyphs; temple frieze, brazier, stele and records; e2e m2–m5; tests)
+- `Parable_Bible.md` (this entry)
+
+Commands Run:
+```text
+PW_CHROMIUM_PATH=/usr/bin/google-chrome npm --prefix game run gate   # typecheck, 62 unit, build, 27/27 e2e — PASS 2026-11-23 ~21:59 EST
+```
+
+Decisions:
+- The ten finishers are: zigzag Fireball, wave Rain, ring Sanctuary, V Healing, stroke-down Lightning, stroke-up Fertility, stroke-sideways Wind Lash, square Stone Shape, peak Beacon, triangle Golem Wake. Spiral → zigzag stays the Fireball.
+- Closed shapes act on what they surround (the stroke's centre). Open strokes act where the hand ends.
+- Where each miracle is learned: Rain at the bell-stone shrine; Sanctuary at the village wall the faithful paint; Healing, Lightning, Fertility, Wind Lash and Stone Shape at five old-god glyph stones, each woken by a physical ritual (a hurt villager set gently beside it, fire, rain, a hard throw, two logs); Beacon at the temple brazier at 90+ prayer power; Golem Wake at the temple's carved stele once a golem has formed.
+- Purge was dropped from the old roster because there is no corruption system. Healing and Lightning come from earlier Bible entries.
+- Golems: four logs laid in the old stone ring form a dormant body (at most three). Where the hand sets one down is its job: woodpile → haul, building site → carry wood and build, well → wait with water and douse. They are slow, cost prayer power daily, sleep at zero, and never cast. Villagers who see them remember it.
+- Every villager effect leaves a belief cause the player can read by hovering.
+
+Doctrine:
+```text
+The world teaches the miracles. Every glyph is learned at a place, by an act, never from a menu.
+```
+
+Bugs / Blockers:
+- Straight-line finishers can be cast by accident: 6% of random strokes inside the armed window in the synthetic corpus.
+- Balance: on seed 7 the unattended year is survived 12/12. Golem upkeep is small next to prayer income.
+- `game/evidence/m2/m2-injury-and-care.webm` is 58.8 MB (GitHub warned; it was not rejected).
+- Real-mouse feel and M1 Air performance are UNVERIFIED. All runs used headless SwiftShader.
+
+State After Completion:
+- PR #1 branch `feat/m1-hand-camera-fireball` passes the full gate on the build box. Not accepted until the owner plays `game/HUMAN_GATE_FIRST_PLAYABLE.md`.
+
+Next Step / Handoff:
+- Owner plays both human gates on the Mac. Then tune false casts, drought severity per seed, and golem cost.
+
+### Entry 11 - Uplift pass: a dangerous Dry Year, a valley in a land, stones that look ancient, cairns that remember (t324u)
+
+Commands Run:
+```text
+node game/tools/uplift-capture.mjs game/evidence/uplift/{before,after} 4180   # matched scenes/cameras, seed 7, 1280x800, SwiftShader
+npx vite-node seed sweeps (unattended vs Rain-tended, seeds 1-12)               # scratch scripts, results below
+PW_CHROMIUM_PATH=/usr/bin/google-chrome npm --prefix game run gate              # see BUILD_PROGRESS for the final result
+```
+
+Decisions:
+- Neglect must cost lives, as in Black & White. A dry year left alone now kills through embers that jump downwind, smoke at the fire's edge, a second dry storm on day 8 that strikes the driest ground near the village, a granary that burns, famine that bites inside the year, and roofs that scald whoever is at the door. Seed sweep (1-8, headless): unattended deaths 12/3/6/0/5/1/3/6, one village wiped; a bot that only casts Rain on the nearest fire and parched fields keeps all twelve alive on 12/12 seeds.
+- Golems cost 5 faith a day awake plus 4 with a job. Prayer income averages about 18 a day (seed 7, measured), so one working golem costs half the faith and two cost all of it.
+- Line, peak and V finishers must be ruler-straight (sideways deviation under 4% of the chord; each leg of a ^ or V under 8%). Random strokes in the armed window now cast something 14/500 times (was 30/500); every finisher still reads 28/30 or better.
+- The valley sits in a land: ridged hills to the horizon, the stream leaving through a gorge, and a haze that yellows with drought and darkens with smoke. Procedural, no new files.
+- Glyph stones are 6.5 m monoliths in cleared circles with fallen companion stones (existing Kenney `stone_tallA`/`stone_smallC`).
+- The land remembers: temple records keep each year's fallen (name, cause, where). Next year a cairn stands where each fell; the empty hand over it names them. The end card names the dead.
+- Rejected as spectacle or scope: audio packs, more particles, weather systems, creatures.
+
+Doctrine:
+```text
+A god who looks away should come back to graves, and the graves should have names.
+```
+
+Bugs / Blockers:
+- The browser capture of seed 7 still survives the year (11/12 alive) because rendered frames interleave with sim steps; the headless sweep (same code) loses 3 on seed 7. Outcomes are chaotic across seeds by design.
+- Real-mouse feel and real-GPU frame time remain UNVERIFIED (SwiftShader only).
+- Proposal only, not done: rewrite history to drop `game/evidence/m2/m2-injury-and-care.webm` (58.8 MB).
+
+State After Completion:
+- Branch `feat/m1-hand-camera-fireball`, PR #1. Evidence: `game/evidence/uplift/{before,after,compare-before-after.jpg}`.
+
+Next Step / Handoff:
+- Owner plays U1-U3 in `game/HUMAN_GATE_FIRST_PLAYABLE.md` on the Mac.

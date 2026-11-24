@@ -1,0 +1,18 @@
+{
+  "note": "Headless Chrome + SwiftShader software WebGL, 1280x800, seed 7. Not hardware numbers.",
+  "loadToReadyMs": 1407,
+  "frames": {
+    "n": 15,
+    "medianMs": 616.6000000000004,
+    "p95Ms": 916.5
+  },
+  "heapMB": 40.4,
+  "simMsPer1800Ticks": 752,
+  "unattendedOutcome": {
+    "survived": true,
+    "alive": 11,
+    "dead": 1,
+    "houses": 4,
+    "title": "The village endured the Dry Year"
+  }
+}

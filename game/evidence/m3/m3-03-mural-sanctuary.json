@@ -1,0 +1,134 @@
+{
+  "daysToPaint": 5.5,
+  "mural": {
+    "progress": 1,
+    "read": false
+  },
+  "learned": [
+    "fireball",
+    "sanctuary"
+  ],
+  "protected": {
+    "id": 1,
+    "state": "standing",
+    "x": 29,
+    "z": 3
+  },
+  "sanctuary": {
+    "id": 46,
+    "x": 28.718759626677514,
+    "z": 2.4661803717129196,
+    "ttl": 1200
+  },
+  "housesAtCast": [
+    {
+      "id": 0,
+      "state": "standing",
+      "x": 14,
+      "z": 12
+    },
+    {
+      "id": 1,
+      "state": "standing",
+      "x": 29,
+      "z": 3
+    },
+    {
+      "id": 2,
+      "state": "standing",
+      "x": 5,
+      "z": 27
+    },
+    {
+      "id": 3,
+      "state": "standing",
+      "x": 31,
+      "z": 23
+    },
+    {
+      "id": 4,
+      "state": "standing",
+      "x": 21,
+      "z": 33
+    }
+  ],
+  "houses": [
+    {
+      "id": 0,
+      "state": "ruin",
+      "x": 14,
+      "z": 12
+    },
+    {
+      "id": 1,
+      "state": "standing",
+      "x": 29,
+      "z": 3
+    },
+    {
+      "id": 2,
+      "state": "burning",
+      "x": 5,
+      "z": 27
+    },
+    {
+      "id": 3,
+      "state": "ruin",
+      "x": 31,
+      "z": 23
+    },
+    {
+      "id": 4,
+      "state": "ruin",
+      "x": 21,
+      "z": 33
+    }
+  ],
+  "causes": [
+    "Ilse: the wildfire took our home",
+    "Ilse: wildfire at my cottage",
+    "Ilse: you raised a sanctuary",
+    "Bram: the wildfire took our home",
+    "Bram: wildfire at my cottage",
+    "Bram: you raised a sanctuary",
+    "Oda: the wildfire took our home",
+    "Oda: your sanctuary kept us safe",
+    "Oda: wildfire at the wheat field",
+    "Oda: you raised a sanctuary",
+    "Tamsin: your sanctuary kept us safe",
+    "Tamsin: wildfire at the village",
+    "Tamsin: you raised a sanctuary",
+    "Corin: wildfire at the village",
+    "Corin: you raised a sanctuary",
+    "Wil: wildfire at the village",
+    "Wil: you raised a sanctuary",
+    "Maren: Rafe died",
+    "Maren: wildfire at the village",
+    "Hob: wildfire at the village",
+    "Ness: wildfire at the village",
+    "Edda: Rafe died",
+    "Edda: the wildfire took our home",
+    "Edda: wildfire at the village",
+    "Edda: you raised a sanctuary",
+    "Pell: Rafe died",
+    "Pell: the wildfire took our home",
+    "Pell: wildfire at the village",
+    "Pell: you raised a sanctuary",
+    "Rafe: the wildfire took our home",
+    "Rafe: wildfire at the wheat field",
+    "Rafe: you raised a sanctuary"
+  ],
+  "log": [
+    "4212: house 4 finished",
+    "9964: learned sanctuary from the mural",
+    "9965: learned sanctuary",
+    "9967: ignite 6 cells",
+    "9967: lightning at -12,-29",
+    "9971: sanctuary at 29,2",
+    "9972: ignite 10 cells",
+    "9972: ignite 4 cells",
+    "10187: house 3 burned",
+    "10412: house 4 burned",
+    "10417: house 0 burned"
+  ]
+}

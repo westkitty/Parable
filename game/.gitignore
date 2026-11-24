@@ -1,0 +1,7 @@
+node_modules/
+dist/
+test-results/
+playwright-report/
+
+# Superseded PNG evidence from earlier runs (JPEGs are the committed evidence)
+evidence/**/*.png

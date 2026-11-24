@@ -1,0 +1,33 @@
+{
+  "dryness": [
+    {
+      "day": 1,
+      "dryness": 0.08407500695592593
+    },
+    {
+      "day": 3,
+      "dryness": 0.29185313137950264
+    },
+    {
+      "day": 5,
+      "dryness": 0.5854706855209758
+    },
+    {
+      "day": 7,
+      "dryness": 0.9271896981202213
+    },
+    {
+      "day": 9,
+      "dryness": 1
+    }
+  ],
+  "lightningDoneBefore": true,
+  "lightning": "49: lightning at -12,-29",
+  "burningAfter30": 117,
+  "burningAfter290": 87,
+  "scorched": 192,
+  "wind": [
+    0.3633026425522287,
+    0.48440352340297166
+  ]
+}

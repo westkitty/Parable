@@ -1,0 +1,28 @@
+{
+  "name": "parable-game",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Parable M1 — Hand on the Valley. Three.js + Rapier god-game feasibility proof.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --port 4174 --strictPort",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "e2e": "playwright test",
+    "gate": "npm run typecheck && npm test && npm run build && npm run e2e"
+  },
+  "dependencies": {
+    "@dimforge/rapier3d-compat": "0.21.0",
+    "three": "0.185.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.65.1",
+    "@types/node": "22.10.0",
+    "@types/three": "0.185.0",
+    "typescript": "5.7.2",
+    "vite": "6.0.5",
+    "vitest": "2.1.8"
+  }
+}

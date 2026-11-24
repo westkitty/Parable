@@ -1,0 +1,12 @@
+{
+  "normal": [
+    "canvas#c"
+  ],
+  "withF3": [
+    "canvas#c",
+    "pre#f3"
+  ],
+  "afterToggleOff": [
+    "canvas#c"
+  ]
+}

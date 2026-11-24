@@ -1,0 +1,21 @@
+{
+  "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+  "note": "Headless Chrome + SwiftShader software WebGL on the build box. Not hardware evidence.",
+  "perf": {
+    "cpu": {
+      "n": 75,
+      "median": 3.900000000372529,
+      "p95": 6.599999999627471,
+      "fps": 256.41025638576406
+    },
+    "interval": {
+      "n": 75,
+      "median": 392.90000000037253,
+      "p95": 448,
+      "fps": 2.5451768897914273
+    },
+    "physicsStepMs": 0.11666666685293119,
+    "simTickMs": 0
+  },
+  "heapMB": 27.852691650390625
+}

@@ -1,0 +1,276 @@
+{
+  "days": [
+    {
+      "tick": 1008,
+      "day": 1,
+      "dryness": 0.118,
+      "alive": 12,
+      "food": 30,
+      "houses": "ssss",
+      "belief": 32,
+      "power": 95
+    },
+    {
+      "tick": 2010,
+      "day": 2,
+      "dryness": 0.173,
+      "alive": 12,
+      "food": 31,
+      "houses": "ssss",
+      "belief": 30,
+      "power": 100
+    },
+    {
+      "tick": 3012,
+      "day": 2,
+      "dryness": 0.238,
+      "alive": 12,
+      "food": 35,
+      "houses": "ssss",
+      "belief": 30,
+      "power": 100
+    },
+    {
+      "tick": 4012,
+      "day": 3,
+      "dryness": 0.309,
+      "alive": 12,
+      "food": 31,
+      "houses": "ssss",
+      "belief": 27,
+      "power": 100
+    },
+    {
+      "tick": 5014,
+      "day": 3,
+      "dryness": 0.386,
+      "alive": 12,
+      "food": 30,
+      "houses": "sssss",
+      "belief": 27,
+      "power": 100
+    },
+    {
+      "tick": 6016,
+      "day": 4,
+      "dryness": 0.467,
+      "alive": 12,
+      "food": 36,
+      "houses": "sssss",
+      "belief": 25,
+      "power": 100
+    },
+    {
+      "tick": 7018,
+      "day": 4,
+      "dryness": 0.553,
+      "alive": 12,
+      "food": 33,
+      "houses": "sssss",
+      "belief": 25,
+      "power": 100
+    },
+    {
+      "tick": 8022,
+      "day": 5,
+      "dryness": 0.643,
+      "alive": 12,
+      "food": 32,
+      "houses": "sssss",
+      "belief": 25,
+      "power": 100
+    },
+    {
+      "tick": 9024,
+      "day": 6,
+      "dryness": 0.736,
+      "alive": 12,
+      "food": 30,
+      "houses": "rsbss",
+      "belief": 29,
+      "power": 100
+    },
+    {
+      "tick": 10026,
+      "day": 6,
+      "dryness": 0.833,
+      "alive": 9,
+      "food": 21,
+      "houses": "rbrrr",
+      "belief": 37,
+      "power": 100
+    },
+    {
+      "tick": 11045,
+      "day": 7,
+      "dryness": 0.934,
+      "alive": 8,
+      "food": 14,
+      "houses": "rrrrr",
+      "belief": 39,
+      "power": 100
+    },
+    {
+      "tick": 12049,
+      "day": 7,
+      "dryness": 1,
+      "alive": 8,
+      "food": 8,
+      "houses": "rrrrr",
+      "belief": 41,
+      "power": 100
+    },
+    {
+      "tick": 13050,
+      "day": 8,
+      "dryness": 1,
+      "alive": 7,
+      "food": 7,
+      "houses": "rrrrr",
+      "belief": 37,
+      "power": 100
+    },
+    {
+      "tick": 14052,
+      "day": 8,
+      "dryness": 1,
+      "alive": 7,
+      "food": 4,
+      "houses": "rrrrr",
+      "belief": 40,
+      "power": 100
+    },
+    {
+      "tick": 15052,
+      "day": 9,
+      "dryness": 1,
+      "alive": 7,
+      "food": 2,
+      "houses": "rrrrr",
+      "belief": 36,
+      "power": 100
+    },
+    {
+      "tick": 16054,
+      "day": 9,
+      "dryness": 1,
+      "alive": 7,
+      "food": 0,
+      "houses": "rrrrr",
+      "belief": 36,
+      "power": 100
+    },
+    {
+      "tick": 17054,
+      "day": 10,
+      "dryness": 1,
+      "alive": 7,
+      "food": 0,
+      "houses": "srrrr",
+      "belief": 32,
+      "power": 100
+    },
+    {
+      "tick": 18056,
+      "day": 11,
+      "dryness": 0.1,
+      "alive": 7,
+      "food": 0,
+      "houses": "srrrr",
+      "belief": 28,
+      "power": 100
+    }
+  ],
+  "outcome": {
+    "ended": true,
+    "survived": true,
+    "tick": 18000,
+    "day": 11,
+    "alive": 7,
+    "dead": 5,
+    "housesStanding": 1,
+    "belief": 28,
+    "title": "The village endured the Dry Year",
+    "lines": [
+      "7 of 12 villagers lived to see the rain; 5 died.",
+      "1 house still standing; 0 food in the granary.",
+      "Belief in you: 28 — they doubt you.",
+      "Miracles worked: 0. Learned: fireball.",
+      "Remembered: Bram, burned in the wildfire; Oda, burned in the wildfire; Tamsin, choked on the smoke; Corin, burned in the wildfire; Hob, starved."
+    ]
+  },
+  "cardText": "The village endured the Dry Year\n\n7 of 12 villagers lived to see the rain; 5 died.\n\n1 house still standing; 0 food in the granary.\n\nBelief in you: 28 — they doubt you.\n\nMiracles worked: 0. Learned: fireball.\n\nRemembered: Bram, burned in the wildfire; Oda, burned in the wildfire; Tamsin, choked on the smoke; Corin, burned in the wildfire; Hob, starved.\n\nBegin a new year",
+  "records": [
+    {
+      "survived": true,
+      "alive": 7,
+      "dead": 5,
+      "housesStanding": 1,
+      "belief": 28,
+      "day": 11,
+      "fallen": [
+        {
+          "name": "Bram",
+          "cause": "burned in the wildfire",
+          "x": 38.5,
+          "z": 59
+        },
+        {
+          "name": "Oda",
+          "cause": "burned in the wildfire",
+          "x": 44.8,
+          "z": 35.2
+        },
+        {
+          "name": "Tamsin",
+          "cause": "choked on the smoke",
+          "x": 53.9,
+          "z": 43
+        },
+        {
+          "name": "Corin",
+          "cause": "burned in the wildfire",
+          "x": 53,
+          "z": 40.1
+        },
+        {
+          "name": "Hob",
+          "cause": "starved",
+          "x": 25,
+          "z": -29.4
+        }
+      ]
+    }
+  ],
+  "fresh": {
+    "day": 1,
+    "alive": 12,
+    "houses": [
+      {
+        "id": 0,
+        "state": "standing",
+        "x": 14,
+        "z": 12
+      },
+      {
+        "id": 1,
+        "state": "standing",
+        "x": 29,
+        "z": 3
+      },
+      {
+        "id": 2,
+        "state": "standing",
+        "x": 5,
+        "z": 27
+      },
+      {
+        "id": 3,
+        "state": "standing",
+        "x": 31,
+        "z": 23
+      }
+    ],
+    "outcome": null
+  }
+}

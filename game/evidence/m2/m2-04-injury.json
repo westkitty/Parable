@@ -1,0 +1,25 @@
+{
+  "release": {
+    "speed": 17.774464374507428,
+    "gentle": false,
+    "v": [
+      4.698040869950472,
+      6.260382162391634,
+      -17.142345107508152
+    ],
+    "samples": 10,
+    "staleMs": 0
+  },
+  "injuryAfterLanding": 0.5299856263363762,
+  "detail": "hurt · belief 27 (grateful; lately: you threw me) · lives with Bram and Oda",
+  "carerSeen": "Oda",
+  "tended": true,
+  "injuryLater": 0.2529856263363792,
+  "stateLater": "fetching",
+  "mood": {
+    "mood": "grateful",
+    "score": 27,
+    "top": null,
+    "recent": "you threw me"
+  }
+}

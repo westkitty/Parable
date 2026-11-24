@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Parable</title>
+    <style>
+      html, body { margin: 0; height: 100%; overflow: hidden; background: #000; }
+      #c { display: block; width: 100vw; height: 100vh; cursor: none; touch-action: none; }
+      #fade { position: fixed; inset: 0; background: #000; pointer-events: none; opacity: 1; }
+      .bubble {
+        position: fixed; transform: translate(-50%, -100%); width: max-content; max-width: 300px; padding: 9px 14px;
+        background: #fbf3df; color: #3b2a1a; border-radius: 14px; box-shadow: 0 3px 12px rgba(40, 20, 0, 0.35);
+        font: 15px/1.3 Georgia, "Times New Roman", serif; pointer-events: none; white-space: normal; text-align: center;
+      }
+      .bubble::after {
+        content: ""; position: absolute; left: 50%; bottom: -9px; margin-left: -8px;
+        border: 9px solid transparent; border-bottom: 0; border-top-color: #fbf3df;
+      }
+      .bubble .line { display: block; }
+      .bubble .detail { display: block; margin-top: 4px; font-size: 12.5px; color: #6b5440; font-style: italic; }
+      #endcard {
+        position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(520px, 86vw); padding: 26px 30px 22px;
+        background: rgba(251, 243, 223, 0.96); color: #3b2a1a; border-radius: 18px; box-shadow: 0 8px 40px rgba(30, 15, 0, 0.55);
+        font: 16px/1.45 Georgia, "Times New Roman", serif; text-align: center; cursor: default;
+      }
+      #endcard h1 { margin: 0 0 12px; font-size: 26px; font-weight: normal; letter-spacing: 0.02em; }
+      #endcard.lost h1 { color: #7a2e1c; }
+      #endcard p { margin: 6px 0; }
+      #endcard button {
+        margin-top: 16px; padding: 9px 22px; font: 16px Georgia, serif; color: #fbf3df; background: #6d4a2a;
+        border: 0; border-radius: 999px; cursor: pointer;
+      }
+      #f3 {
+        position: fixed; left: 8px; top: 8px; margin: 0; padding: 8px 10px; background: rgba(0, 0, 0, 0.62);
+        color: #d8f5c8; font: 12px/1.35 ui-monospace, Menlo, monospace; pointer-events: none; max-width: 70vw; white-space: pre-wrap;
+      }
+      #fatal { position: fixed; left: 12px; top: 12px; color: #f88; font: 14px monospace; }
+    </style>
+  </head>
+  <body>
+    <canvas id="c"></canvas>
+    <div id="fade"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
