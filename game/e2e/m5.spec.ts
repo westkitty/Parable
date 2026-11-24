@@ -55,6 +55,30 @@ async function touch(page: P, tablet: string): Promise<void> {
 }
 const lastLog = async (page: P, re: RegExp) => ((await state(page)).log as string[]).filter((l) => re.test(l)).pop() ?? null;
 
+/**
+ * Ritual logs are laid by the hand: a log is left on open ground a few metres off (the test's only
+ * hook), then picked up with the right button, carried and set down gently at (x, z).
+ */
+async function layByHand(page: P, x: number, z: number, from: [number, number] = [0, 8]): Promise<{ held: string | null; at: number[] }> {
+  const id = await hook<number>(page, "addLog", x + from[0], z + from[1]);
+  await hook(page, "stepTicks", 20);
+  const it0 = (await state(page)).items.find((i: P) => i.id === id);
+  await hook(page, "setCamera", { tx: (it0.p[0] + x) / 2, tz: (it0.p[2] + z) / 2 + 6, yaw: 0, dist: 30 });
+  await frames(page, 3);
+  const a = await hook<XY>(page, "itemScreen", id);
+  const b = await hook<XY>(page, "groundScreen", x, z);
+  await page.mouse.move(a.x, a.y);
+  await frames(page, 2);
+  await page.mouse.down({ button: "right" });
+  const held = (await state(page)).held?.kind ?? null;
+  await moveSmooth(page, a.x, a.y, b.x, b.y, 14, 24);
+  await page.waitForTimeout(400);
+  await page.mouse.up({ button: "right" });
+  await hook(page, "stepTicks", 30);
+  const it = (await state(page)).items.find((i: P) => i.id === id);
+  return { held, at: it?.p ?? [] };
+}
+
 test("m5-1 a glyph stone wakes when two logs are laid by it; tracing its glyph there teaches Stone Shape, which raises a ring fire cannot cross", async ({ page }) => {
   await boot(page);
   await hook(page, "setPower", 100);
@@ -62,9 +86,12 @@ test("m5-1 a glyph stone wakes when two logs are laid by it; tracing its glyph t
   await hook(page, "setCamera", { tx: gs.x, tz: gs.z + 4, yaw: 0, dist: 34 });
   await frames(page, 3);
   await shot(page, "m5-01-stone-asleep");
-  // The ritual: two logs laid beside the stone (placed by hook; the hand-carry path is the same code as M1/M3 carries).
-  await hook(page, "addLog", gs.x - 1, gs.z + 2);
-  await hook(page, "addLog", gs.x + 1.2, gs.z + 2.2);
+  // The ritual: two logs carried by the hand and laid beside the stone.
+  await hook(page, "setSettlerAi", false);
+  const laid = [await layByHand(page, gs.x - 1, gs.z + 2), await layByHand(page, gs.x + 1.2, gs.z + 2.2, [3, 8])];
+  expect(laid.every((l) => l.held === "item")).toBe(true);
+  await hook(page, "setSettlerAi", true);
+  await hook(page, "setCamera", { tx: gs.x, tz: gs.z + 4, yaw: 0, dist: 34 });
   await waitFor(page, `window.__parable.village().glyphStones.find((g) => g.miracle === "stone").awake === true`, 30_000);
   await frames(page, 4);
   await shot(page, "m5-01-stone-awake");
@@ -197,9 +224,12 @@ test("m6-1 golem: four logs in the old ring form a body; the stele teaches Golem
   await boot(page);
   await hook(page, "setPower", 100);
   const r = (await village(page)).golemForm;
-  await hook(page, "setCamera", { tx: r.x, tz: r.z + 4, yaw: 0.3, dist: 30 });
-  for (let k = 0; k < 4; k += 1) await hook(page, "addLog", r.x + Math.cos(k * 1.6) * 1.2, r.z + Math.sin(k * 1.6) * 1.2);
+  // Four logs carried by the hand into the old ring.
+  await hook(page, "setSettlerAi", false);
+  for (let k = 0; k < 4; k += 1) expect((await layByHand(page, r.x + Math.cos(k * 1.6) * 1.2, r.z + Math.sin(k * 1.6) * 1.2, [k * 2 - 3, 9])).held).toBe("item");
+  await hook(page, "setSettlerAi", true);
   await waitFor(page, `window.__parable.village().golems.length === 1`, 30_000);
+  await hook(page, "setCamera", { tx: r.x, tz: r.z + 4, yaw: 0.3, dist: 30 });
   await frames(page, 4);
   await shot(page, "m6-01-golem-dormant");
   // Golem Wake is not known yet: the triangle fizzles.
@@ -254,7 +284,9 @@ test("m6-2 a golem set down by the well waits with water and fights a fire near 
   await hook(page, "setPower", 100);
   await hook(page, "learn", "golem");
   const r = (await village(page)).golemForm;
-  for (let k = 0; k < 4; k += 1) await hook(page, "addLog", r.x + Math.cos(k * 1.6) * 1.2, r.z + Math.sin(k * 1.6) * 1.2);
+  await hook(page, "setSettlerAi", false);
+  for (let k = 0; k < 4; k += 1) expect((await layByHand(page, r.x + Math.cos(k * 1.6) * 1.2, r.z + Math.sin(k * 1.6) * 1.2, [k * 2 - 3, 9])).held).toBe("item");
+  await hook(page, "setSettlerAi", true);
   await waitFor(page, `window.__parable.village().golems.length === 1`, 30_000);
   await hook(page, "setCamera", { tx: r.x, tz: r.z + 4, yaw: 0.3, dist: 30 });
   await frames(page, 3);
