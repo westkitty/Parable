@@ -50,6 +50,8 @@ function fitSize(proto: THREE.Object3D, size: number): THREE.Object3D {
   return g;
 }
 
+const GLYPH_STONE_HEIGHT = 6.5;
+
 function glyphFace(m: Miracle): THREE.MeshBasicMaterial {
   const c = document.createElement("canvas");
   c.width = 256;
@@ -96,17 +98,36 @@ export class WorldMarks {
     this.tallProto = await obj(`${NATURE}stone_tallA.glb`, 1);
     this.logProto = await obj(`${NATURE}log.glb`, 1);
     this.rockProto = await obj(`${NATURE}rock_smallA.glb`, 1);
+    // Monoliths: the old gods' stones stand about 7 m tall in a cleared circle, each ringed by a few
+    // fallen companion stones, so they read as ancient landmarks from the high camera.
+    const tb = new THREE.Box3().setFromObject(this.tallProto);
+    const ts = tb.getSize(new THREE.Vector3());
+    const companion = fitSize(await obj(`${NATURE}stone_smallC.glb`, 1), 1.4);
     for (const gs of LAYOUT.glyphStones) {
       const y = terrainHeight(gs.x, gs.z);
       const st = this.tallProto.clone(true);
-      st.scale.setScalar(3.2);
-      st.position.set(gs.x, y - 0.1, gs.z);
+      const foot = 3.2 / Math.max(ts.x, ts.z);
+      st.scale.set(foot, GLYPH_STONE_HEIGHT / ts.y, foot);
+      st.position.set(gs.x, y - 0.25 - tb.min.y * (GLYPH_STONE_HEIGHT / ts.y), gs.z);
+      st.rotation.y = (gs.x * 0.37 + gs.z * 0.11) % 6.28;
+      st.traverse((o) => {
+        if ((o as THREE.Mesh).isMesh) o.castShadow = true;
+      });
       this.group.add(st);
+      for (let k = 0; k < 4; k += 1) {
+        const a = k * 1.9 + gs.x * 0.2;
+        const c = companion.clone(true);
+        const cx = gs.x + Math.cos(a) * (3.6 + (k % 2) * 0.9);
+        const cz = gs.z + Math.sin(a) * (3.6 + (k % 2) * 0.9);
+        c.position.set(cx, terrainHeight(cx, cz) - 0.2, cz);
+        c.rotation.set(0.25 * (k % 2 ? 1 : -1), a, 0.3);
+        this.group.add(c);
+      }
       const mat = glyphFace(gs.miracle as Miracle);
-      const face = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 1.5), mat);
+      const face = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 2.4), mat);
       // The face looks toward the village so it reads from the default view.
       const yaw = Math.atan2(LAYOUT.villageCentre.x - gs.x, LAYOUT.villageCentre.z - gs.z);
-      face.position.set(gs.x + Math.sin(yaw) * 0.75, y + 1.9, gs.z + Math.cos(yaw) * 0.75);
+      face.position.set(gs.x + Math.sin(yaw) * 1.15, y + 4.2, gs.z + Math.cos(yaw) * 1.15);
       face.rotation.y = yaw;
       this.group.add(face);
       this.stones.set(gs.miracle, { mat, colour: new THREE.Color(MIRACLE_COLOUR[gs.miracle as Miracle]), point: face.position.clone() });

@@ -216,6 +216,8 @@ export function computeOutcome(world: World, survivedYear: boolean): Outcome {
     `Belief in you: ${belief} — ${belief >= 55 ? "they sing your name" : belief >= 30 ? "they pray, mostly" : "they doubt you"}.`,
     `Miracles worked: ${world.miraclesCast}. Learned: ${world.learned.join(", ")}.`,
   ];
+  const fallen = world.settlers.filter((s) => !s.alive);
+  if (fallen.length) lines.push(`Remembered: ${fallen.map((s) => `${s.name}, ${s.causeOfDeath ?? "lost"}`).join("; ")}.`);
   return {
     ended: true,
     survived,

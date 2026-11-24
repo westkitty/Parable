@@ -16,6 +16,8 @@ export interface TempleRecord {
   housesStanding: number;
   belief: number;
   day: number;
+  /** Who died that year, how, and where they fell (older records lack this). */
+  fallen?: { name: string; cause: string; x: number; z: number }[];
 }
 
 export interface TempleState {

@@ -74,6 +74,19 @@ await shot("s6-valley-top");
 await H("setCamera", { tx: 12, tz: -38, yaw: 0, dist: 22 });
 await frames(4);
 await shot("s7-glyph-stone");
+// S9 (new in the uplift): a cairn where a villager fell last year, with the hand over it.
+const nc = await H("cairns");
+m.cairns = nc;
+if (nc > 0) {
+  const c0 = await H("cairnScreen", 0);
+  await H("setCamera", { tx: c0.wx, tz: c0.wz + 3, yaw: 0.4, dist: 20 });
+  await frames(4);
+  const c1 = await H("cairnScreen", 0);
+  await page.mouse.move(c1.x, c1.y);
+  await frames(8);
+  m.cairnLabel = await H("cairnLabel");
+  await shot("s9-cairn");
+}
 // S8: the temple chamber.
 await H("setCamera", { tx: 31.2, tz: -24, yaw: 0, dist: 34 });
 await frames(3);

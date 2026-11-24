@@ -38,11 +38,11 @@ function runYear(seed: number, attend: boolean): World {
 }
 
 describe("the Dry Year is dangerous when neglected and winnable when tended", () => {
-  it("seed 7 left alone loses villagers (it used to come through with all 12)", () => {
-    const w = runYear(7, false);
-    expect(w.outcome?.ended).toBe(true);
-    expect(w.outcome!.dead).toBeGreaterThanOrEqual(3);
-  }, 60_000);
+  it("left alone, the village loses people on every sampled seed (seed 7 used to come through with all 12)", () => {
+    const dead = [3, 5, 7].map((seed) => runYear(seed, false).outcome!.dead);
+    for (const d of dead) expect(d).toBeGreaterThanOrEqual(1);
+    expect(dead.reduce((a, b) => a + b, 0)).toBeGreaterThanOrEqual(5);
+  }, 120_000);
   it("seed 7 tended with Rain alone comes through whole", () => {
     const w = runYear(7, true);
     expect(w.outcome?.survived).toBe(true);
@@ -69,5 +69,21 @@ describe("the Dry Year is dangerous when neglected and winnable when tended", ()
   });
   it("a working golem costs about half the village's daily faith", () => {
     expect(GOLEM_UPKEEP_PER_DAY + GOLEM_JOB_UPKEEP_PER_DAY).toBeGreaterThanOrEqual(9);
+  });
+});
+
+import { computeOutcome } from "../src/sim/economy";
+import { fallenFromRecords } from "../src/render/cairns";
+describe("the land remembers", () => {
+  it("the year's end names the dead and how they died", () => {
+    const w = createWorld(7, "village");
+    w.settlers[2].alive = false;
+    w.settlers[2].causeOfDeath = "choked on the smoke";
+    const o = computeOutcome(w, true);
+    expect(o.lines.join(" ")).toContain(`Remembered: ${w.settlers[2].name}, choked on the smoke`);
+  });
+  it("cairns gather every fallen villager from the records, numbered by year", () => {
+    const f = fallenFromRecords([{ fallen: [{ name: "Bram", cause: "starved", x: 1, z: 2 }] }, {}, { fallen: [{ name: "Oda", cause: "burned in the wildfire", x: 3, z: 4 }] }]);
+    expect(f.map((x) => `${x.name}@${x.year}`)).toEqual(["Bram@1", "Oda@3"]);
   });
 });

@@ -79,8 +79,8 @@ export class Physics {
     this.world.createCollider(RAPIER.ColliderDesc.cylinder(0.7, 1.15).setFriction(1), sb);
     // The old-god glyph stones (village only in look; colliders are cheap and stay put).
     for (const g of LAYOUT.glyphStones) {
-      const gb = this.world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(g.x, terrainHeight(g.x, g.z) + 1.2, g.z));
-      this.world.createCollider(RAPIER.ColliderDesc.cylinder(1.2, 0.7).setFriction(0.8), gb);
+      const gb = this.world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(g.x, terrainHeight(g.x, g.z) + 3.5, g.z));
+      this.world.createCollider(RAPIER.ColliderDesc.cylinder(3.5, 0.95).setFriction(0.8), gb);
     }
     const t = LAYOUT.temple;
     const tb = this.world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(t.x, terrainHeight(t.x, t.z) + 3, t.z));

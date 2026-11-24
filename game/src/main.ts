@@ -31,6 +31,7 @@ import { canAfford, castRain, castSanctuary, dissolveFireball, fireballImpact, l
 import { LAYOUT, terrainHeight } from "./sim/terrain";
 import type { Item, Settler, World } from "./sim/types";
 import { addItem, createWorld, getItem, getSettler } from "./sim/world";
+import { Cairns, fallenFromRecords } from "./render/cairns";
 import { TempleChamber, type TabletAction, type TempleRecord } from "./temple/temple";
 
 const params = new URLSearchParams(location.search);
@@ -90,6 +91,13 @@ async function boot(): Promise<void> {
   const marks = new WorldMarks();
   await marks.init();
   scene.add(marks.group);
+  const cairns = new Cairns();
+  scene.add(cairns.group);
+  const cairnLabel = document.createElement("div");
+  cairnLabel.className = "bubble";
+  cairnLabel.id = "cairn";
+  cairnLabel.style.display = "none";
+  document.body.appendChild(cairnLabel);
   const fireView = new FireView(flames, smoke, scene);
   const chamber = new TempleChamber();
   await chamber.init();
@@ -115,6 +123,7 @@ async function boot(): Promise<void> {
     // The M1 cottage stays in both scenarios (it is house 0 of the village).
   };
   showVillage();
+  cairns.set(world.scenario === "village" ? fallenFromRecords(loadRecords()) : []);
 
   let held: Grabbable | null = null;
   let settlerAi = true; // test hook can pause Ilse to isolate hand-control checks
@@ -487,7 +496,8 @@ async function boot(): Promise<void> {
     const o = world.outcome;
     if (!o) return;
     const rs = loadRecords();
-    rs.push({ survived: o.survived, alive: o.alive, dead: o.dead, housesStanding: o.housesStanding, belief: o.belief, day: o.day });
+    const fallen = world.settlers.filter((s) => !s.alive).map((s) => ({ name: s.name, cause: s.causeOfDeath ?? "lost", x: Math.round(s.x * 10) / 10, z: Math.round(s.z * 10) / 10 }));
+    rs.push({ survived: o.survived, alive: o.alive, dead: o.dead, housesStanding: o.housesStanding, belief: o.belief, day: o.day, fallen });
     localStorage.setItem(RECORDS_KEY, JSON.stringify(rs.slice(-20)));
   }
   function showEndCard(): void {
@@ -596,6 +606,7 @@ async function boot(): Promise<void> {
     trace.clear();
     for (const s of world.settlers) settlerViews.get(s.id)?.snap(s);
     simAcc = 0;
+    cairns.set(world.scenario === "village" ? fallenFromRecords(loadRecords()) : []);
   }
   async function tablet(a: TabletAction): Promise<void> {
     if (a === "door") return exitTemple();
@@ -806,6 +817,26 @@ async function boot(): Promise<void> {
     ring.position.set(lastGround.x, lastGround.y + 0.08, lastGround.z);
     const ringMat = ring.material as THREE.MeshBasicMaterial;
     ringMat.opacity = hover ? 0.75 : held ? 0.2 : 0.3;
+    // The land remembers: the empty hand over a cairn names who fell there.
+    const cairn = templeMode === "world" && !held && !hover ? cairns.near(lastGround.x, lastGround.z, 2.4) : null;
+    if (cairn) {
+      const p = cairn.top.clone().project(rig.camera);
+      cairnLabel.style.left = `${((p.x + 1) / 2) * window.innerWidth}px`;
+      cairnLabel.style.top = `${((1 - p.y) / 2) * window.innerHeight}px`;
+      const text = `${cairn.fallen.name} lies here`;
+      if (cairnLabel.dataset.who !== text) {
+        cairnLabel.dataset.who = text;
+        cairnLabel.innerHTML = "";
+        const a = document.createElement("span");
+        a.className = "line";
+        a.textContent = text;
+        const b = document.createElement("span");
+        b.className = "detail";
+        b.textContent = `${cairn.fallen.cause}, in year ${cairn.fallen.year}`;
+        cairnLabel.append(a, b);
+      }
+      cairnLabel.style.display = "block";
+    } else cairnLabel.style.display = "none";
     ring.scale.setScalar(hover ? 1.4 : 1 + rig.dist * 0.012);
     ring.visible = hand.group.visible;
 
@@ -1106,6 +1137,14 @@ async function boot(): Promise<void> {
       itemOfKind: (k: string) => world.items.find((x) => x.kind === k)?.id ?? null,
       igniteAt: (x: number, z: number, r = 2.5) => igniteAt(world, x, z, r, false),
       records: () => loadRecords(),
+      cairns: () => cairns.group.children.length,
+      cairnScreen: (k: number) => {
+        const c = cairns.group.children[k];
+        if (!c) return null;
+        const p = c.position.clone().project(rig.camera);
+        return { x: ((p.x + 1) / 2) * window.innerWidth, y: ((1 - p.y) / 2) * window.innerHeight, wx: c.position.x, wz: c.position.z };
+      },
+      cairnLabel: () => (cairnLabel.style.display === "none" ? null : cairnLabel.textContent),
       clearRecords: () => localStorage.removeItem(RECORDS_KEY),
       templeLit: (m: string) => chamber.learnedLit(m),
       recordsOpen: () => chamber.recordsOpen,
