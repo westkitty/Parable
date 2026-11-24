@@ -117,9 +117,12 @@ export type Ev = { type: "move" | "down" | "up"; x: number; y: number; button?: 
  * for each event to be handled, which would space events ~250 ms apart; explicit timestamps keep the
  * recorded hand speed (the game reads event.timeStamp / getCoalescedEvents, as with a real mouse).
  */
+const playbackEnd = new WeakMap<Page, number>();
 export async function playback(page: Page, evs: Ev[], defaultDtMs = 16): Promise<void> {
   const cdp = await page.context().newCDPSession(page);
-  const base = Date.now() / 1000;
+  // One monotonic synthetic timeline per page: a later playback never starts "before" the previous
+  // one ended, so the game's in-stream pause detection sees true gaps between strokes.
+  const base = Math.max(Date.now() / 1000, playbackEnd.get(page) ?? 0);
   let t = 0;
   let buttons = 0;
   const bit = { left: 1, right: 2, middle: 4 } as const;
@@ -138,11 +141,23 @@ export async function playback(page: Page, evs: Ev[], defaultDtMs = 16): Promise
       timestamp: base + t,
     };
   });
+  playbackEnd.set(page, base + t);
   await Promise.all(out.map((e) => cdp.send("Input.dispatchMouseEvent", e as never)));
   await cdp.detach();
 }
 
 export const pts2moves = (pts: [number, number][], dt = 16): Ev[] => pts.map(([x, y]) => ({ type: "move", x, y, dt }));
+
+/**
+ * A drawn stroke ends the way a player ends one: the hand pauses (> GESTURE_IDLE_RESET_MS), then moves
+ * on. That next move closes the stroke inside the event handler, so recognition does not wait for
+ * wall-clock time to catch up with the synthetic event timeline (which, under SwiftShader's slow
+ * frames, used to eat most of the 5.6 s armed window before the finisher was even analysed).
+ */
+export function endStroke(evs: Ev[], pauseMs = 450): Ev[] {
+  const last = evs[evs.length - 1];
+  return [...evs, { type: "move", x: last.x + 1, y: last.y, dt: pauseMs }];
+}
 
 /** Rain's second stroke: a zigzag turned on its side (up-down strokes moving left to right). */
 export function wavePts(x0: number, y0: number, w: number, h: number, legs: number, perLeg: number): [number, number][] {
@@ -162,9 +177,9 @@ export function ringPts(cx: number, cy: number, r: number, n = 80, sweep = 1.06,
 /** Draw spiral (arms the ritual), then the second stroke, with the empty hand and real pointer events. */
 export async function ritual(page: Page, cx: number, cy: number, second: [number, number][]): Promise<void> {
   await page.mouse.move(cx, cy);
-  await playback(page, pts2moves(spiralPts(cx, cy, 20, 110, 2.3, 120)));
+  await playback(page, endStroke(pts2moves(spiralPts(cx, cy, 20, 110, 2.3, 120))));
   await waitFor(page, "window.__parable.state().armed === true", 20_000);
-  await playback(page, pts2moves(second, 16).map((e, i) => (i === 0 ? { ...e, dt: 450 } : e)));
+  await playback(page, endStroke(pts2moves(second, 16).map((e, i) => (i === 0 ? { ...e, dt: 450 } : e))));
 }
 
 /** Keep the recorded video of this test as stage evidence (webm). */
@@ -172,5 +187,7 @@ export async function keepVideo(page: Page, name: string): Promise<void> {
   const v = page.video();
   if (!v) return;
   await page.close();
-  await v.saveAs(path.join(evidenceDir, `${name}.webm`));
+  // Recordings go to the git-ignored test-results/videos so a gate run never dirties the committed
+  // evidence videos (they are large; refresh one deliberately by copying it into evidence/).
+  await v.saveAs(path.resolve(process.cwd(), "test-results/videos", `${path.basename(evidenceDir)}-${name}.webm`));
 }
