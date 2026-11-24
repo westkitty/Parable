@@ -571,3 +571,48 @@ State After Completion:
 
 Next Step / Handoff:
 - The owner plays the human gate on the Mac. After that, M2 can add recast navigation, more settlers, and a second miracle (Rain).
+
+### Entry 10 - First playable: the Dry Year, ten miracles, golems (M2–M6)
+
+Summary:
+- The village is now the default world: twelve villagers with names, trades, needs, skills, family, friends and memories, who fell, haul, build, farm, fetch water, pray and paint.
+- One Dry Year: the land dries day by day, lightning on day 5 starts a wildfire that the wind pushes at the houses, the year ends on day 10 with an end card, a carved record in the temple, and "Begin a new year".
+- Ten miracles, each a clockwise spiral followed by a finishing stroke, each with visible effects on the land and the villagers, and each learned in the world.
+- Optional wooden golems that do physical work only.
+
+Reason / Intent:
+- The owner approved going past M1 toward the full first playable, then expanded the scope: "build it all the way through having ten miracles and the golem system." No creature companion and no creature training.
+
+Files Changed:
+- `game/**` (sim: village, economy, belief, tasks, miracles, golems; render: village, miracles, marks, glyphs; temple frieze, brazier, stele and records; e2e m2–m5; tests)
+- `Parable_Bible.md` (this entry)
+
+Commands Run:
+```text
+PW_CHROMIUM_PATH=/usr/bin/google-chrome npm --prefix game run gate   # typecheck, 62 unit, build, 27/27 e2e — PASS 2026-11-23 ~21:59 EST
+```
+
+Decisions:
+- The ten finishers are: zigzag Fireball, wave Rain, ring Sanctuary, V Healing, stroke-down Lightning, stroke-up Fertility, stroke-sideways Wind Lash, square Stone Shape, peak Beacon, triangle Golem Wake. Spiral → zigzag stays the Fireball.
+- Closed shapes act on what they surround (the stroke's centre). Open strokes act where the hand ends.
+- Where each miracle is learned: Rain at the bell-stone shrine; Sanctuary at the village wall the faithful paint; Healing, Lightning, Fertility, Wind Lash and Stone Shape at five old-god glyph stones, each woken by a physical ritual (a hurt villager set gently beside it, fire, rain, a hard throw, two logs); Beacon at the temple brazier at 90+ prayer power; Golem Wake at the temple's carved stele once a golem has formed.
+- Purge was dropped from the old roster because there is no corruption system. Healing and Lightning come from earlier Bible entries.
+- Golems: four logs laid in the old stone ring form a dormant body (at most three). Where the hand sets one down is its job: woodpile → haul, building site → carry wood and build, well → wait with water and douse. They are slow, cost prayer power daily, sleep at zero, and never cast. Villagers who see them remember it.
+- Every villager effect leaves a belief cause the player can read by hovering.
+
+Doctrine:
+```text
+The world teaches the miracles. Every glyph is learned at a place, by an act, never from a menu.
+```
+
+Bugs / Blockers:
+- Straight-line finishers can be cast by accident: 6% of random strokes inside the armed window in the synthetic corpus.
+- Balance: on seed 7 the unattended year is survived 12/12. Golem upkeep is small next to prayer income.
+- `game/evidence/m2/m2-injury-and-care.webm` is 58.8 MB (GitHub warned; it was not rejected).
+- Real-mouse feel and M1 Air performance are UNVERIFIED. All runs used headless SwiftShader.
+
+State After Completion:
+- PR #1 branch `feat/m1-hand-camera-fireball` passes the full gate on the build box. Not accepted until the owner plays `game/HUMAN_GATE_FIRST_PLAYABLE.md`.
+
+Next Step / Handoff:
+- Owner plays both human gates on the Mac. Then tune false casts, drought severity per seed, and golem cost.

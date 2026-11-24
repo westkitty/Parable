@@ -23,11 +23,14 @@ Branch `feat/m1-hand-camera-fireball` (PR #1). Never push to main, never force-p
   brazier tablet, golem stele, records lectern.
 - Unit tests: 62 pass (tests/miracles.test.ts covers the seven later miracles + golems).
 
-## Next
-1. e2e/m5.spec.ts (m5-1..5 miracles, m6-1..2 golems): get all green; evidence in evidence/m5.
-2. Full `PW_CHROMIUM_PATH=/usr/bin/google-chrome npm run gate` (run in background with a log; >10 min).
-3. Docs: HUMAN_GATE checklist, README, evidence RESULTS.md, ASSET_LEDGER (node tools/asset-ledger.mjs),
-   append Parable_Bible entry, PR description.
+## Status
+- FULL GATE PASS 2026-11-23 ~21:59 EST: typecheck, 62 unit, build, Playwright 27/27 (m1 8, m2 4, m3 4, m4 4, m5 5, m6 2).
+- Docs done: README, HUMAN_GATE_FIRST_PLAYABLE.md, evidence/m5/RESULTS.md, Bible Entry 10, PR description.
+
+## Next (after the owner's human gate)
+1. Tune false casts of the straight-line finishers (6% in the armed window).
+2. Drought severity per seed (seed 7 survives 12/12 unattended); golem upkeep vs prayer income.
+3. Consider re-encoding m2-injury-and-care.webm (58.8 MB) smaller in a new commit.
 
 ## How to iterate fast
 - `npx vite build && PW_CHROMIUM_PATH=/usr/bin/google-chrome npx playwright test e2e/m5.spec.ts -g m6-1`
