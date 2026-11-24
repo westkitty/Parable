@@ -141,7 +141,8 @@ export function describeDetail(world: World, s: Settler): string {
   if (s.energy < 0.15) parts.push("exhausted");
   else if (s.energy < 0.3) parts.push("tired");
   const b = beliefSummary(s);
-  const belief = `belief ${b.score} (${b.mood}${b.top ? `: ${b.top}` : ""})`;
+  const lately = b.recent && b.recent !== b.top ? `; lately: ${b.recent}` : "";
+  const belief = `belief ${b.score} (${b.mood}${b.top ? `: ${b.top}` : ""}${lately})`;
   const fam = s.relationships.filter((r) => r.kind === "family").map((r) => getSettler(world, r.id)?.name).filter(Boolean);
   return [parts.join(", "), belief, fam.length ? `lives with ${fam.join(" and ")}` : ""].filter(Boolean).join(" · ");
 }

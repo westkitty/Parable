@@ -46,7 +46,7 @@ export function villageBelief(world: World): number {
 }
 
 /** Which feeling dominates belief, with its strongest recorded cause. */
-export function beliefSummary(s: Settler): { mood: "devoted" | "grateful" | "fearful" | "resentful" | "indifferent"; score: number; top: string | null } {
+export function beliefSummary(s: Settler): { mood: "devoted" | "grateful" | "fearful" | "resentful" | "indifferent"; score: number; top: string | null; recent: string | null } {
   const b = s.belief;
   const score = Math.round(beliefScore(s));
   let mood: "devoted" | "grateful" | "fearful" | "resentful" | "indifferent" = "indifferent";
@@ -54,16 +54,20 @@ export function beliefSummary(s: Settler): { mood: "devoted" | "grateful" | "fea
   else if (b.fear > b.gratitude && b.fear > 20) mood = "fearful";
   else if (b.gratitude > 55) mood = "devoted";
   else if (b.gratitude > 20) mood = "grateful";
+  // The cause shown beside the mood is the strongest one pushing that same feeling.
+  const dim = (c: (typeof b.causes)[number]) =>
+    mood === "resentful" ? c.resentment : mood === "fearful" ? c.fear : mood === "indifferent" ? Math.abs(c.gratitude) + Math.abs(c.fear) + Math.abs(c.resentment) : c.gratitude;
   let top: string | null = null;
   let best = 0;
   for (const c of b.causes) {
-    const w = Math.abs(c.gratitude) + Math.abs(c.fear) + Math.abs(c.resentment);
+    const w = dim(c);
     if (w > best) {
       best = w;
       top = c.text;
     }
   }
-  return { mood, score, top };
+  const recent = b.causes[0]?.text ?? null;
+  return { mood, score, top, recent };
 }
 
 /** Daily fading: fear fades fastest, gratitude slowest. */

@@ -1,21 +1,21 @@
 {
   "release": {
-    "speed": 10.121653447577584,
+    "speed": 17.79157165496082,
     "gentle": false,
     "v": [
-      2.734478846736406,
-      4.576763758467068,
-      -9.745280598813478
+      4.702562564728462,
+      6.2641457640913805,
+      -17.15884399598119
     ],
     "samples": 10,
     "staleMs": 0
   },
-  "injuryAfterLanding": 0.17567821570471362,
-  "detail": "belief 27 (grateful: you threw me) · lives with Bram and Oda",
-  "carerSeen": null,
-  "tended": false,
-  "injuryLater": 0.038761549038049646,
-  "stateLater": "carrying",
+  "injuryAfterLanding": 0.5306677261258086,
+  "detail": "hurt · belief 27 (grateful: you threw me) · lives with Bram and Oda",
+  "carerSeen": "Oda",
+  "tended": true,
+  "injuryLater": 0.25366772612581157,
+  "stateLater": "fetching",
   "mood": {
     "mood": "grateful",
     "score": 27,

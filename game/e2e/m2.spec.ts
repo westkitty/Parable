@@ -175,7 +175,7 @@ test("m2-4 injury: a villager thrown hard is hurt, limps with a crutch, resents 
   expect(rel.lastRelease.gentle).toBe(false);
   expect(hurt.injury).toBeGreaterThan(0.25);
   expect(detail).toMatch(/hurt/);
-  expect(hurt.mood.top ?? "").toMatch(/threw/);
+  expect(`${hurt.mood.top} ${hurt.mood.recent}`).toMatch(/threw/);
   expect(carerSeen).not.toBeNull();
   expect(tended).toBe(true);
   await keepVideo(page, "m2-injury-and-care");
