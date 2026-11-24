@@ -136,23 +136,24 @@ test("m2-4 injury: a villager thrown hard is hurt, limps with a crutch, resents 
   await hook(page, "stepTicks", 4);
   await frames(page, 3);
   const p = await hook<{ x: number; y: number }>(page, "settlerScreenOf", victim.id);
-  // A hard recorded flick toward open meadow.
+  // A hard recorded flick toward open meadow (~16 m/s: hard enough to hurt, not to kill).
   const evs: Ev[] = [
     { type: "move", x: p.x, y: p.y },
     { type: "down", x: p.x, y: p.y, button: "right" },
   ];
-  for (let s = 1; s <= 8; s += 1) evs.push({ type: "move", x: p.x + 16 * s, y: p.y - 9 * s, dt: s === 1 ? 140 : 16 });
-  evs.push({ type: "up", x: p.x + 128, y: p.y - 72, button: "right", dt: 8 });
+  for (let s = 1; s <= 8; s += 1) evs.push({ type: "move", x: p.x + 7.5 * s, y: p.y - 4.3 * s, dt: s === 1 ? 140 : 16 });
+  evs.push({ type: "up", x: p.x + 60, y: p.y - 34, button: "right", dt: 8 });
   await playback(page, evs);
   const rel = await state(page);
-  await hook(page, "stepTicks", 120);
+  // Villagers (and a thrown villager's flight) only move while their AI runs.
+  await hook(page, "setSettlerAi", true);
+  await hook(page, "stepTicks", 80);
   const hurt = (await settlers(page)).find((s: P) => s.id === victim.id)!;
   const detail = (await hook<P[]>(page, "describe")).find((d: P) => d.id === victim.id)!.detail;
   await hook(page, "setCamera", { tx: hurt.x, tz: hurt.z + 6, yaw: 0.6, dist: 16 });
   await frames(page, 4);
   await shot(page, "m2-04-hurt-with-crutch");
   // Carers look after the worst hurt; tending speeds healing.
-  await hook(page, "setSettlerAi", true);
   let tended = false;
   let carerSeen: string | null = null;
   for (let k = 0; k < 40 && !tended; k += 1) {

@@ -1,0 +1,102 @@
+{
+  "count": 12,
+  "names": [
+    "Ilse",
+    "Bram",
+    "Oda",
+    "Tamsin",
+    "Corin",
+    "Wil",
+    "Maren",
+    "Hob",
+    "Ness",
+    "Edda",
+    "Pell",
+    "Rafe"
+  ],
+  "jobs": {
+    "hauler": 2,
+    "woodcutter": 2,
+    "carer": 2,
+    "farmer": 2,
+    "water": 2,
+    "builder": 2
+  },
+  "target": "Tamsin",
+  "bubble": "Tamsin, farmer — Calm, fetching a log.",
+  "detail": "belief 31 (grateful) · lives with Corin and Wil",
+  "describe": [
+    {
+      "id": 6,
+      "name": "Ilse",
+      "line": "Ilse, hauler — Calm, on the way.",
+      "detail": "belief 33 (grateful) · lives with Bram and Oda"
+    },
+    {
+      "id": 7,
+      "name": "Bram",
+      "line": "Bram, woodcutter — Calm, on the way.",
+      "detail": "belief 32 (grateful) · lives with Ilse and Oda"
+    },
+    {
+      "id": 8,
+      "name": "Oda",
+      "line": "Oda, carer — Calm, heading home.",
+      "detail": "belief 34 (grateful) · lives with Ilse and Bram"
+    },
+    {
+      "id": 9,
+      "name": "Tamsin",
+      "line": "Tamsin, farmer — Calm, fetching a log.",
+      "detail": "belief 31 (grateful) · lives with Corin and Wil"
+    },
+    {
+      "id": 10,
+      "name": "Corin",
+      "line": "Corin, farmer — Calm, fetching a log.",
+      "detail": "belief 30 (grateful) · lives with Tamsin and Wil"
+    },
+    {
+      "id": 11,
+      "name": "Wil",
+      "line": "Wil, water — Calm, resting a moment.",
+      "detail": "belief 30 (grateful) · lives with Tamsin and Corin"
+    },
+    {
+      "id": 12,
+      "name": "Maren",
+      "line": "Maren, builder — Calm, on the way.",
+      "detail": "belief 36 (grateful) · lives with Hob and Ness"
+    },
+    {
+      "id": 13,
+      "name": "Hob",
+      "line": "Hob, builder — Calm, praying.",
+      "detail": "belief 33 (grateful) · lives with Maren and Ness"
+    },
+    {
+      "id": 14,
+      "name": "Ness",
+      "line": "Ness, woodcutter — Calm, on the way.",
+      "detail": "belief 36 (grateful) · lives with Maren and Hob"
+    },
+    {
+      "id": 15,
+      "name": "Edda",
+      "line": "Edda, water — Calm, heading home.",
+      "detail": "belief 34 (grateful) · lives with Pell and Rafe"
+    },
+    {
+      "id": 16,
+      "name": "Pell",
+      "line": "Pell, hauler — Calm, on the way.",
+      "detail": "belief 31 (grateful) · lives with Edda and Rafe"
+    },
+    {
+      "id": 17,
+      "name": "Rafe",
+      "line": "Rafe, carer — Calm, fetching a log.",
+      "detail": "belief 32 (grateful) · lives with Edda and Pell"
+    }
+  ]
+}

@@ -341,7 +341,7 @@ export class SettlerView {
       this.bubble.append(a, b);
     } else this.bubble.textContent = text;
     this.bubble.style.display = "block";
-    this.bubble.style.left = `${((p.x + 1) / 2) * w}px`;
+    this.bubble.style.left = `${Math.max(160, Math.min(w - 160, ((p.x + 1) / 2) * w))}px`;
     this.bubble.style.top = `${((1 - p.y) / 2) * h}px`;
   }
 }
