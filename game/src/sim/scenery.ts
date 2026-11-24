@@ -31,6 +31,13 @@ function clearOfBuildings(x: number, z: number, margin: number): boolean {
   if (Math.hypot(x - w.x, z - w.z) < 3 + margin) return false;
   if (Math.hypot(x - t.x, z - t.z) < 11 + margin) return false;
   for (const s of LAYOUT.spawnLogs) if (Math.hypot(x - s.x, z - s.z) < 3) return false;
+  // Village footprints (M2): houses, the building site, granary, well, field, wall and shrine.
+  for (const h of [...LAYOUT.houses, LAYOUT.site]) if (Math.hypot(x - h.x, z - h.z) < 7.5 + margin) return false;
+  for (const p of [LAYOUT.granary, LAYOUT.well]) if (Math.hypot(x - p.x, z - p.z) < 3.5 + margin) return false;
+  const f = LAYOUT.field;
+  if (Math.abs(x - f.x) < f.w / 2 + 2 + margin && Math.abs(z - f.z) < f.d / 2 + 2 + margin) return false;
+  if (Math.hypot(x - LAYOUT.mural.x, z - LAYOUT.mural.z) < LAYOUT.mural.len / 2 + 2 + margin) return false;
+  if (Math.hypot(x - LAYOUT.shrine.x, z - LAYOUT.shrine.z) < 6 + margin) return false;
   return true;
 }
 

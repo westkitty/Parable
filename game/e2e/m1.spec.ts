@@ -1,10 +1,12 @@
 import { test } from "@playwright/test";
-import { boot, expect, frames, hook, moveSmooth, playback, pts2moves, shot, spearman, spiralPts, state, waitFor, writeResult, zigzagPts, type Ev, type P } from "./helpers";
+import { boot, useEvidence, expect, frames, hook, moveSmooth, playback, pts2moves, shot, spearman, spiralPts, state, waitFor, writeResult, zigzagPts, type Ev, type P } from "./helpers";
 
 test.describe.configure({ mode: "serial" });
 
+test.beforeEach(() => useEvidence("m1"));
+
 test("1 camera: zoom from settlement to individual scale, pan, orbit, reset", async ({ page }) => {
-  await boot(page);
+  await boot(page, "&scenario=solo");
   await page.mouse.move(720, 450);
   // Max zoom-out.
   for (let i = 0; i < 20; i += 1) await page.mouse.wheel(0, 400);
@@ -70,7 +72,7 @@ test("1 camera: zoom from settlement to individual scale, pan, orbit, reset", as
 });
 
 test("2 grab: 20/20 first-press acquisitions from empty ground, and A->B rapid switch", async ({ page }) => {
-  await boot(page);
+  await boot(page, "&scenario=solo");
   await hook(page, "setSettlerAi", false);
   await hook(page, "setCamera", { tx: 2, tz: -2, yaw: -0.96, dist: 34 });
   await frames(page, 3);
@@ -116,7 +118,7 @@ test("2 grab: 20/20 first-press acquisitions from empty ground, and A->B rapid s
 });
 
 test("3 throw: distance rises with hand speed; slow release sets down within 0.5 m", async ({ page }) => {
-  await boot(page);
+  await boot(page, "&scenario=solo");
   await hook(page, "setSettlerAi", false);
   await hook(page, "setCamera", { tx: -2, tz: 6, yaw: -0.96, dist: 48 });
   await frames(page, 3);
@@ -176,7 +178,7 @@ test("3 throw: distance rises with hand speed; slow release sets down within 0.5
 });
 
 test("4 haul: a log dropped on the meadow is hauled and the woodpile grows by one", async ({ page }) => {
-  await boot(page);
+  await boot(page, "&scenario=solo");
   await hook(page, "restart");
   await hook(page, "setSettlerAi", false);
   await hook(page, "setCamera", { tx: 12, tz: 12, yaw: -0.96, dist: 30 });
@@ -229,7 +231,7 @@ test("4 haul: a log dropped on the meadow is hauled and the woodpile grows by on
 });
 
 test("5+6 miracle and reaction: spiral -> zigzag summons a held Fireball; the grove burns; Ilse flees and remembers", async ({ page }) => {
-  await boot(page);
+  await boot(page, "&scenario=solo");
   await hook(page, "restart");
   await hook(page, "setSettlerAi", false);
   await hook(page, "placeSettler", 2, -12); // ~12 m from the grove's edge, in sight of it
@@ -346,7 +348,7 @@ async function enterTempleAndTouch(page: P, tablet: "save" | "load" | "restart")
 }
 
 test("7 persistence: save at the temple, change the world, load restores the same hash, also after reload", async ({ page }) => {
-  await boot(page);
+  await boot(page, "&scenario=solo");
   await hook(page, "setCamera", { tx: 30, tz: -28, yaw: -0.83, dist: 24 });
   await frames(page, 3);
   // Visit the chamber once for a screenshot of the tablets.
@@ -388,7 +390,7 @@ test("7 persistence: save at the temple, change the world, load restores the sam
 });
 
 test("8 no HUD: only the canvas is visible in normal play; F3 overlay is off by default", async ({ page }) => {
-  await boot(page);
+  await boot(page, "&scenario=solo");
   await frames(page, 6);
   const visible = async () =>
     page.evaluate(() =>
@@ -417,7 +419,7 @@ test("8 no HUD: only the canvas is visible in normal play; F3 overlay is off by 
 });
 
 test("perf (software-rendered, NOT hardware): 30 s at the default view", async ({ page }) => {
-  await page.goto("/?test=1&seed=7");
+  await page.goto("/?test=1&seed=7&scenario=solo");
   await page.waitForFunction(() => (window as P).__parable?.ready === true, null, { timeout: 120_000 });
   await page.mouse.move(720, 450);
   await page.waitForTimeout(3000);

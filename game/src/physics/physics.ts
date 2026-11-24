@@ -61,14 +61,22 @@ export class Physics {
       const body = this.world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(t.x, t.y + 1.5, t.z));
       this.world.createCollider(RAPIER.ColliderDesc.cylinder(1.5, 0.08 * t.scale).setFriction(0.7), body);
     }
-    // Cottage (rotated box) and temple drum.
-    const c = LAYOUT.cottage;
-    const cb = this.world.createRigidBody(
-      RAPIER.RigidBodyDesc.fixed()
-        .setTranslation(c.x, terrainHeight(c.x, c.z) + 2.2, c.z)
-        .setRotation({ x: 0, y: Math.sin(-c.rot / 2), z: 0, w: Math.cos(-c.rot / 2) }),
-    );
-    this.world.createCollider(RAPIER.ColliderDesc.cuboid(3.6, 2.4, 2.4), cb);
+    // Houses (rotated boxes): the cottage, the village houses and the building site.
+    for (const c of [LAYOUT.cottage, ...LAYOUT.houses.slice(1), LAYOUT.site]) {
+      const cb = this.world.createRigidBody(
+        RAPIER.RigidBodyDesc.fixed()
+          .setTranslation(c.x, terrainHeight(c.x, c.z) + 2.2, c.z)
+          .setRotation({ x: 0, y: Math.sin(-c.rot / 2), z: 0, w: Math.cos(-c.rot / 2) }),
+      );
+      this.world.createCollider(RAPIER.ColliderDesc.cuboid(3.6, 2.4, 2.4), cb);
+    }
+    // The painted wall, and the shrine's altar drum (the bell stone rests on its top).
+    const m = LAYOUT.mural;
+    const mb = this.world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(m.x, terrainHeight(m.x, m.z) + 1, m.z));
+    this.world.createCollider(RAPIER.ColliderDesc.cuboid(0.5, 1.1, m.len / 2), mb);
+    const sh = LAYOUT.shrine;
+    const sb = this.world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(sh.x, terrainHeight(sh.x, sh.z) + 0.7, sh.z));
+    this.world.createCollider(RAPIER.ColliderDesc.cylinder(0.7, 1.15).setFriction(1), sb);
     const t = LAYOUT.temple;
     const tb = this.world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(t.x, terrainHeight(t.x, t.z) + 3, t.z));
     this.world.createCollider(RAPIER.ColliderDesc.cuboid(4.8, 3, 4.8), tb);
@@ -102,7 +110,9 @@ export class Physics {
             .setDensity(600 / 1000)
             .setFriction(0.85)
             .setRestitution(0.1)
-        : RAPIER.ColliderDesc.ball(FIREBALL_RADIUS).setDensity(0.4).setSensor(false);
+        : item.kind === "bellstone"
+          ? RAPIER.ColliderDesc.ball(0.55).setDensity(2.4).setFriction(1).setRestitution(0.05)
+          : RAPIER.ColliderDesc.ball(FIREBALL_RADIUS).setDensity(0.4).setSensor(false);
     this.world.createCollider(col, body);
     this.bodies.set(item.id, body);
     this.kinds.set(item.id, item.kind);

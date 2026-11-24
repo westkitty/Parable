@@ -4,7 +4,23 @@ import * as THREE from "three";
 import { Hand } from "../hand/hand";
 import { TOWN, loadGLB } from "../render/assets";
 
-export type TabletAction = "save" | "load" | "restart" | "door";
+export type TabletAction = "save" | "load" | "restart" | "door" | "records";
+
+/** One finished Dry Year, as carved on the records wall. */
+export interface TempleRecord {
+  survived: boolean;
+  alive: number;
+  dead: number;
+  housesStanding: number;
+  belief: number;
+  day: number;
+}
+
+export interface TempleState {
+  learned: string[];
+  power: number; // 0..100
+  records: TempleRecord[];
+}
 
 export class TempleChamber {
   readonly scene = new THREE.Scene();
@@ -15,6 +31,15 @@ export class TempleChamber {
   hovered: TabletAction | null = null;
   private t = 0;
   private torches: THREE.PointLight[] = [];
+  private plaques = new Map<string, THREE.MeshStandardMaterial>();
+  private brazier!: THREE.PointLight;
+  private brazierFlame!: THREE.Mesh;
+  private recordsCanvas!: HTMLCanvasElement;
+  private recordsTex!: THREE.CanvasTexture;
+  private stateKey = "";
+  private power = 0;
+  recordsOpen = false;
+  private lookAt = new THREE.Vector3(0, 1.5, -3.6);
 
   async init(): Promise<void> {
     const s = this.scene;
@@ -96,6 +121,49 @@ export class TempleChamber {
       s.add(l);
       this.torches.push(l);
     }
+    // Learned miracles: three round plaques above the tablets, dark until the god knows the glyph.
+    const learnedGlyphs: [string, (g: CanvasRenderingContext2D) => void][] = [
+      ["fireball", drawFireGlyph],
+      ["rain", drawRainGlyph],
+      ["sanctuary", drawRingGlyph],
+    ];
+    learnedGlyphs.forEach(([name, draw], i) => {
+      const mat = new THREE.MeshStandardMaterial({
+        color: "#7d705c",
+        roughness: 0.9,
+        map: glyphTexture(draw, true),
+        emissive: new THREE.Color(name === "rain" ? "#7fc8ff" : name === "sanctuary" ? "#ffd27a" : "#ff8a3a"),
+        emissiveMap: glyphTexture(draw, false),
+        emissiveIntensity: 0,
+      });
+      const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.12, 40), [stone, mat, stone]);
+      disc.rotation.x = Math.PI / 2;
+      disc.position.set((i - 1) * 3, 3.55, -3.75);
+      s.add(disc);
+      this.plaques.set(name, mat);
+    });
+    // Prayer power: a brazier in the middle of the floor; its fire is the villagers' faith.
+    const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.32, 0.4, 20, 1, true), new THREE.MeshStandardMaterial({ color: "#5a4632", roughness: 0.6, metalness: 0.4, side: THREE.DoubleSide }));
+    bowl.position.set(0, 0.95, -1.6);
+    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.25, 0.8, 12), stone);
+    stem.position.set(0, 0.4, -1.6);
+    this.brazierFlame = new THREE.Mesh(new THREE.ConeGeometry(0.4, 1, 14), new THREE.MeshBasicMaterial({ color: new THREE.Color(2.4, 1.2, 0.35), transparent: true, opacity: 0.85, depthWrite: false }));
+    this.brazierFlame.position.set(0, 1.4, -1.6);
+    this.brazier = new THREE.PointLight(new THREE.Color("#ffb060"), 6, 9, 1.4);
+    this.brazier.position.set(0, 1.8, -1.6);
+    s.add(bowl, stem, this.brazierFlame, this.brazier);
+    // Records: a carved wall on the right; touch it to step closer and read the years.
+    this.recordsCanvas = document.createElement("canvas");
+    this.recordsCanvas.width = 512;
+    this.recordsCanvas.height = 640;
+    this.recordsTex = new THREE.CanvasTexture(this.recordsCanvas);
+    this.recordsTex.colorSpace = THREE.SRGBColorSpace;
+    const wall = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 3), new THREE.MeshStandardMaterial({ map: this.recordsTex, roughness: 0.9, emissive: new THREE.Color("#ffb453"), emissiveMap: this.recordsTex, emissiveIntensity: 0.12 }));
+    wall.position.set(6.4, 1.8, -1.4);
+    wall.rotation.y = -Math.PI / 2;
+    s.add(wall);
+    this.tablets.push({ mesh: wall, action: "records", glow: 0 });
+    this.drawRecords([]);
     this.camera.position.set(0, 1.9, 3.4);
     this.camera.lookAt(0, 1.5, -3.6);
     this.hand.group.scale.setScalar(0.6);
@@ -124,18 +192,113 @@ export class TempleChamber {
   tabletNdc(action: TabletAction): THREE.Vector2 {
     const t = this.tablets.find((x) => x.action === action)!;
     const p = t.mesh.getWorldPosition(new THREE.Vector3());
-    if (action !== "door") p.z += 0.2;
+    if (action !== "door" && action !== "records") p.z += 0.2;
+    if (action === "records") p.x -= 0.05;
     p.project(this.camera);
     return new THREE.Vector2(p.x, p.y);
   }
 
+  /** Refresh learned plaques, brazier and records (cheap when nothing changed). */
+  setState(st: TempleState): void {
+    this.power = st.power;
+    const key = `${st.learned.join()}|${st.records.length}`;
+    if (key === this.stateKey) return;
+    this.stateKey = key;
+    for (const [name, m] of this.plaques) m.emissiveIntensity = st.learned.includes(name) ? 1.6 : 0;
+    this.drawRecords(st.records);
+  }
+
+  learnedLit(name: string): boolean {
+    return (this.plaques.get(name)?.emissiveIntensity ?? 0) > 0;
+  }
+
+  toggleRecords(): void {
+    this.recordsOpen = !this.recordsOpen;
+  }
+
+  private drawRecords(records: TempleRecord[]): void {
+    const g = this.recordsCanvas.getContext("2d")!;
+    g.fillStyle = "#cdbd9c";
+    g.fillRect(0, 0, 512, 640);
+    g.strokeStyle = "#4a3a2a";
+    g.fillStyle = "#4a3a2a";
+    g.lineWidth = 8;
+    g.strokeRect(14, 14, 484, 612);
+    g.lineWidth = 4;
+    const rows = records.slice(-8);
+    if (!rows.length) {
+      // An empty ledger: one uncarved line.
+      g.beginPath();
+      g.moveTo(80, 320);
+      g.lineTo(432, 320);
+      g.stroke();
+    }
+    rows.forEach((r, i) => {
+      const y = 60 + i * 72;
+      // Sun with rays = the village lived; a broken bowl = it did not.
+      g.beginPath();
+      if (r.survived) {
+        g.arc(56, y + 10, 16, 0, Math.PI * 2);
+        for (let k = 0; k < 8; k += 1) {
+          const a = (k / 8) * Math.PI * 2;
+          g.moveTo(56 + Math.cos(a) * 21, y + 10 + Math.sin(a) * 21);
+          g.lineTo(56 + Math.cos(a) * 29, y + 10 + Math.sin(a) * 29);
+        }
+      } else {
+        g.arc(56, y + 4, 20, 0, Math.PI);
+        g.moveTo(50, y + 4);
+        g.lineTo(60, y + 24);
+      }
+      g.stroke();
+      // Figures: one per living villager, a fallen stroke per death.
+      for (let k = 0; k < r.alive; k += 1) {
+        const x = 104 + k * 17;
+        g.beginPath();
+        g.arc(x, y, 5, 0, Math.PI * 2);
+        g.moveTo(x, y + 5);
+        g.lineTo(x, y + 24);
+        g.stroke();
+      }
+      for (let k = 0; k < r.dead; k += 1) {
+        const x = 104 + (r.alive + k) * 17;
+        g.beginPath();
+        g.moveTo(x - 6, y + 24);
+        g.lineTo(x + 8, y + 18);
+        g.stroke();
+      }
+      // Houses still standing.
+      for (let k = 0; k < r.housesStanding; k += 1) {
+        const x = 330 + k * 26;
+        g.beginPath();
+        g.moveTo(x, y + 24);
+        g.lineTo(x, y + 10);
+        g.lineTo(x + 9, y);
+        g.lineTo(x + 18, y + 10);
+        g.lineTo(x + 18, y + 24);
+        g.stroke();
+      }
+      g.font = "bold 22px Georgia, serif";
+      g.fillText(String(r.belief), 462, y + 22);
+    });
+    this.recordsTex.needsUpdate = true;
+  }
+
   update(dt: number): void {
     this.t += dt;
+    const k = Math.max(0.08, this.power / 100);
+    this.brazierFlame.scale.set(0.5 + k * 0.6, 0.3 + k * 1.1 + Math.sin(this.t * 13) * 0.05, 0.5 + k * 0.6);
+    this.brazier.intensity = 1 + k * 9 + Math.sin(this.t * 9) * 0.5;
+    // Records view: the camera turns to the carved wall.
+    const want = this.recordsOpen ? new THREE.Vector3(3.6, 1.8, -1.4) : new THREE.Vector3(0, 1.9, 3.4);
+    const look = this.recordsOpen ? new THREE.Vector3(6.4, 1.8, -1.4) : new THREE.Vector3(0, 1.5, -3.6);
+    this.camera.position.lerp(want, Math.min(1, dt * 5));
+    this.lookAt.lerp(look, Math.min(1, dt * 5));
+    this.camera.lookAt(this.lookAt);
     for (const tb of this.tablets) {
       tb.glow += ((this.hovered === tb.action ? 1 : 0) - tb.glow) * Math.min(1, dt * 8);
       const mats = Array.isArray(tb.mesh.material) ? tb.mesh.material : [tb.mesh.material];
       const m = mats[4] as THREE.MeshStandardMaterial | undefined;
-      if (m && "emissiveIntensity" in m && tb.action !== "door") m.emissiveIntensity = 0.15 + tb.glow * 1.4;
+      if (m && "emissiveIntensity" in m && tb.action !== "door" && tb.action !== "records") m.emissiveIntensity = 0.15 + tb.glow * 1.4;
     }
     this.torches.forEach((l, i) => (l.intensity = 8 + Math.sin(this.t * 11 + i * 2) * 0.8 + Math.sin(this.t * 4.3 + i) * 0.6));
     this.hand.update(dt);
@@ -261,4 +424,51 @@ function stoneTexture(): THREE.Texture {
   t.repeat.set(3, 3);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
+}
+
+function drawFireGlyph(g: CanvasRenderingContext2D): void {
+  // Spiral, then the zigzag that throws it.
+  g.beginPath();
+  for (let a = 0; a < Math.PI * 4; a += 0.05) {
+    const r = 4 + a * 4;
+    const x = Math.cos(a) * r - 30;
+    const y = Math.sin(a) * r - 40;
+    if (a === 0) g.moveTo(x, y);
+    else g.lineTo(x, y);
+  }
+  g.stroke();
+  g.beginPath();
+  g.moveTo(-20, 40);
+  for (let k = 0; k < 5; k += 1) g.lineTo(-20 + (k % 2 ? 50 : 0), 40 + k * 22);
+  g.stroke();
+}
+
+function drawRainGlyph(g: CanvasRenderingContext2D): void {
+  // Cloud over a wave.
+  g.beginPath();
+  g.arc(-30, -40, 30, Math.PI, 0);
+  g.arc(25, -45, 36, Math.PI, 0);
+  g.lineTo(60, -20);
+  g.lineTo(-60, -20);
+  g.closePath();
+  g.stroke();
+  g.beginPath();
+  g.moveTo(-90, 60);
+  for (let k = 1; k <= 6; k += 1) g.lineTo(-90 + k * 30, 60 + (k % 2 ? -26 : 0));
+  g.stroke();
+}
+
+function drawRingGlyph(g: CanvasRenderingContext2D): void {
+  // A closed ring around a small house.
+  g.beginPath();
+  g.arc(0, 0, 95, 0, Math.PI * 2);
+  g.stroke();
+  g.beginPath();
+  g.moveTo(-30, 35);
+  g.lineTo(-30, -5);
+  g.lineTo(0, -35);
+  g.lineTo(30, -5);
+  g.lineTo(30, 35);
+  g.closePath();
+  g.stroke();
 }

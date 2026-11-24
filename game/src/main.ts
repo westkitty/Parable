@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { CAM_MAX_DIST, HAND_CARRY_HEIGHT, HAND_HOVER_HEIGHT, HAND_HOVER_PICK_RADIUS, RITUAL_ARM_MS, SIM_DT } from "./config";
+import { CAM_MAX_DIST, HAND_CARRY_HEIGHT, HAND_HOVER_HEIGHT, HAND_HOVER_PICK_RADIUS, MIRACLE_COST, RITUAL_ARM_MS, SIM_DT, SIM_HZ, STUDY_MURAL_S, DAY_S } from "./config";
 import { DebugOverlay, FrameStats } from "./debug/overlay";
 import { Hand } from "./hand/hand";
 import { Controller, type GameApi, type Grabbable } from "./input/controller";
@@ -7,26 +7,34 @@ import type { GestureResult } from "./input/gesture";
 import { buildWalkable, makePathFinder } from "./nav/grid";
 import { readSave, writeSave } from "./persist/storage";
 import { LOG_HALF_LENGTH, LOG_RADIUS, Physics } from "./physics/physics";
-import { ItemViews, FireView, SettlerView } from "./render/actors";
+import { ItemViews, FireView, SettlerViews } from "./render/actors";
+import { MiracleViews } from "./render/miracles";
+import { VillageView } from "./render/village";
 import { buildBuildings } from "./render/buildings";
 import { CameraRig, DEFAULT_CAMERA } from "./render/camera";
 import { buildEnvironment, followSun, type Water } from "./render/environment";
 import { Particles } from "./render/particles";
 import { TerrainView } from "./render/terrain";
 import { Vegetation, windUniform } from "./render/vegetation";
-import { burningCount, scorchedCount } from "./sim/fire";
+import { burningCount, createFireGrid, igniteAt, scorchedCount } from "./sim/fire";
+import { computeOutcome } from "./sim/economy";
+import { beliefSummary, villageBelief } from "./sim/belief";
 import { deserialize, hashWorld, serialize } from "./sim/save";
 import { trees } from "./sim/scenery";
-import { describeSettler, grabSettler, releaseSettler } from "./sim/settler";
-import { dissolveFireball, fireballImpact, stepWorld } from "./sim/step";
+import { describeAll, describeDetail, describeSettler, grabSettler, releaseSettler } from "./sim/settler";
+import { canAfford, castRain, castSanctuary, dissolveFireball, fireballImpact, learn, spend, stepWorld } from "./sim/step";
 import { LAYOUT, terrainHeight } from "./sim/terrain";
-import type { Item, World } from "./sim/types";
-import { addItem, createWorld, getItem } from "./sim/world";
-import { TempleChamber, type TabletAction } from "./temple/temple";
+import type { Item, Settler, World } from "./sim/types";
+import { addItem, createWorld, getItem, getSettler } from "./sim/world";
+import { TempleChamber, type TabletAction, type TempleRecord } from "./temple/temple";
 
 const params = new URLSearchParams(location.search);
 const TEST = params.get("test") === "1";
 const SEED = Number(params.get("seed") ?? 7) || 7;
+// ?scenario=solo is the M1 sandbox (Ilse alone, free Fireball); the default is the M2-M4 village and its Dry Year.
+const SCENARIO = params.get("scenario") === "solo" ? "solo" : "village";
+const RECORDS_KEY = "parable.records.v1";
+const DAY_TICKS = DAY_S * SIM_HZ;
 
 type TempleMode = "world" | "flying" | "fading-in" | "chamber" | "fading-out";
 
@@ -70,6 +78,10 @@ async function boot(): Promise<void> {
     })(),
   ]);
   scene.add(vegetation.group, buildings.group, itemViews.group);
+  const villageView = new VillageView();
+  const miracles = new MiracleViews(scene);
+  const settlerViews = new SettlerViews();
+  scene.add(villageView.group, settlerViews.group);
   const fireView = new FireView(flames, smoke, scene);
   const chamber = new TempleChamber();
   await chamber.init();
@@ -86,11 +98,15 @@ async function boot(): Promise<void> {
   scene.add(ring);
 
   const findPath = makePathFinder(buildWalkable());
-  let world: World = createWorld(SEED);
-  let settlerView = new SettlerView(world.settlers[0].id);
-  await settlerView.init();
-  scene.add(settlerView.root);
-  settlerView.snap(world.settlers[0]);
+  let world: World = createWorld(SEED, SCENARIO);
+  await settlerViews.sync(world);
+  await villageView.init(world);
+  let baseFuel = createFireGrid(world.scenario === "village").fuel;
+  const showVillage = () => {
+    villageView.group.visible = world.scenario === "village";
+    // The M1 cottage stays in both scenarios (it is house 0 of the village).
+  };
+  showVillage();
 
   let held: Grabbable | null = null;
   let settlerAi = true; // test hook can pause Ilse to isolate hand-control checks
@@ -107,10 +123,20 @@ async function boot(): Promise<void> {
   const log: string[] = [];
   const note = (s: string) => {
     log.push(`${world.tick}: ${s}`);
-    if (log.length > 60) log.shift();
+    if (log.length > 240) log.shift();
   };
 
+  /** The settler the hand is over / holding; Ilse (the first settler) for the M1 hooks. */
   const settler = () => world.settlers[0];
+  const settlerOf = (id: number): Settler | undefined => getSettler(world, id);
+  const pickableSettler = (s: Settler) => s.alive && s.state !== "airborne" && s.state !== "dead";
+  let heldCloud: number | null = null;
+  let studyTime = 0;
+  let endShown = false;
+  const endCard = document.createElement("div");
+  endCard.id = "endcard";
+  endCard.style.display = "none";
+  document.body.appendChild(endCard);
   const pickRadius = () => Math.max(HAND_HOVER_PICK_RADIUS, rig.dist * 0.03);
   const raycaster = new THREE.Raycaster();
 
@@ -121,14 +147,18 @@ async function boot(): Promise<void> {
       raycaster.ray.copy(ray);
       raycaster.far = 400;
       // Exact hits on meshes win.
-      const hits = raycaster.intersectObjects([settlerView.root, ...itemViews.pickables()], true);
+      const hits = raycaster.intersectObjects([settlerViews.group, ...itemViews.pickables()], true);
       for (const h of hits) {
         let o: THREE.Object3D | null = h.object;
         while (o) {
-          if (o === settlerView.root) return settler().state === "airborne" ? null : { kind: "settler", id: settler().id };
+          if (o.userData.settlerId != null) {
+            const s = settlerOf(o.userData.settlerId as number);
+            if (s && pickableSettler(s)) return { kind: "settler", id: s.id };
+            break;
+          }
           if (o.userData.itemId != null) {
             const it = getItem(world, o.userData.itemId as number);
-            if (it && it.kind === "log" && (it.state === "loose" || it.state === "carried")) return { kind: "item", id: it.id };
+            if (it && (it.kind === "log" || it.kind === "bellstone") && (it.state === "loose" || it.state === "carried")) return { kind: "item", id: it.id };
             break;
           }
           o = o.parent;
@@ -139,16 +169,22 @@ async function boot(): Promise<void> {
       let best: Grabbable | null = null;
       let bestD = pickRadius();
       for (const it of world.items) {
-        if (it.kind !== "log" || (it.state !== "loose" && it.state !== "carried")) continue;
+        if ((it.kind !== "log" && it.kind !== "bellstone") || (it.state !== "loose" && it.state !== "carried")) continue;
         const d = Math.hypot(it.p[0] - ground.x, it.p[2] - ground.z);
         if (d < bestD) {
           bestD = d;
           best = { kind: "item", id: it.id };
         }
       }
-      const s = settler();
-      const ds = Math.hypot(s.x - ground.x, s.z - ground.z);
-      if (s.state !== "airborne" && ds < Math.max(1.2, pickRadius() * 0.8) && ds < bestD + 0.4) best = { kind: "settler", id: s.id };
+      let bestS = Math.max(1.2, pickRadius() * 0.8);
+      for (const s of world.settlers) {
+        if (!pickableSettler(s)) continue;
+        const ds = Math.hypot(s.x - ground.x, s.z - ground.z);
+        if (ds < bestS && ds < bestD + 0.4) {
+          bestS = ds;
+          best = { kind: "settler", id: s.id };
+        }
+      }
       return best;
     },
     grab(g) {
@@ -169,7 +205,9 @@ async function boot(): Promise<void> {
         it.godTouched = true;
         physics.sync(world);
       } else {
-        grabSettler(world, settler());
+        const s = settlerOf(g.id);
+        if (!s || !pickableSettler(s)) return false;
+        grabSettler(world, s);
       }
       held = g;
       hand.setPose("grip");
@@ -183,10 +221,11 @@ async function boot(): Promise<void> {
       const gp = ground ?? lastGround;
       lastReleasePoint = [gp.x, gp.y, gp.z];
       if (g.kind === "settler") {
-        const s = settler();
+        const s = settlerOf(g.id);
+        if (!s) return;
         if (gentle) releaseSettler(world, s, gp.x, Math.max(terrainHeight(gp.x, gp.z), 0), gp.z, [0, 0, 0], false);
         else releaseSettler(world, s, s.x, s.y, s.z, v, true);
-        settlerView.snap(s);
+        settlerViews.get(s.id)?.snap(s);
       } else {
         const it = getItem(world, g.id);
         if (!it) return;
@@ -223,28 +262,18 @@ async function boot(): Promise<void> {
       note(`release ${g.kind} ${gentle ? "gentle" : "throw"} v=${v.map((x) => x.toFixed(1)).join(",")}`);
     },
     holding: () => held,
-    summonFireball() {
-      if (held || templeMode !== "world") return false;
-      const p = handTarget.clone().add(new THREE.Vector3(0, -0.9, 0));
-      const it = addItem(world, "fireball", p.x, p.y, p.z);
-      it.state = "held";
-      it.godTouched = true;
-      it.restTicks = 0;
-      physics.sync(world);
-      held = { kind: "item", id: it.id };
-      hand.setPose("grip");
-      note("fireball summoned");
-      return true;
+    cast(kind) {
+      return castMiracle(kind);
     },
     interact(_ray, ground) {
-      if (!ground) return false;
-      if (ground.distanceTo(buildings.templeDoor) < 4.5 || Math.hypot(ground.x - LAYOUT.temple.x, ground.z - LAYOUT.temple.z) < 6) {
-        enterTemple();
+      if (heldCloud != null) {
+        dropCloud();
         return true;
       }
-      return false;
+      return interactWorld(ground);
     },
     blocked: () => templeMode !== "world",
+
     chamberPointer(ndc, click) {
       if (templeMode !== "chamber") return;
       const a = chamber.pointer(ndc);
@@ -283,6 +312,118 @@ async function boot(): Promise<void> {
 
   const controller = new Controller(canvas, game);
 
+  function summonFireball(): boolean {
+    if (held || templeMode !== "world") return false;
+    const p = handTarget.clone().add(new THREE.Vector3(0, -0.9, 0));
+    const it = addItem(world, "fireball", p.x, p.y, p.z);
+    it.state = "held";
+    it.godTouched = true;
+    it.restTicks = 0;
+    physics.sync(world);
+    held = { kind: "item", id: it.id };
+    hand.setPose("grip");
+    note("fireball summoned");
+    return true;
+  }
+
+  function interactWorld(ground: THREE.Vector3 | null): boolean {
+    if (!ground) return false;
+    if (ground.distanceTo(buildings.templeDoor) < 4.5 || Math.hypot(ground.x - LAYOUT.temple.x, ground.z - LAYOUT.temple.z) < 6) {
+      enterTemple();
+      return true;
+    }
+    return false;
+  }
+
+  /** A fizzle: the glyph was right but the god lacks the power (or the knowledge). */
+  function fizzle(why: string): void {
+    const p = handTarget;
+    for (let i = 0; i < 18; i += 1) smoke.emit(p.x, p.y - 0.6, p.z, (Math.random() - 0.5) * 1.5, Math.random(), (Math.random() - 0.5) * 1.5, 0.8, 1.1, 0.6, 0.6, 0.65, 0.45, 1);
+    note(`fizzle: ${why}`);
+  }
+
+  function nearShrine(): boolean {
+    return world.shrine.awakened && Math.hypot(lastGround.x - LAYOUT.shrine.x, lastGround.z - LAYOUT.shrine.z) < 14;
+  }
+
+  function castMiracle(kind: "fireball" | "rain" | "sanctuary"): boolean {
+    if (templeMode !== "world" || world.outcome?.ended) return false;
+    if (kind === "rain" && !world.learned.includes("rain") && nearShrine()) {
+      // Tracing the shrine's glyph beside it teaches Rain.
+      learn(world, "rain");
+      note("learned rain at the shrine");
+    }
+    if (!world.learned.includes(kind)) {
+      fizzle(`${kind} not learned`);
+      return false;
+    }
+    if (!canAfford(world, kind)) {
+      fizzle(`${kind} needs ${MIRACLE_COST[kind]} power, have ${Math.floor(world.power)}`);
+      return false;
+    }
+    if (kind === "fireball") {
+      if (!summonFireball()) return false;
+    } else if (kind === "rain") {
+      if (held || heldCloud != null) return false;
+      heldCloud = castRain(world, lastGround.x, lastGround.z);
+      note("rain cloud summoned");
+    } else {
+      castSanctuary(world, lastGround.x, lastGround.z);
+      note(`sanctuary at ${lastGround.x.toFixed(0)},${lastGround.z.toFixed(0)}`);
+    }
+    spend(world, kind);
+    return true;
+  }
+
+  function dropCloud(): void {
+    const c = world.clouds.find((x) => x.id === heldCloud);
+    if (c) {
+      c.held = false;
+      c.x = lastGround.x;
+      c.z = lastGround.z;
+      note(`rain dropped at ${c.x.toFixed(0)},${c.z.toFixed(0)}`);
+    }
+    heldCloud = null;
+  }
+
+  function loadRecords(): TempleRecord[] {
+    try {
+      return JSON.parse(localStorage.getItem(RECORDS_KEY) ?? "[]") as TempleRecord[];
+    } catch {
+      return [];
+    }
+  }
+  function addRecord(): void {
+    const o = world.outcome;
+    if (!o) return;
+    const rs = loadRecords();
+    rs.push({ survived: o.survived, alive: o.alive, dead: o.dead, housesStanding: o.housesStanding, belief: o.belief, day: o.day });
+    localStorage.setItem(RECORDS_KEY, JSON.stringify(rs.slice(-20)));
+  }
+  function showEndCard(): void {
+    const o = world.outcome!;
+    endCard.innerHTML = "";
+    const h = document.createElement("h1");
+    h.textContent = o.title;
+    endCard.appendChild(h);
+    for (const line of o.lines) {
+      const p = document.createElement("p");
+      p.textContent = line;
+      endCard.appendChild(p);
+    }
+    const b = document.createElement("button");
+    b.id = "restart";
+    b.textContent = "Begin a new year";
+    b.addEventListener("click", () => restart());
+    endCard.appendChild(b);
+    endCard.style.display = "block";
+    endCard.classList.toggle("lost", !o.survived);
+  }
+  function restart(): void {
+    applyWorld(createWorld(SEED, world.scenario));
+    note("restarted");
+  }
+
   function puff(p: [number, number, number]): void {
     for (let i = 0; i < 24; i += 1) {
       smoke.emit(p[0], p[1], p[2], (Math.random() - 0.5) * 2, Math.random() * 1.5, (Math.random() - 0.5) * 2, 1.2, 1.5, 0.9, 0.85, 0.8, 0.5, 1.5);
@@ -315,6 +456,7 @@ async function boot(): Promise<void> {
   function exitTemple(): void {
     if (templeMode !== "chamber") return;
     templeMode = "fading-out";
+    chamber.recordsOpen = false;
     fadeTo(1, () => {
       const t = LAYOUT.temple;
       const yaw = Math.atan2(t.doorX - t.x, t.doorZ - t.z);
@@ -348,23 +490,32 @@ async function boot(): Promise<void> {
   function applyWorld(w: World): void {
     controller.safeRelease();
     held = null;
+    heldCloud = null;
     world = w;
+    for (const c of world.clouds) c.held = false;
+    baseFuel = createFireGrid(world.scenario === "village").fuel;
+    showVillage();
+    endShown = !!world.outcome?.ended;
+    if (endShown) showEndCard();
+    else endCard.style.display = "none";
+    void settlerViews.sync(world);
     physics.clear();
     physics.sync(world);
     flames.clear();
     smoke.clear();
     trace.clear();
-    settlerView.snap(settler());
+    for (const s of world.settlers) settlerViews.get(s.id)?.snap(s);
     simAcc = 0;
   }
   async function tablet(a: TabletAction): Promise<void> {
     if (a === "door") return exitTemple();
+    if (a === "records") {
+      chamber.toggleRecords();
+      return;
+    }
     if (a === "save") await doSave();
     else if (a === "load") await doLoad();
-    else {
-      applyWorld(createWorld(SEED));
-      note("restarted");
-    }
+    else restart();
     exitTemple();
   }
   window.addEventListener("keydown", (e) => {
@@ -378,21 +529,40 @@ async function boot(): Promise<void> {
     const t0 = performance.now();
     stepWorld(world, findPath, { settlers: settlerAi });
     lastSimMs = performance.now() - t0;
+    const nameOf = (id: number) => (settlerOf(id)?.name ?? `#${id}`).toLowerCase();
     for (const e of world.events) {
       if (e.type === "ignite") note(`ignite ${e.cells} cells`);
-      if (e.type === "stacked") note(`stacked -> ${e.count}`);
-      if (e.type === "settler_state") note(`ilse ${e.state}`);
-      if (e.type === "cant_reach") note("ilse can't reach");
+      else if (e.type === "stacked") note(`stacked -> ${e.count}`);
+      else if (e.type === "settler_state") {
+        if (world.scenario === "solo") note(`${nameOf(e.settler)} ${e.state}`);
+      } else if (e.type === "cant_reach") note(`${nameOf(e.settler)} can't reach`);
+      else if (e.type === "lightning") {
+        miracles.strike(e.x, e.z);
+        note(`lightning at ${e.x.toFixed(0)},${e.z.toFixed(0)}`);
+      } else if (e.type === "felled") note(`${nameOf(e.settler)} felled a tree`);
+      else if (e.type === "delivered") note(`${nameOf(e.settler)} delivered ${e.res} to ${e.to}`);
+      else if (e.type === "site_done") note(`house ${e.house} finished`);
+      else if (e.type === "house_burned") note(`house ${e.house} burned`);
+      else if (e.type === "harvest") note(`harvest +${e.food}`);
+      else if (e.type === "died") note(`${nameOf(e.settler)} died (${e.cause})`);
+      else if (e.type === "learned") note(`learned ${e.miracle}`);
+      else if (e.type === "shrine_awake") note("shrine awake");
+      else if (e.type === "mural_done") note("mural finished");
+      else if (e.type === "day") note(`day ${e.day} dryness ${e.dryness.toFixed(2)}`);
+      else if (e.type === "doused") note(`${nameOf(e.settler)} doused ${e.cells}`);
+      else if (e.type === "prayed") note(`${nameOf(e.settler)} prayed`);
+      else if (e.type === "outcome") note(`outcome ${e.survived ? "survived" : "lost"}`);
     }
     world.events = [];
-    settlerView.onTick(settler());
+    for (const s of world.settlers) settlerViews.get(s.id)?.onTick(s);
   }
 
   function updateHeld(): void {
     if (!held) return;
     const yaw = rig.yaw + Math.PI;
     if (held.kind === "settler") {
-      const s = settler();
+      const s = settlerOf(held.id);
+      if (!s) return;
       s.x = handTarget.x;
       s.z = handTarget.z;
       s.y = handTarget.y - 2.25;
@@ -405,7 +575,7 @@ async function boot(): Promise<void> {
     const reach = it.kind === "fireball" ? 2.1 * hand.group.scale.x : 0;
     const p: [number, number, number] = [
       handTarget.x - Math.sin(rig.yaw) * reach,
-      handTarget.y - (it.kind === "log" ? 0.85 : 0.7 * hand.group.scale.x),
+      handTarget.y - (it.kind === "log" ? 0.85 : it.kind === "bellstone" ? 0.9 : 0.7 * hand.group.scale.x),
       handTarget.z - Math.cos(rig.yaw) * reach,
     ];
     physics.setHeldTarget(it.id, p, [q.x, q.y, q.z, q.w]);
@@ -448,6 +618,7 @@ async function boot(): Promise<void> {
     chamber.resize(w / h);
     const ph = h * renderer.getPixelRatio();
     for (const p of [flames, smoke, trace]) p.setViewportHeight(ph, rig.camera.fov);
+    miracles.setViewport(ph, rig.camera.fov);
   }
   window.addEventListener("resize", resize);
   resize();
@@ -484,6 +655,26 @@ async function boot(): Promise<void> {
     handTarget.set(lastGround.x, lastGround.y + lift + 0.35, lastGround.z);
     if (!held) hand.setPose(hover ? "reach" : "open");
     hand.setArmed(controller.armed() ? 1 : 0);
+    // A held rain cloud rides with the hand.
+    if (heldCloud != null) {
+      const c = world.clouds.find((x) => x.id === heldCloud);
+      if (c) {
+        c.x = lastGround.x;
+        c.z = lastGround.z;
+      } else heldCloud = null;
+    }
+    // Studying the finished mural: hold the empty hand over it.
+    if (world.scenario === "village" && templeMode === "world" && !held && world.mural.progress >= 1 && !world.learned.includes("sanctuary")) {
+      const m = LAYOUT.mural;
+      const near = Math.hypot(lastGround.x - m.x, lastGround.z - m.z) < m.len / 2 + 2.5;
+      studyTime = near ? studyTime + dt : 0;
+      if (studyTime >= STUDY_MURAL_S) {
+        world.mural.read = true;
+        learn(world, "sanctuary");
+        note("learned sanctuary from the mural");
+        studyTime = 0;
+      }
+    } else studyTime = 0;
     const handEase = 1 - Math.exp(-dt * 22);
     hand.group.position.lerp(handTarget, handEase);
     hand.group.rotation.set(0.32, rig.yaw + Math.PI, 0);
@@ -517,11 +708,15 @@ async function boot(): Promise<void> {
 
     // Views.
     const s = settler();
-    settlerView.update(s, Math.min(1, simAcc / SIM_DT), dt, world.tick);
+    const alpha = Math.min(1, simAcc / SIM_DT);
+    for (const st of world.settlers) settlerViews.get(st.id)?.update(st, alpha, dt, world.tick);
     itemViews.update(world, dt);
     fireView.update(world, dt);
-    terrain.updateFire(world.fire);
-    vegetation.updateFire(world.fire, dt);
+    const village = world.scenario === "village";
+    terrain.updateFire(world.fire, village ? world.climate.dryness : 0, village ? baseFuel : null);
+    vegetation.updateFire(world.fire, dt, world.felled);
+    if (village) villageView.update(world, dt);
+    miracles.update(world, dt);
     buildings.woodpile.setCount(world.woodpile.count);
     water.update(time);
     flames.update(dt);
@@ -529,16 +724,40 @@ async function boot(): Promise<void> {
     trace.update(dt);
     followSun(sun, rig.target, rig.dist);
 
-    // Inspect bubble: hover the empty hand over Ilse for 0.6 s.
-    if (hover?.kind === "settler" && !held) hoverSettlerTime += dt;
+    // Inspect bubble: hover the empty hand over a villager for 0.6 s.
+    const hoveredId = hover?.kind === "settler" && !held ? hover.id : null;
+    if (hoveredId != null && hoveredId === hoverSettlerId) hoverSettlerTime += dt;
     else hoverSettlerTime = 0;
+    hoverSettlerId = hoveredId;
     let bubble: string | null = null;
+    let bubbleDetail = "";
+    let bubbleId: number | null = null;
     if (templeMode === "world") {
-      if (world.tick < s.cantReachShownUntil) bubble = "I can't reach that.";
-      else if (hoverSettlerTime >= 0.6) bubble = describeSettler(world, s);
+      const cant = world.settlers.find((x) => world.tick < x.cantReachShownUntil);
+      if (cant) {
+        bubble = "I can't reach that.";
+        bubbleId = cant.id;
+      } else if (hoveredId != null && hoverSettlerTime >= 0.6) {
+        const hs = settlerOf(hoveredId)!;
+        bubble = describeSettler(world, hs);
+        if (village) bubbleDetail = describeDetail(world, hs);
+        bubbleId = hs.id;
+      }
     }
-    settlerView.showBubble(bubble, rig.camera, window.innerWidth, window.innerHeight);
+    for (const [id, v] of settlerViews.views) v.showBubble(id === bubbleId ? bubble : null, rig.camera, window.innerWidth, window.innerHeight, bubbleDetail);
     currentBubble = bubble;
+    currentBubbleDetail = bubbleDetail;
+    // The hand glows warmer with more prayer power (village only).
+    hand.setPower(village ? world.power / 100 : 1);
+    if (templeMode === "chamber" || templeMode === "fading-in") chamber.setState({ learned: world.learned, power: village ? world.power : 100, records: loadRecordsCached() });
+    // The year's end: a card with what happened, saved to the temple records.
+    if (world.outcome?.ended && !endShown) {
+      endShown = true;
+      addRecord();
+      recordsCache = null;
+      showEndCard();
+      controller.safeRelease();
+    }
 
     if (templeMode === "chamber" || templeMode === "fading-out") {
       chamber.update(dt);
@@ -549,12 +768,12 @@ async function boot(): Promise<void> {
       const st = frameStats.summary(240);
       const mem = (performance as unknown as { memory?: { usedJSHeapSize: number } }).memory;
       return [
-        `PARABLE M1  seed ${world.seed}  tick ${world.tick}  (F3 to hide)`,
+        `PARABLE ${world.scenario}  seed ${world.seed}  tick ${world.tick}  day ${world.climate.day} dry ${world.climate.dryness.toFixed(2)}  power ${Math.floor(world.power)}  (F3 to hide)`,
         `frame median ${st.median.toFixed(1)} ms  p95 ${st.p95.toFixed(1)} ms  ~${st.fps.toFixed(0)} fps`,
         `sim tick ${lastSimMs.toFixed(2)} ms  physics ${physics.lastStepMs.toFixed(2)} ms/step  heap ${mem ? (mem.usedJSHeapSize / 1048576).toFixed(0) + " MB" : "n/a"}`,
         `camera dist ${rig.dist.toFixed(1)} height ${rig.height().toFixed(1)}  mode ${controller.mode}  temple ${templeMode}`,
         `held ${held ? held.kind + " " + held.id : "-"}  hover ${hover ? hover.kind + " " + hover.id : "-"}  armed ${controller.armed()}`,
-        `Ilse ${s.state}  carrying ${s.carrying ?? "-"}  memories ${s.memories.length}  woodpile ${world.woodpile.count}`,
+        `${s.name} ${s.state}  carrying ${s.carrying ?? "-"}  memories ${s.memories.length}  woodpile ${world.woodpile.count}  food ${world.granary.food}  alive ${world.settlers.filter((x) => x.alive).length}/${world.settlers.length}  belief ${village ? villageBelief(world) : "-"}`,
         `fire burning ${burningCount(world.fire)}  scorched ${scorchedCount(world.fire)}  hash ${hashWorld(world)}`,
         `last gesture ${lastGesture ? JSON.stringify(lastGesture) : "-"}`,
         ...log.slice(-8),
@@ -565,6 +784,13 @@ async function boot(): Promise<void> {
     requestAnimationFrame(frame);
   }
   let currentBubble: string | null = null;
+  let currentBubbleDetail = "";
+  let hoverSettlerId: number | null = null;
+  let recordsCache: TempleRecord[] | null = null;
+  function loadRecordsCached(): TempleRecord[] {
+    if (!recordsCache) recordsCache = loadRecords();
+    return recordsCache;
+  }
   const frameIntervals = new FrameStats();
   fadeTo(0, () => undefined);
   requestAnimationFrame(frame);
@@ -643,13 +869,88 @@ async function boot(): Promise<void> {
         physics.place(id, it.p, false);
         return true;
       },
-      placeSettler: (x: number, z: number) => {
-        const s = settler();
+      placeSettler: (x: number, z: number, id?: number) => {
+        const s = id != null ? settlerOf(id)! : settler();
         s.x = x;
         s.z = z;
         s.y = terrainHeight(x, z);
         s.path = [];
-        settlerView.snap(s);
+        settlerViews.get(s.id)?.snap(s);
+      },
+      // ---- M2-M4 hooks ----
+      village: () => ({
+        scenario: world.scenario,
+        day: world.climate.day,
+        dayTick: world.climate.dayTick,
+        dryness: world.climate.dryness,
+        wind: world.climate.wind,
+        lightningDone: world.climate.lightningDone,
+        power: world.power,
+        learned: world.learned.slice(),
+        food: world.granary.food,
+        woodpile: world.woodpile.count,
+        houses: world.houses.map((h) => ({ id: h.id, state: h.state })),
+        sites: world.sites.map((x) => ({ id: x.id, have: x.have, need: x.need, work: x.work, done: x.done })),
+        felled: world.felled.length,
+        clouds: world.clouds.map((c) => ({ id: c.id, x: c.x, z: c.z, held: c.held, ttl: c.ttl })),
+        sanctuaries: world.sanctuaries.map((x) => ({ id: x.id, x: x.x, z: x.z, ttl: x.ttl })),
+        shrine: { ...world.shrine },
+        mural: { ...world.mural },
+        outcome: world.outcome,
+        belief: world.scenario === "village" ? villageBelief(world) : 0,
+        heldCloud,
+        endCardVisible: endCard.style.display !== "none",
+        bubbleDetail: currentBubbleDetail,
+        alive: world.settlers.filter((x) => x.alive).length,
+      }),
+      settlers: () =>
+        world.settlers.map((x) => ({
+          id: x.id,
+          name: x.name,
+          job: x.job,
+          state: x.state,
+          alive: x.alive,
+          x: x.x,
+          y: x.y,
+          z: x.z,
+          hunger: x.hunger,
+          energy: x.energy,
+          injury: x.injury,
+          home: x.home,
+          belief: x.belief,
+          mood: beliefSummary(x),
+          memories: x.memories.length,
+          memoryKinds: x.memories.map((m) => m.kind),
+          carryRes: x.carryRes, task: x.task?.kind ?? null,
+        })),
+      describe: () => describeAll(world),
+      settlerScreenOf: (id: number) => {
+        const x = settlerOf(id);
+        return x ? screenOf(x.x, x.y + 1, x.z) : null;
+      },
+      setPower: (n: number) => {
+        world.power = n;
+      },
+      learn: (m: string) => learn(world, m),
+      castMiracle: (k: "fireball" | "rain" | "sanctuary") => castMiracle(k),
+      setDay: (day: number, frac = 0) => {
+        world.climate.day = day;
+        world.climate.dayTick = Math.floor(frac * DAY_TICKS);
+      },
+      setMuralProgress: (p: number) => {
+        world.mural.progress = p;
+      },
+      shrineScreen: () => screenOf(villageView.shrinePoint.x, villageView.shrinePoint.y, villageView.shrinePoint.z),
+      muralScreen: () => screenOf(villageView.muralPoint.x, villageView.muralPoint.y, villageView.muralPoint.z),
+      itemOfKind: (k: string) => world.items.find((x) => x.kind === k)?.id ?? null,
+      igniteAt: (x: number, z: number, r = 2.5) => igniteAt(world, x, z, r, false),
+      records: () => loadRecords(),
+      clearRecords: () => localStorage.removeItem(RECORDS_KEY),
+      templeLit: (m: string) => chamber.learnedLit(m),
+      recordsOpen: () => chamber.recordsOpen,
+      endOutcome: (survived: boolean) => {
+        world.outcome = computeOutcome(world, survived);
+        world.events.push({ type: "outcome", survived: world.outcome.survived });
       },
       setSettlerAi: (on: boolean) => {
         settlerAi = on;
@@ -660,10 +961,7 @@ async function boot(): Promise<void> {
       },
       save: () => doSave(),
       load: () => doLoad(),
-      restart: () => {
-        applyWorld(createWorld(SEED));
-        note("restarted");
-      },
+      restart: () => restart(),
       perf: () => ({ cpu: frameStats.summary(), interval: frameIntervals.summary(), physicsStepMs: physics.lastStepMs, simTickMs: lastSimMs }),
       resetPerf: () => {
         frameStats.reset();

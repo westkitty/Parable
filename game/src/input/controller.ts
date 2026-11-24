@@ -26,7 +26,8 @@ export interface GameApi {
   /** Release whatever is held; gentle = set down at `ground`, otherwise thrown with `v`. */
   release(v: [number, number, number], gentle: boolean, ground: THREE.Vector3 | null, safe: boolean): void;
   holding(): Grabbable | null;
-  summonFireball(): boolean;
+  /** A completed ritual: spiral then zigzag = Fireball, spiral then wave = Rain, spiral then ring = Sanctuary. */
+  cast(kind: "fireball" | "rain" | "sanctuary"): boolean;
   interact(ray: THREE.Ray, ground: THREE.Vector3 | null): boolean;
   blocked(): boolean; // temple transition / chamber: world input off
   chamberPointer(ndc: THREE.Vector2, click: boolean): void;
@@ -299,9 +300,9 @@ export class Controller {
     const outcome = this.ritual.feed(r, this.nowMs());
     if (outcome === "armed") {
       this.game.onTrace(pts.filter((p) => p.w).map((p) => p.w!), "armed");
-    } else if (outcome === "fireball") {
-      if (this.game.summonFireball()) {
-        this.mode = this.rightHeld ? "carry" : "hover";
+    } else if (outcome) {
+      if (this.game.cast(outcome)) {
+        if (outcome === "fireball") this.mode = this.rightHeld ? "carry" : "hover";
         this.game.onTrace(pts.filter((p) => p.w).map((p) => p.w!), "cast");
       }
     }

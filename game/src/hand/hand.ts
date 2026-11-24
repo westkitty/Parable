@@ -25,6 +25,7 @@ export class Hand {
   private skin: THREE.MeshStandardMaterial;
   private glow: THREE.Sprite;
   private armed = 0;
+  private power = 1;
   private time = 0;
 
   constructor() {
@@ -115,6 +116,11 @@ export class Hand {
     this.targetCurl = POSE_CURL[pose];
   }
 
+  /** 0..1 prayer power: a faithless village leaves the hand's aura dim. */
+  setPower(level: number): void {
+    this.power = Math.max(0, Math.min(1, level));
+  }
+
   /** 0..1 golden ritual glow while the spiral has armed the ritual. */
   setArmed(level: number): void {
     this.armed = level;
@@ -133,7 +139,7 @@ export class Hand {
       f.joints[2].rotation.x = (0.1 + this.curl * 0.9) * f.curlScale;
     });
     const pulse = 0.5 + 0.5 * Math.sin(this.time * 6);
-    this.glowMat.opacity = 0.28 + this.armed * (0.45 + 0.25 * pulse);
+    this.glowMat.opacity = (0.1 + 0.18 * this.power) + this.armed * (0.45 + 0.25 * pulse);
     this.glowMat.color.set(this.armed > 0 ? "#ffb347" : "#ffe2a8");
     this.skin.emissiveIntensity = 0.1 + this.armed * 0.35 * (0.6 + 0.4 * pulse);
     // Gentle idle hover bob.

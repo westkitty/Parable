@@ -41,3 +41,46 @@ export const MEMORY_MAX = 8;
 export const FIRE_CELL = 2; // metres
 export const FIRE_IGNITE_RADIUS = 3;
 export const FIRE_BURN_S = 9;
+
+// ---- M2: the working village ----
+export const DAY_S = 90; // one in-game day of the Dry Year, in real seconds at normal speed
+export const DAY_TICKS = DAY_S * SIM_HZ;
+export const HUNGER_DAYS = 1.4; // fed -> starving
+export const ENERGY_DAYS = 1.3; // rested -> exhausted while working
+export const HEAL_PER_DAY = 0.15; // natural healing
+export const TEND_HEAL = 0.25; // one carer visit
+export const LAID_UP_AT = 0.6; // injury at which a villager can no longer work
+export const CHOP_S = 6;
+export const BUILD_S = 5;
+export const FARM_S = 3.5;
+export const EAT_S = 3;
+export const REST_S = 12;
+export const PRAY_S = 4;
+export const PAINT_S = 5;
+export const TEND_S = 5;
+export const FETCH_S = 1.2;
+export const HOUSE_WOOD = 8;
+export const REBUILD_WOOD = 5;
+export const WOODPILE_TARGET = 14; // woodcutters stop felling when the pile is this high
+export const START_FOOD = 30;
+export const START_WOOD = 3;
+export const FOOD_PER_HARVEST = 3;
+
+// ---- M3: belief and miracles ----
+export const START_POWER = 70;
+export const POWER_MAX = 100;
+export const MIRACLE_COST: Record<string, number> = { fireball: 20, rain: 30, sanctuary: 40 };
+export const PRAY_MIN_BELIEF = 25;
+export const PAINT_MIN_VILLAGE_BELIEF = 30;
+export const RAIN_S = 24;
+export const RAIN_RADIUS = 8;
+export const WET_S = 40;
+export const SANCTUARY_S = 60;
+export const SANCTUARY_RADIUS = 9;
+export const SHRINE_ALTAR_RADIUS = 2.4;
+export const STUDY_MURAL_S = 1.2;
+
+// ---- M4: the Dry Year ----
+export const DRY_YEAR_DAYS = 10;
+export const LIGHTNING_DAY = 5;
+export const SURVIVE_MIN_ALIVE = 4;

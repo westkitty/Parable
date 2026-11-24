@@ -12,7 +12,7 @@ const cam = { tx: 0, tz: 0, yaw: 0, dist: 60 };
 describe("fire", () => {
   it("spreads deterministically for a seed", () => {
     const run = () => {
-      const w = createWorld(7);
+      const w = createWorld(7, "solo");
       igniteAt(w, LAYOUT.grove.x, LAYOUT.grove.z, 3);
       const trace: number[] = [];
       for (let i = 0; i < 600; i += 1) {
@@ -25,7 +25,7 @@ describe("fire", () => {
   });
 
   it("burns the grove, then the scorch never reverts", () => {
-    const w = createWorld(7);
+    const w = createWorld(7, "solo");
     const lit = igniteAt(w, LAYOUT.grove.x, LAYOUT.grove.z, 3);
     expect(lit).toBeGreaterThanOrEqual(3);
     let maxScorch = 0;
@@ -40,14 +40,14 @@ describe("fire", () => {
   });
 
   it("does not ignite water or paths", () => {
-    const w = createWorld(7);
+    const w = createWorld(7, "solo");
     expect(igniteAt(w, LAYOUT.pond.x, LAYOUT.pond.z, 3)).toBe(0);
   });
 });
 
 describe("save", () => {
   it("round-trips to the same hash", () => {
-    const w = createWorld(7);
+    const w = createWorld(7, "solo");
     const path = makePathFinder(buildWalkable());
     for (let i = 0; i < 300; i += 1) stepWorld(w, path);
     igniteAt(w, LAYOUT.grove.x, LAYOUT.grove.z, 3);
@@ -67,9 +67,9 @@ describe("save", () => {
   });
 
   it("fails loudly on a version mismatch", () => {
-    const w = createWorld(7);
+    const w = createWorld(7, "solo");
     const bad = JSON.parse(serialize(w, cam));
-    bad.version = 2;
+    bad.version = 1;
     expect(() => deserialize(JSON.stringify(bad))).toThrow(/version/);
   });
 });
@@ -77,7 +77,7 @@ describe("save", () => {
 describe("settler haul", () => {
   const straight: PathFn = (_ax, _az, bx, bz) => [[bx, bz]];
   it("walks to a log, carries it and stacks it (reachable path stub)", () => {
-    const w = createWorld(7);
+    const w = createWorld(7, "solo");
     w.items = w.items.slice(0, 1);
     w.items[0].p = [14, 1.8, 22];
     const s = w.settlers[0];
@@ -92,7 +92,7 @@ describe("settler haul", () => {
   });
 
   it("gives up after one attempt when the log is unreachable", () => {
-    const w = createWorld(7);
+    const w = createWorld(7, "solo");
     w.items = w.items.slice(0, 1);
     const never: PathFn = () => null;
     let attempts = 0;
@@ -115,7 +115,7 @@ describe("settler haul", () => {
   });
 
   it("flees a god-made fire within 18 m and remembers it", () => {
-    const w = createWorld(7);
+    const w = createWorld(7, "solo");
     const path = makePathFinder(buildWalkable());
     const s = w.settlers[0];
     s.x = LAYOUT.grove.x + 12;

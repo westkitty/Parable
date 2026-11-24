@@ -10,6 +10,8 @@ export interface GesturePoint {
 export type GestureResult =
   | { kind: "spiral"; clockwise: boolean; rotation: number }
   | { kind: "zigzag"; turns: number }
+  | { kind: "wave"; turns: number } // horizontal zigzag: the Rain glyph's second stroke
+  | { kind: "ring"; rotation: number } // one closed loop: the Sanctuary glyph's second stroke
   | { kind: "none"; reason: string };
 
 const TAU = Math.PI * 2;
@@ -88,6 +90,19 @@ export function countHorizontalTurns(pts: GesturePoint[]): number {
   return turns;
 }
 
+export function countVerticalTurns(pts: GesturePoint[]): number {
+  let turns = 0;
+  let dir = 0;
+  for (let i = 1; i < pts.length; i += 1) {
+    const dy = pts[i].y - pts[i - 1].y;
+    if (Math.abs(dy) < 1.2) continue;
+    const s = Math.sign(dy);
+    if (dir !== 0 && s !== dir) turns += 1;
+    dir = s;
+  }
+  return turns;
+}
+
 /** How much the stroke's distance from its centroid changes from one end to the other (spiral, not loop). */
 export function radialGrowth(pts: GesturePoint[]): number {
   let cx = 0;
@@ -103,6 +118,22 @@ export function radialGrowth(pts: GesturePoint[]): number {
   const a = avg(pts.slice(0, k));
   const b = avg(pts.slice(-k));
   return Math.max(a, b) / Math.max(1, Math.min(a, b));
+}
+
+/** Spread of distances from the centroid, relative to their mean: 0 for a perfect circle. */
+export function roundness(pts: GesturePoint[]): number {
+  let cx = 0;
+  let cy = 0;
+  for (const p of pts) {
+    cx += p.x;
+    cy += p.y;
+  }
+  cx /= pts.length;
+  cy /= pts.length;
+  const d = pts.map((p) => Math.hypot(p.x - cx, p.y - cy));
+  const mean = d.reduce((a, b) => a + b, 0) / d.length;
+  const sd = Math.sqrt(d.reduce((a, b) => a + (b - mean) ** 2, 0) / d.length);
+  return sd / Math.max(1, mean);
 }
 
 /** Classify a finished stroke. Minimum 12 raw points and a 40 px extent so twitches never count. */
@@ -128,10 +159,25 @@ export function analyzeGesture(raw: GesturePoint[]): GestureResult {
   if (box.h > box.w * 1.25 && box.h < 480 && box.w > 24 && verticalTravel > box.h * 0.25 && turns >= 3 && L > box.h * 1.2 && Math.abs(rotation) < TAU * 0.45) {
     return { kind: "zigzag", turns };
   }
+  // Wave: the zigzag turned on its side (rain falling in sheets).
+  const vturns = countVerticalTurns(pts);
+  const horizontalTravel = Math.abs(last.x - first.x);
+  if (box.w > box.h * 1.25 && box.w < 560 && box.h > 24 && horizontalTravel > box.w * 0.25 && vturns >= 3 && L > box.w * 1.2 && Math.abs(rotation) < TAU * 0.45) {
+    return { kind: "wave", turns: vturns };
+  }
+  // Ring: one loop that closes on itself and keeps its radius (a spiral grows; a ring does not).
+  const aspect = box.w / Math.max(1, box.h);
+  const size = Math.max(box.w, box.h);
+  // Closes: the end comes back near the start (it may overshoot a little past it).
+  let gap = Infinity;
+  for (let i = 0; i < Math.ceil(pts.length * 0.3); i += 1) gap = Math.min(gap, Math.hypot(last.x - pts[i].x, last.y - pts[i].y));
+  if (Math.abs(rotation) > TAU * 0.8 && Math.abs(rotation) < TAU * 1.45 && gap / size < 0.22 && aspect > 0.6 && aspect < 1.66 && L > size * 2.4 && radialGrowth(pts) < 1.35 && roundness(pts) < 0.12) {
+    return { kind: "ring", rotation };
+  }
   return { kind: "none", reason: "unrecognised" };
 }
 
-/** The protected ritual: clockwise spiral arms for RITUAL_ARM_MS; a vertical zigzag while armed = Fireball. */
+/** The protected ritual: clockwise spiral arms for RITUAL_ARM_MS; then a vertical zigzag = Fireball, a wave = Rain, a ring = Sanctuary. */
 export class Ritual {
   armedUntil = 0;
   constructor(
@@ -144,15 +190,14 @@ export class Ritual {
   disarm(): void {
     this.armedUntil = 0;
   }
-  feed(r: GestureResult, now: number): "armed" | "fireball" | null {
+  feed(r: GestureResult, now: number): "armed" | "fireball" | "rain" | "sanctuary" | null {
     if (r.kind === "spiral" && (r.clockwise || this.acceptCounterClockwise)) {
       this.armedUntil = now + this.armMs;
       return "armed";
     }
-    if (r.kind === "zigzag" && this.armed(now)) {
-      this.armedUntil = 0;
-      return "fireball";
-    }
-    return null;
+    if (!this.armed(now)) return null;
+    const cast = r.kind === "zigzag" ? "fireball" : r.kind === "wave" ? "rain" : r.kind === "ring" ? "sanctuary" : null;
+    if (cast) this.armedUntil = 0;
+    return cast;
   }
 }

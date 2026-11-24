@@ -25,10 +25,17 @@ export function buildWalkable(extraBlocked: [number, number, number][] = []): Ui
     for (let i = 0; i < NAV_N; i += 1) {
       const [x, z] = cellCenter(i, j);
       let ok = inBounds(x, z, 6) && !isWater(x, z) && terrainSlope(x, z) < 0.75;
-      // Cottage footprint (rotated square ~ 6.4 m).
-      const lx = (x - c.x) * Math.cos(-c.rot) - (z - c.z) * Math.sin(-c.rot);
-      const lz = (x - c.x) * Math.sin(-c.rot) + (z - c.z) * Math.cos(-c.rot);
-      if (Math.abs(lx) < 3.6 && Math.abs(lz) < 3.6) ok = false;
+      // House footprints (rotated squares ~ 6.4 m): the cottage, the village houses and the building site.
+      for (const h of [c, ...LAYOUT.houses.slice(1), LAYOUT.site]) {
+        const lx = (x - h.x) * Math.cos(-h.rot) - (z - h.z) * Math.sin(-h.rot);
+        const lz = (x - h.x) * Math.sin(-h.rot) + (z - h.z) * Math.cos(-h.rot);
+        if (Math.abs(lx) < 3.6 && Math.abs(lz) < 3.6) ok = false;
+      }
+      if (Math.hypot(x - LAYOUT.granary.x, z - LAYOUT.granary.z) < 1.6) ok = false;
+      if (Math.hypot(x - LAYOUT.well.x, z - LAYOUT.well.z) < 1.4) ok = false;
+      if (Math.hypot(x - LAYOUT.shrine.x, z - LAYOUT.shrine.z) < 1.6) ok = false;
+      const m = LAYOUT.mural;
+      if (Math.abs(x - m.x) < 1.2 && Math.abs(z - m.z) < m.len / 2 + 0.2) ok = false;
       if (Math.hypot(x - t.x, z - t.z) < t.r) ok = false;
       for (const [bx, bz, br] of extraBlocked) if (Math.hypot(x - bx, z - bz) < br) ok = false;
       grid[j * NAV_N + i] = ok ? 1 : 0;

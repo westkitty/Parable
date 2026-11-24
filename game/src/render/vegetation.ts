@@ -36,7 +36,8 @@ interface TreeInstanceSet {
   parts: { mesh: THREE.InstancedMesh; leaf: boolean }[];
   trees: Tree[];
   cells: number[];
-  state: Uint8Array; // 0 alive, 1 burning, 2 charred
+  state: Uint8Array; // 0 alive, 1 burning, 2 charred, 3 felled
+  global: number[]; // index of each tree in trees()
 }
 
 export class Vegetation {
@@ -51,7 +52,7 @@ export class Vegetation {
     for (const kind of kinds) {
       const list = all.filter((t) => t.kind === kind);
       const parts = await loadParts(`${NATURE}${kind}.glb`);
-      const set: TreeInstanceSet = { parts: [], trees: list, cells: list.map((t) => fireCellIndex(t.x, t.z)), state: new Uint8Array(list.length) };
+      const set: TreeInstanceSet = { parts: [], trees: list, cells: list.map((t) => fireCellIndex(t.x, t.z)), state: new Uint8Array(list.length), global: list.map((t) => all.indexOf(t)) };
       for (const part of parts) {
         const leaf = LEAF.test(part.name);
         if (leaf) addWind(part.material, 0.035);
@@ -72,6 +73,37 @@ export class Vegetation {
       this.sets.push(set);
     }
     await this.buildProps();
+    // Stumps for felled trees (Kenney stump), hidden until a woodcutter fells the tree.
+    const stumpParts = await loadParts(`${NATURE}stump_old.glb`);
+    for (const part of stumpParts) {
+      const mesh = new THREE.InstancedMesh(part.geometry, part.material, all.length);
+      mesh.castShadow = true;
+      mesh.count = 0;
+      this.group.add(mesh);
+      this.stumps.push(mesh);
+    }
+  }
+
+  private stumps: THREE.InstancedMesh[] = [];
+  private felledShown = -1;
+
+  private updateStumps(felled: number[]): void {
+    if (felled.length === this.felledShown) return;
+    this.felledShown = felled.length;
+    const all = trees();
+    felled.forEach((gi, k) => {
+      const t = all[gi];
+      this.tmp.position.set(t.x, t.y - 0.05, t.z);
+      this.tmp.rotation.set(0, t.rot, 0);
+      this.tmp.scale.setScalar(t.scale * 0.55);
+      this.tmp.updateMatrix();
+      for (const m of this.stumps) m.setMatrixAt(k, this.tmp.matrix);
+    });
+    for (const m of this.stumps) {
+      m.count = felled.length;
+      m.instanceMatrix.needsUpdate = true;
+      m.computeBoundingSphere();
+    }
   }
 
   private place(t: { x: number; y: number; z: number; rot: number; scale: number }, leafScale: number): void {
@@ -110,18 +142,25 @@ export class Vegetation {
   }
 
   /** Burning trees glow and lose leaves; burnt-out trees stand charred and bare. */
-  updateFire(f: FireGrid, dt: number): void {
+  updateFire(f: FireGrid, dt: number, felled: number[] = []): void {
     this.flicker += dt;
+    this.updateStumps(felled);
+    const felledSet = felled.length ? new Set(felled) : null;
     const burnCol = new THREE.Color();
     for (const set of this.sets) {
       let changed = false;
       set.trees.forEach((t, i) => {
         const c = set.cells[i];
-        const s = c < 0 ? 0 : f.burn[c] > 0 ? 1 : f.scorched[c] ? 2 : 0;
-        if (s === 0 && set.state[i] === 0) return;
+        const s = felledSet?.has(set.global[i]) ? 3 : c < 0 ? 0 : f.burn[c] > 0 ? 1 : f.scorched[c] ? 2 : 0;
+        if (s === set.state[i] && s !== 1) return;
         changed = true;
         for (const { mesh, leaf } of set.parts) {
-          if (s === 1) {
+          if (s === 3) {
+            this.place(t, 0.001);
+            this.tmp.scale.setScalar(0.0001);
+            this.tmp.updateMatrix();
+            burnCol.set("#ffffff");
+          } else if (s === 1) {
             const k = 0.5 + 0.5 * Math.sin(this.flicker * 13 + i * 1.7);
             const remain = c >= 0 ? f.burn[c] / 180 : 1;
             if (leaf) {

@@ -14,6 +14,7 @@ export class ItemViews {
   private views = new Map<number, THREE.Object3D>();
   private logProto!: THREE.Object3D;
   private fireProto!: THREE.Object3D;
+  private stoneProto!: THREE.Object3D;
   private fireLight = new THREE.PointLight(new THREE.Color("#ff8a33"), 0, 18, 1.5);
   private t = 0;
 
@@ -43,6 +44,23 @@ export class ItemViews {
     fb.add(halo);
     fb.add(core, shell);
     this.fireProto = fb;
+    // The dry bell stone: a pale river stone (Kenney rock), lifted a little in colour so it reads.
+    const st = await loadGLB(`${NATURE}rock_smallA.glb`);
+    const sp = new THREE.Group();
+    const si = st.scene.clone(true);
+    si.scale.setScalar(2.6);
+    si.traverse((o) => {
+      const m = o as THREE.Mesh;
+      if (m.isMesh) {
+        const mat = (m.material as THREE.MeshStandardMaterial).clone();
+        mat.color.set("#cfd6dc");
+        mat.emissive = new THREE.Color("#1b2c3a");
+        m.material = mat;
+      }
+    });
+    si.position.y = -0.3;
+    sp.add(si);
+    this.stoneProto = sp;
   }
 
   update(world: World, dt: number): void {
@@ -50,14 +68,14 @@ export class ItemViews {
     const live = new Set<number>();
     let fire: Item | null = null;
     for (const item of world.items) {
-      if (item.state === "gone" || item.state === "stacked") continue;
+      if (item.state === "gone" || (item.state === "stacked" && item.kind !== "bellstone")) continue;
       live.add(item.id);
       let v = this.views.get(item.id);
       if (!v) {
-        v = (item.kind === "log" ? this.logProto : this.fireProto).clone(true);
+        v = (item.kind === "log" ? this.logProto : item.kind === "bellstone" ? this.stoneProto : this.fireProto).clone(true);
         v.traverse((o) => {
-          o.castShadow = item.kind === "log";
-          o.receiveShadow = item.kind === "log";
+          o.castShadow = item.kind !== "fireball";
+          o.receiveShadow = item.kind !== "fireball";
         });
         v.userData.itemId = item.id;
         this.views.set(item.id, v);
@@ -122,7 +140,53 @@ const STATE_CLIP: Record<Settler["state"], string> = {
   held: "fall",
   airborne: "fall",
   recover: "crouch",
+  walking: "walk",
+  chopping: "attack-melee-right",
+  fetching: "interact-right",
+  hauling: "carry-walk",
+  building: "interact-right",
+  farming: "interact-left",
+  dousing: "attack-melee-left",
+  clearing: "attack-melee-right",
+  eating: "sit",
+  resting: "sit",
+  laid_up: "sit",
+  tending: "crouch",
+  praying: "emote-yes",
+  painting: "interact-right",
+  sheltering: "crouch",
+  dead: "die",
 };
+const ONCE = new Set(["pick-up", "die"]);
+
+export interface SettlerProps {
+  wood: THREE.Object3D;
+  food: THREE.Object3D;
+  water: THREE.Object3D;
+  crutch: THREE.Object3D;
+  grave: THREE.Object3D;
+}
+
+/** Small carried things and markers, shared as prototypes (Kenney CC0). */
+export async function loadSettlerProps(): Promise<SettlerProps> {
+  const one = async (url: string, scale: number, y = 0) => {
+    const g = await loadGLB(url);
+    const o = new THREE.Group();
+    const inner = g.scene.clone(true);
+    inner.scale.setScalar(scale);
+    inner.position.y = y;
+    inner.traverse((c) => (c.castShadow = true));
+    o.add(inner);
+    return o;
+  };
+  return {
+    wood: await one(`${NATURE}log.glb`, 1.7),
+    food: await one(`${NATURE}crops_wheatStageA.glb`, 1.6, -0.3),
+    water: await one(`${NATURE}pot_small.glb`, 2.2),
+    crutch: await one(`${CHARS}aid-crutch.glb`, 2.4),
+    grave: await one(`${NATURE}stone_tallA.glb`, 1.1),
+  };
+}
 
 export class SettlerView {
   readonly root = new THREE.Group();
@@ -134,17 +198,23 @@ export class SettlerView {
   private curr = new THREE.Vector3();
   private heading = 0;
   private t = 0;
+  private carry: Record<string, THREE.Object3D> = {};
+  private crutch: THREE.Object3D | null = null;
+  private grave: THREE.Object3D | null = null;
   bubble: HTMLDivElement;
 
-  constructor(readonly settlerId: number) {
+  constructor(
+    readonly settlerId: number,
+    private modelName = "character-female-b",
+  ) {
     this.bubble = document.createElement("div");
     this.bubble.className = "bubble";
     this.bubble.style.display = "none";
     document.body.appendChild(this.bubble);
   }
 
-  async init(): Promise<void> {
-    const g = await loadGLB(`${CHARS}character-female-b.glb`);
+  async init(props?: SettlerProps): Promise<void> {
+    const g = await loadGLB(`${CHARS}${this.modelName}.glb`);
     this.model = cloneSkinned(g.scene);
     this.model.scale.setScalar(2.4);
     this.model.traverse((o) => {
@@ -165,7 +235,28 @@ export class SettlerView {
       const carry = new THREE.AnimationClip("carry-walk", walk.duration, tracks);
       this.actions.set("carry-walk", this.mixer.clipAction(carry));
     }
+    if (props) {
+      for (const k of ["wood", "food", "water"] as const) {
+        const o = props[k].clone(true);
+        o.visible = false;
+        o.position.set(0, k === "wood" ? 1.55 : 1.2, k === "wood" ? 0.15 : 0.55);
+        if (k === "wood") o.rotation.y = Math.PI / 2;
+        this.root.add(o);
+        this.carry[k] = o;
+      }
+      this.crutch = props.crutch.clone(true);
+      this.crutch.position.set(0.45, -0.25, 0.1);
+      this.crutch.visible = false;
+      this.root.add(this.crutch);
+      this.grave = props.grave.clone(true);
+      this.grave.visible = false;
+    }
     this.play("idle");
+  }
+
+  /** The grave marker lives in the world, not on the body. */
+  get graveMarker(): THREE.Object3D | null {
+    return this.grave;
   }
 
   private play(name: string, timeScale = 1): void {
@@ -174,7 +265,7 @@ export class SettlerView {
     if (this.current === name) return;
     const prev = this.actions.get(this.current);
     next.reset();
-    if (name === "pick-up") {
+    if (ONCE.has(name)) {
       next.setLoop(THREE.LoopOnce, 1);
       next.clampWhenFinished = true;
     }
@@ -213,12 +304,22 @@ export class SettlerView {
       this.root.rotation.set(tumble, this.heading, 0);
     }
     const bruised = tick < s.bruisedUntil;
-    const clip = STATE_CLIP[s.state];
-    this.play(clip, bruised && /walk/.test(clip) ? 0.6 : clip === "sprint" ? 1.15 : 1);
+    const limp = s.injury >= 0.25;
+    const clip = s.carryRes && /walk/.test(STATE_CLIP[s.state]) ? "carry-walk" : STATE_CLIP[s.state];
+    this.play(clip, (bruised || limp) && /walk/.test(clip) ? 0.6 : clip === "sprint" ? 1.15 : 1);
     this.mixer.update(dt);
+    for (const k of Object.keys(this.carry)) this.carry[k].visible = s.alive && s.carryRes === k;
+    if (this.crutch) this.crutch.visible = s.alive && limp && s.state !== "held" && s.state !== "airborne";
+    // The dead lie where they fell for a few seconds; then a marker stone stands there.
+    const goneFor = s.alive ? -1 : (tick - s.diedTick) / SIM_HZ;
+    this.model.visible = s.alive || goneFor < 4;
+    if (this.grave) {
+      this.grave.visible = !s.alive && goneFor >= 4;
+      if (this.grave.visible) this.grave.position.set(s.x, terrainHeight(s.x, s.z), s.z);
+    }
   }
 
-  showBubble(text: string | null, camera: THREE.Camera, w: number, h: number): void {
+  showBubble(text: string | null, camera: THREE.Camera, w: number, h: number, detail = ""): void {
     if (!text) {
       this.bubble.style.display = "none";
       return;
@@ -230,10 +331,53 @@ export class SettlerView {
       this.bubble.style.display = "none";
       return;
     }
-    this.bubble.textContent = text;
+    if (detail) {
+      this.bubble.textContent = "";
+      const a = document.createElement("div");
+      a.textContent = text;
+      const b = document.createElement("div");
+      b.className = "detail";
+      b.textContent = detail;
+      this.bubble.append(a, b);
+    } else this.bubble.textContent = text;
     this.bubble.style.display = "block";
     this.bubble.style.left = `${((p.x + 1) / 2) * w}px`;
     this.bubble.style.top = `${((1 - p.y) / 2) * h}px`;
+  }
+}
+
+/** All villagers' views, keyed by settler id. One shared bubble element for the inspected villager. */
+export class SettlerViews {
+  readonly group = new THREE.Group();
+  readonly views = new Map<number, SettlerView>();
+  private props: SettlerProps | null = null;
+
+  async sync(world: World): Promise<void> {
+    if (!this.props) this.props = await loadSettlerProps();
+    const ids = new Set(world.settlers.map((s) => s.id));
+    for (const [id, v] of this.views) {
+      const s = world.settlers.find((x) => x.id === id);
+      if (!ids.has(id) || !s || (s as { model?: string }).model !== (v as unknown as { modelName: string }).modelName) {
+        this.group.remove(v.root);
+        if (v.graveMarker) this.group.remove(v.graveMarker);
+        v.bubble.remove();
+        this.views.delete(id);
+      }
+    }
+    for (const s of world.settlers) {
+      if (this.views.has(s.id)) continue;
+      const v = new SettlerView(s.id, s.model);
+      await v.init(this.props);
+      v.root.userData.settlerId = s.id;
+      this.group.add(v.root);
+      if (v.graveMarker) this.group.add(v.graveMarker);
+      v.snap(s);
+      this.views.set(s.id, v);
+    }
+  }
+
+  get(id: number): SettlerView | undefined {
+    return this.views.get(id);
   }
 }
 

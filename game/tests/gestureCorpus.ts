@@ -74,3 +74,30 @@ export function wander(seed: number): GesturePoint[] {
   }
   return pts;
 }
+
+/** A horizontal wave: the zigzag on its side, 4–6 strokes up/down while travelling sideways. */
+export function wave(seed: number): GesturePoint[] {
+  return zigzag(seed).map((p, i, all) => {
+    const c = all[0];
+    return { x: c.x + (p.y - c.y), y: c.y + (p.x - c.x), t: p.t ?? i * 16 };
+  });
+}
+
+/** One hand-drawn closed loop, either direction, slightly squashed, with a little overlap. */
+export function ring(seed: number): GesturePoint[] {
+  const r = rng(seed);
+  const cx = 300 + r() * 400;
+  const cy = 200 + r() * 300;
+  const rad = 50 + r() * 70;
+  const squash = 0.8 + r() * 0.35;
+  const dir = r() < 0.5 ? 1 : -1;
+  const sweep = 1.02 + r() * 0.12;
+  const n = 60 + Math.floor(r() * 40);
+  const start = r() * Math.PI * 2;
+  const pts: GesturePoint[] = [];
+  for (let i = 0; i < n; i += 1) {
+    const a = start + dir * (i / (n - 1)) * sweep * Math.PI * 2;
+    pts.push({ x: cx + Math.cos(a) * rad + (r() - 0.5) * 3, y: cy + Math.sin(a) * rad * squash + (r() - 0.5) * 3, t: i * 16 });
+  }
+  return pts;
+}

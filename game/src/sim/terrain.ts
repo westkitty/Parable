@@ -11,6 +11,21 @@ export const LAYOUT = {
   cottage: { x: 14, z: 12, rot: -0.35 },
   woodpile: { x: 20.5, z: 16.5 },
   temple: { x: 36, z: -36, r: 6.5, doorX: 31.2, doorZ: -31.6 },
+  // M2+: the village around the first cottage. houses[0] is the M1 cottage.
+  houses: [
+    { x: 14, z: 12, rot: -0.35 },
+    { x: 29, z: 3, rot: 0.25 },
+    { x: 5, z: 27, rot: -0.9 },
+    { x: 31, z: 23, rot: 0.6 },
+  ],
+  site: { x: 21, z: 33, rot: 0.1 }, // the house the villagers build
+  granary: { x: 31, z: 13 },
+  well: { x: 19, z: 25 },
+  field: { x: 40, z: 12, w: 9.6, d: 7.2, cols: 4, rows: 3 },
+  mural: { x: 0, z: 20, rot: Math.PI / 2, len: 8 }, // the village wall the faithful paint
+  villageCentre: { x: 21, z: 17 },
+  shrine: { x: -48, z: -48 },
+  bellStone: { x: -20, z: 40 },
   spawnLogs: [
     { x: 4, z: -6 },
     { x: -3, z: 2 },
@@ -74,6 +89,11 @@ export function terrainHeight(x: number, z: number): number {
   const dc = Math.hypot(x - c.x - 3, z - c.z - 2);
   const yard = 1 - smoothstep(6, 11, dc);
   h = h * (1 - yard) + 1.4 * yard;
+  // House pads for the rest of the village (the cottage already sits in its yard).
+  for (const hp of [...LAYOUT.houses.slice(1), LAYOUT.site]) {
+    const pad = 1 - smoothstep(4.5, 7.5, Math.hypot(x - hp.x, z - hp.z));
+    h = h * (1 - pad) + 1.4 * pad;
+  }
   // Pond basin and the stream that leaves it.
   const p = LAYOUT.pond;
   const dp = Math.hypot(x - p.x, z - p.z) / p.r;
@@ -111,5 +131,11 @@ export function pathDistance(x: number, z: number): number {
     distToSegment(x, z, 2, 2, g.x + 6, g.z + 9),
     distToSegment(x, z, c.x + 4, c.z - 2, 22, -14),
     distToSegment(x, z, 22, -14, t.doorX - 1, t.doorZ + 1),
+    // Village lanes: woodpile -> granary -> field, woodpile -> well -> building site, cottage -> mural wall.
+    distToSegment(x, z, 22, 14, LAYOUT.granary.x - 1, LAYOUT.granary.z),
+    distToSegment(x, z, LAYOUT.granary.x + 1, LAYOUT.granary.z, LAYOUT.field.x - 5, LAYOUT.field.z),
+    distToSegment(x, z, 21, 19, LAYOUT.well.x, LAYOUT.well.z - 1.5),
+    distToSegment(x, z, LAYOUT.well.x, LAYOUT.well.z + 1.5, LAYOUT.site.x, LAYOUT.site.z - 4),
+    distToSegment(x, z, c.x - 4, c.z + 4, LAYOUT.mural.x + 2, LAYOUT.mural.z),
   );
 }

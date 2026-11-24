@@ -39,35 +39,44 @@ export async function buildBuildings(): Promise<Buildings> {
   return { group, temple, templeDoor: new THREE.Vector3(t.doorX, terrainHeight(t.doorX, t.doorZ), t.doorZ), woodpile };
 }
 
-async function buildCottage(): Promise<THREE.Group> {
-  const c = LAYOUT.cottage;
+export interface HouseView {
+  group: THREE.Group;
+  /** Wall pieces first, then roof and chimney: revealed in this order while the house is being built. */
+  pieces: THREE.Object3D[];
+  materials: THREE.MeshStandardMaterial[];
+}
+
+/** A village house from Kenney town-kit pieces (the M1 cottage design), placed and rotated. */
+export async function buildHouse(x: number, z: number, rot: number, variant = 0): Promise<HouseView> {
   const S = 2.4;
   const house = new THREE.Group();
-  const tiles: [number, number][] = [];
-  for (const x of [-1, 0, 1]) for (const z of [-0.5, 0.5]) tiles.push([x, z]);
-  // Long sides (±Z), short sides (±X). Door faces the yard and the woodpile (+Z).
-  for (const x of [-1, 0, 1]) {
-    await wall(house, x === 0 ? "wall-wood-door" : "wall-wood-window-shutters", x, 0.5, "S");
-    await wall(house, x === 0 ? "wall-wood" : "wall-wood-window-shutters", x, -0.5, "N");
+  const pieces: THREE.Object3D[] = [];
+  // Long sides (±Z), short sides (±X). Door faces the yard (+Z).
+  const win = variant % 2 ? "wall-wood-window-glass" : "wall-wood-window-shutters";
+  for (const wx of [-1, 0, 1]) {
+    pieces.push(await wall(house, wx === 0 ? "wall-wood-door" : win, wx, 0.5, "S"));
+    pieces.push(await wall(house, wx === 0 ? "wall-wood" : win, wx, -0.5, "N"));
   }
-  for (const z of [-0.5, 0.5]) {
-    await wall(house, z > 0 ? "wall-wood-window-shutters" : "wall-wood", 1, z, "E");
-    await wall(house, "wall-wood", -1, z, "W");
+  for (const wz of [-0.5, 0.5]) {
+    pieces.push(await wall(house, wz > 0 ? win : "wall-wood", 1, wz, "E"));
+    pieces.push(await wall(house, "wall-wood", -1, wz, "W"));
   }
   // Gabled roof running along X, gable ends on the short sides.
-  for (const x of [-1, 0, 1]) {
-    const name = x === 0 ? "roof-gable" : "roof-gable-end";
+  for (const rx of [-1, 0, 1]) {
+    const name = rx === 0 ? "roof-gable" : "roof-gable-end";
     const p = await piece(name);
     const pivot = new THREE.Group();
-    pivot.position.set(x, 1, 0);
-    pivot.rotation.y = x < 0 ? Math.PI : 0;
+    pivot.position.set(rx, 1, 0);
+    pivot.rotation.y = rx < 0 ? Math.PI : 0;
     pivot.scale.set(1, 1, 1.9);
     pivot.add(p);
     house.add(pivot);
+    pieces.push(pivot);
   }
   const ch = await piece("chimney");
-  ch.position.set(0.55, 1.05, -0.35);
+  ch.position.set(variant % 2 ? -0.55 : 0.55, 1.05, -0.35);
   house.add(ch);
+  pieces.push(ch);
   // Floor so the interior never shows terrain through the door.
   const floor = new THREE.Mesh(new THREE.BoxGeometry(3, 0.08, 2), new THREE.MeshStandardMaterial({ color: "#8b6a48", roughness: 0.9 }));
   floor.position.y = 0.02;
@@ -77,13 +86,31 @@ async function buildCottage(): Promise<THREE.Group> {
   lantern.position.set(0.55, 0, 0.75);
   lantern.scale.setScalar(0.6);
   house.add(lantern);
+  pieces.push(lantern);
   house.scale.setScalar(S);
-  house.position.set(c.x, terrainHeight(c.x, c.z) - 0.05, c.z);
-  house.rotation.y = -c.rot;
+  house.position.set(x, terrainHeight(x, z) - 0.05, z);
+  house.rotation.y = -rot;
+  // Own materials per house, so one house can burn without tinting the others.
+  const materials: THREE.MeshStandardMaterial[] = [];
   house.traverse((o) => {
     o.castShadow = true;
     o.receiveShadow = true;
+    const m = o as THREE.Mesh;
+    if (!m.isMesh) return;
+    const mats = (Array.isArray(m.material) ? m.material : [m.material]).map((mt) => (mt as THREE.MeshStandardMaterial).clone());
+    m.material = Array.isArray(m.material) ? mats : mats[0];
+    materials.push(...mats);
   });
+  return { group: house, pieces, materials };
+}
+
+export let cottageView: HouseView | null = null;
+
+async function buildCottage(): Promise<THREE.Group> {
+  const c = LAYOUT.cottage;
+  const hv = await buildHouse(c.x, c.z, c.rot, 0);
+  cottageView = hv;
+  const house = hv.group;
   // Fence along the yard edge (nature kit).
   const fenceG = await loadGLB(`${NATURE}fence_simple.glb`);
   const yard = new THREE.Group();

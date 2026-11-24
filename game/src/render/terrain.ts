@@ -63,27 +63,44 @@ export class TerrainView {
     this.mesh.receiveShadow = true;
   }
 
-  /** Repaint scorched (and glowing, burning) cells when the fire grid changes. */
-  updateFire(f: FireGrid): void {
+  private lastDry = -1;
+  private lastClear = new Uint8Array(0);
+
+  /**
+   * Repaint scorched (and glowing, burning) cells when the fire grid changes; cleared firebreak
+   * cells show bare earth; the whole valley yellows as the drought deepens.
+   */
+  updateFire(f: FireGrid, dryness = 0, baseFuel: number[] | null = null): void {
     if (this.lastScorch.length !== f.scorched.length) {
       this.lastScorch = new Uint8Array(f.scorched.length).fill(255);
       this.lastBurn = new Uint8Array(f.burn.length).fill(255);
+      this.lastClear = new Uint8Array(f.burn.length).fill(255);
     }
-    let dirty = false;
+    let dirty = Math.abs(dryness - this.lastDry) > 0.02;
     for (let i = 0; i < f.scorched.length; i += 1) {
       const s = f.scorched[i] ? 1 : 0;
       const b = f.burn[i] > 0 ? 1 : 0;
-      if (s !== this.lastScorch[i] || b !== this.lastBurn[i]) dirty = true;
+      const c = baseFuel && baseFuel[i] > 0.05 && f.fuel[i] <= 0.03 && !s ? 1 : 0;
+      if (s !== this.lastScorch[i] || b !== this.lastBurn[i] || c !== this.lastClear[i]) dirty = true;
       this.lastScorch[i] = s;
       this.lastBurn[i] = b;
+      this.lastClear[i] = c;
     }
     if (!dirty) return;
+    this.lastDry = dryness;
     const arr = this.colors.array as Float32Array;
+    const d = Math.max(0, dryness - 0.1) / 0.9;
     for (let v = 0; v < this.cellOfVertex.length; v += 1) {
       const c = this.cellOfVertex[v];
       let r = this.base[v * 3];
       let g = this.base[v * 3 + 1];
       let b = this.base[v * 3 + 2];
+      if (g > r) {
+        // Green turns to straw.
+        r *= 1 + 0.55 * d;
+        g *= 1 - 0.08 * d;
+        b *= 1 - 0.45 * d;
+      }
       if (c >= 0 && f.burn[c] > 0) {
         r = 0.42;
         g = 0.16;
@@ -93,6 +110,10 @@ export class TerrainView {
         r = r * 0.12 + k;
         g = g * 0.1 + k * 0.92;
         b = b * 0.08 + k * 0.85;
+      } else if (c >= 0 && this.lastClear[c]) {
+        r = 0.46;
+        g = 0.33;
+        b = 0.21;
       }
       arr[v * 3] = r;
       arr[v * 3 + 1] = g;

@@ -4,6 +4,12 @@ import path from "node:path";
 
 export const EVIDENCE = path.resolve(process.cwd(), "evidence/m1");
 fs.mkdirSync(EVIDENCE, { recursive: true });
+let evidenceDir = EVIDENCE;
+/** Each spec writes its screenshots/results to its own stage folder (evidence/m1, m2, m3, m4). */
+export function useEvidence(stage: string): void {
+  evidenceDir = path.resolve(process.cwd(), `evidence/${stage}`);
+  fs.mkdirSync(evidenceDir, { recursive: true });
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type P = any;
@@ -34,7 +40,7 @@ export const hook = <T>(page: Page, fn: string, ...args: unknown[]): Promise<T> 
 export async function shot(page: Page, name: string): Promise<string> {
   await hook(page, "setPixelRatio", 1);
   await frames(page, 2);
-  const file = path.join(EVIDENCE, `${name}.jpg`);
+  const file = path.join(evidenceDir, `${name}.jpg`);
   await page.screenshot({ path: file, type: "jpeg", quality: 82 });
   await hook(page, "setPixelRatio", 0.5);
   return file;
@@ -94,7 +100,7 @@ export function spearman(a: number[], b: number[]): number {
 }
 
 export function writeResult(name: string, data: unknown): void {
-  fs.writeFileSync(path.join(EVIDENCE, `${name}.json`), JSON.stringify(data, null, 2));
+  fs.writeFileSync(path.join(evidenceDir, `${name}.json`), JSON.stringify(data, null, 2));
 }
 
 export async function waitFor(page: Page, pred: string, timeout = 60_000): Promise<void> {
@@ -137,3 +143,34 @@ export async function playback(page: Page, evs: Ev[], defaultDtMs = 16): Promise
 }
 
 export const pts2moves = (pts: [number, number][], dt = 16): Ev[] => pts.map(([x, y]) => ({ type: "move", x, y, dt }));
+
+/** Rain's second stroke: a zigzag turned on its side (up-down strokes moving left to right). */
+export function wavePts(x0: number, y0: number, w: number, h: number, legs: number, perLeg: number): [number, number][] {
+  return zigzagPts(0, 0, h, w, legs, perLeg).map(([x, y]) => [x0 + y, y0 + x]);
+}
+
+/** Sanctuary's second stroke: one closed loop with a little overlap. */
+export function ringPts(cx: number, cy: number, r: number, n = 80, sweep = 1.06, squash = 0.9): [number, number][] {
+  const out: [number, number][] = [];
+  for (let i = 0; i < n; i += 1) {
+    const a = -Math.PI / 2 + (i / (n - 1)) * sweep * Math.PI * 2;
+    out.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r * squash]);
+  }
+  return out;
+}
+
+/** Draw spiral (arms the ritual), then the second stroke, with the empty hand and real pointer events. */
+export async function ritual(page: Page, cx: number, cy: number, second: [number, number][]): Promise<void> {
+  await page.mouse.move(cx, cy);
+  await playback(page, pts2moves(spiralPts(cx, cy, 20, 110, 2.3, 120)));
+  await waitFor(page, "window.__parable.state().armed === true", 20_000);
+  await playback(page, pts2moves(second, 16).map((e, i) => (i === 0 ? { ...e, dt: 450 } : e)));
+}
+
+/** Keep the recorded video of this test as stage evidence (webm). */
+export async function keepVideo(page: Page, name: string): Promise<void> {
+  const v = page.video();
+  if (!v) return;
+  await page.close();
+  await v.saveAs(path.join(evidenceDir, `${name}.webm`));
+}

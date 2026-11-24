@@ -1,6 +1,6 @@
 import type { World } from "./types";
 
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 
 export interface CameraState {
   tx: number;
@@ -54,7 +54,7 @@ export function serialize(world: World, camera: CameraState): string {
 
 export function deserialize(text: string): { world: World; camera: CameraState } {
   const file = JSON.parse(text) as SaveFile;
-  if (!file || file.version !== SAVE_VERSION || !file.world || file.world.version !== 1) {
+  if (!file || file.version !== SAVE_VERSION || !file.world || file.world.version !== 2) {
     throw new Error(`Unsupported Parable save version: ${file?.version}`);
   }
   return { world: { ...(file.world as World), events: [] }, camera: file.camera };

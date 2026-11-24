@@ -1,6 +1,6 @@
 {
-  "startDelayTicks": 13,
-  "startDelaySeconds": 0.65,
+  "startDelayTicks": 15,
+  "startDelaySeconds": 0.75,
   "woodBefore": 0,
   "woodAfter": 1,
   "ticksToStack": 384,
