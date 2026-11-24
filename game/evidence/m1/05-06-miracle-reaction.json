@@ -24,16 +24,16 @@
     "samples": 5,
     "staleMs": 0
   },
-  "impactLine": "118: fireball impact 11 cells",
-  "impactTick": 118,
+  "impactLine": "84: fireball impact 11 cells",
+  "impactTick": 84,
   "ticksToThreeBurning": 2,
   "burningAt3": 15,
-  "fleeTick": 119,
+  "fleeTick": 85,
   "ticksFireToFlee": 1,
   "ilseDistanceToGroveCentreAtFlee": 15.829648342845893,
   "memories": [
     {
-      "tick": 119,
+      "tick": 85,
       "kind": "saw_fire",
       "place": "the grove",
       "causedByGod": true,

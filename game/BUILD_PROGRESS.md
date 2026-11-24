@@ -48,3 +48,7 @@ Branch `feat/m1-hand-camera-fireball` (PR #1). Never push to main, never force-p
 - Gate on final source (src unchanged since 54ab741): typecheck PASS, 69/69 unit PASS, build PASS. e2e: run 2 passed m2–m6 (19/19); m1 test 5 (spiral→zigzag Fireball) timed out once under SwiftShader and 3 m1 tests did not run after it; m1 spec re-run alone: 8/8 PASS. Run 1 (same gesture code) had all m1 green. Known timing flake, not a logic change.
 - Re-rendered evidence images/json committed; regenerated .webm videos (6–23 MB) deliberately left uncommitted (no new giant media).
 - Next: owner human gate U1–U3 on the Mac.
+- **GATE PASS on adb75df (one complete run, 04:30–05:00 EST):** typecheck PASS; unit 69/69 (5 files); build PASS (bundle 5,288 kB, gzip 1,912 kB); e2e 27/27 (15.2 min). No tracked media dirtied.
+- Root cause of the m1 Fireball flake: synthetic event timestamps ran ahead of wall clock, so a stroke only closed once real time caught up (plus a slow SwiftShader frame), eating the 5.6 s armed window. Strokes in e2e now end the way a player ends one (pause, then move), closing inside the event handler; playback keeps one monotonic timeline per page. The test still draws spiral→zigzag with real mouse events and asserts a held Fireball.
+- Bug found by the next gate and fixed: when a stroke closes inside an input event, open glyphs (Healing, Lightning…) landed at the hand point from the previous frame. They now act at the stroke's end point.
+- Gate videos now save to git-ignored test-results/videos; committed evidence videos are untouched.

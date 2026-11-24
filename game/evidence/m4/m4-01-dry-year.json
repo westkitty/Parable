@@ -101,7 +101,7 @@
       "power": 100
     },
     {
-      "tick": 11047,
+      "tick": 11045,
       "day": 7,
       "dryness": 0.934,
       "alive": 8,
@@ -111,7 +111,7 @@
       "power": 100
     },
     {
-      "tick": 12051,
+      "tick": 12049,
       "day": 7,
       "dryness": 1,
       "alive": 8,
@@ -121,7 +121,7 @@
       "power": 100
     },
     {
-      "tick": 13051,
+      "tick": 13050,
       "day": 8,
       "dryness": 1,
       "alive": 7,
@@ -131,7 +131,7 @@
       "power": 100
     },
     {
-      "tick": 14053,
+      "tick": 14052,
       "day": 8,
       "dryness": 1,
       "alive": 7,
@@ -141,7 +141,7 @@
       "power": 100
     },
     {
-      "tick": 15053,
+      "tick": 15052,
       "day": 9,
       "dryness": 1,
       "alive": 7,
@@ -151,7 +151,7 @@
       "power": 100
     },
     {
-      "tick": 16055,
+      "tick": 16054,
       "day": 9,
       "dryness": 1,
       "alive": 7,
@@ -161,7 +161,7 @@
       "power": 100
     },
     {
-      "tick": 17057,
+      "tick": 17054,
       "day": 10,
       "dryness": 1,
       "alive": 7,
@@ -171,7 +171,7 @@
       "power": 100
     },
     {
-      "tick": 18057,
+      "tick": 18056,
       "day": 11,
       "dryness": 0.1,
       "alive": 7,

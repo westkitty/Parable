@@ -1,5 +1,5 @@
 {
-  "learned": "438: learned Golem Wake at the carved stele",
+  "learned": "415: learned Golem Wake at the carved stele",
   "held": {
     "kind": "golem",
     "id": 22
@@ -19,8 +19,8 @@
     "work": 1,
     "done": true
   },
-  "woodpileBefore": 0,
-  "woodpileAfter": 8,
+  "woodpileBefore": 2,
+  "woodpileAfter": 6,
   "golem": {
     "id": 22,
     "x": 22.5,
@@ -28,10 +28,10 @@
     "awake": true,
     "state": "idle",
     "job": "build",
-    "workDone": 4,
+    "workDone": 5,
     "carryWater": false,
     "carrying": null
   },
-  "powerBefore": 69.89388888888884,
-  "powerAfter": 93.29388888890529
+  "powerBefore": 76.37722222222216,
+  "powerAfter": 91.9822222222386
 }
