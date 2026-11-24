@@ -1,0 +1,52 @@
+{
+  "armedAfterSpiral": true,
+  "gestureAfterSpiral": {
+    "kind": "spiral",
+    "clockwise": true,
+    "rotation": 15.685455754604714
+  },
+  "gestureAfterZigzag": {
+    "kind": "zigzag",
+    "turns": 4
+  },
+  "fireballHeld": {
+    "kind": "item",
+    "id": 5
+  },
+  "throwRelease": {
+    "speed": 34.32888165453408,
+    "gentle": false,
+    "v": [
+      -14.164628763866816,
+      9.902353963997498,
+      -31.27035988972374
+    ],
+    "samples": 5,
+    "staleMs": 0
+  },
+  "impactLine": "115: fireball impact 10 cells",
+  "impactTick": 115,
+  "ticksToThreeBurning": 0,
+  "burningAt3": 10,
+  "fleeTick": 116,
+  "ticksFireToFlee": 1,
+  "ilseDistanceToGroveCentreAtFlee": 15.829648342845893,
+  "memories": [
+    {
+      "tick": 116,
+      "kind": "saw_fire",
+      "place": "the grove",
+      "causedByGod": true,
+      "feeling": "scared"
+    }
+  ],
+  "bubble": "Scared — your fire took the grove (6 s ago)",
+  "afterBurnout": {
+    "burning": 0,
+    "scorched": 210
+  },
+  "later": {
+    "burning": 0,
+    "scorched": 210
+  }
+}

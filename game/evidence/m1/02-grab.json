@@ -1,0 +1,171 @@
+{
+  "acquired": 20,
+  "of": 20,
+  "switchedTo": {
+    "kind": "item",
+    "id": 2
+  },
+  "expectedB": 2,
+  "attempts": [
+    {
+      "k": 0,
+      "got": true,
+      "held": {
+        "kind": "item",
+        "id": 1
+      }
+    },
+    {
+      "k": 1,
+      "got": true,
+      "held": {
+        "kind": "item",
+        "id": 1
+      }
+    },
+    {
+      "k": 2,
+      "got": true,
+      "held": {
+        "kind": "item",
+        "id": 1
+      }
+    },
+    {
+      "k": 3,
+      "got": true,
+      "held": {
+        "kind": "item",
+        "id": 1
+      }
+    },
+    {
+      "k": 4,
+      "got": true,
+      "held": {
+        "kind": "item",
+        "id": 1
+      }
+    },
+    {
+      "k": 5,
+      "got": true,
+      "held": {
+        "kind": "item",
+        "id": 1
+      }
+    },
+    {
+      "k": 6,
+      "got": true,
+      "held": {
+        "kind": "item",
+        "id": 1
+      }
+    },
+    {
+      "k": 7,
+      "got": true,
+      "held": {
+        "kind": "item",
+        "id": 1
+      }
+    },
+    {
+      "k": 8,
+      "got": true,
+      "held": {
+        "kind": "item",
+        "id": 1
+      }
+    },
+    {
+      "k": 9,
+      "got": true,
+      "held": {
+        "kind": "item",
+        "id": 1
+      }
+    },
+    {
+      "k": 10,
+      "got": true,
+      "held": {
+        "kind": "item",
+        "id": 1
+      }
+    },
+    {
+      "k": 11,
+      "got": true,
+      "held": {
+        "kind": "item",
+        "id": 1
+      }
+    },
+    {
+      "k": 12,
+      "got": true,
+      "held": {
+        "kind": "item",
+        "id": 1
+      }
+    },
+    {
+      "k": 13,
+      "got": true,
+      "held": {
+        "kind": "item",
+        "id": 1
+      }
+    },
+    {
+      "k": 14,
+      "got": true,
+      "held": {
+        "kind": "item",
+        "id": 1
+      }
+    },
+    {
+      "k": 15,
+      "got": true,
+      "held": {
+        "kind": "item",
+        "id": 1
+      }
+    },
+    {
+      "k": 16,
+      "got": true,
+      "held": {
+        "kind": "item",
+        "id": 1
+      }
+    },
+    {
+      "k": 17,
+      "got": true,
+      "held": {
+        "kind": "item",
+        "id": 1
+      }
+    },
+    {
+      "k": 18,
+      "got": true,
+      "held": {
+        "kind": "item",
+        "id": 1
+      }
+    },
+    {
+      "k": 19,
+      "got": true,
+      "held": {
+        "kind": "item",
+        "id": 1
+      }
+    }
+  ]
+}

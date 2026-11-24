@@ -243,6 +243,12 @@ test("5+6 miracle and reaction: spiral -> zigzag summons a held Fireball; the gr
   await waitFor(page, "window.__parable.state().armed === true", 20_000);
   const armed = await state(page);
   await shot(page, "05-ritual-armed-spiral");
+  // The full-res screenshot costs several real seconds under SwiftShader, longer than the
+  // 5.6 s arm window. Re-draw the spiral so the spiral -> zigzag sequence is uninterrupted.
+  await frames(page, 8);
+  await page.mouse.move(cx, cy);
+  await playback(page, pts2moves(spiralPts(cx, cy, 20, 110, 2.3, 120)));
+  await waitFor(page, "window.__parable.state().armed === true", 20_000);
   await playback(page, pts2moves(zigzagPts(cx - 40, cy - 120, 80, 240, 5, 12), 16).map((e, i) => (i === 0 ? { ...e, dt: 450 } : e)));
   await waitFor(page, `window.__parable.state().items.some(i => i.kind === "fireball" && i.state === "held")`, 20_000);
   const summoned = await state(page);
