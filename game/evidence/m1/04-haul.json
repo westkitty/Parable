@@ -1,9 +1,9 @@
 {
-  "startDelayTicks": 15,
-  "startDelaySeconds": 0.75,
+  "startDelayTicks": 11,
+  "startDelaySeconds": 0.55,
   "woodBefore": 0,
   "woodAfter": 1,
-  "ticksToStack": 384,
+  "ticksToStack": 399,
   "boundTicks": 550,
   "pathLen": 24.06125728296672,
   "itemState": "stacked"

@@ -32,19 +32,19 @@
     "work": 1,
     "done": true
   },
-  "ticks": 3714,
+  "ticks": 3913,
   "describe": [
     "hungry · belief 33 (grateful: you brought wood for the new house) · lives with Bram and Oda",
     "tired · belief 32 (grateful: you brought wood for the new house) · lives with Ilse and Oda",
     "belief 29 (grateful) · lives with Ilse and Bram",
     "belief 26 (grateful) · lives with Corin and Wil",
     "tired · belief 25 (grateful) · lives with Tamsin and Wil",
-    "hungry · belief 25 (grateful) · lives with Tamsin and Corin",
-    "belief 35 (grateful: you brought wood for the new house) · lives with Hob and Ness",
-    "hungry · belief 33 (grateful: you brought wood for the new house) · lives with Maren and Ness",
+    "belief 25 (grateful) · lives with Tamsin and Corin",
+    "hungry · belief 35 (grateful: you brought wood for the new house) · lives with Hob and Ness",
+    "hungry, tired · belief 33 (grateful: you brought wood for the new house) · lives with Maren and Ness",
     "belief 35 (grateful: you brought wood for the new house) · lives with Maren and Hob",
     "belief 34 (grateful: you brought wood for the new house) · lives with Pell and Rafe",
-    "hungry · belief 31 (grateful: you brought wood for the new house) · lives with Edda and Rafe",
-    "tired · belief 32 (grateful: you brought wood for the new house) · lives with Edda and Pell"
+    "tired · belief 31 (grateful: you brought wood for the new house) · lives with Edda and Rafe",
+    "exhausted · belief 32 (grateful: you brought wood for the new house) · lives with Edda and Pell"
   ]
 }

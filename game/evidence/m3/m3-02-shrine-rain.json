@@ -20,9 +20,9 @@
       },
       "gentle": true,
       "at": [
-        -38.033,
-        1.813,
-        -11.817
+        -38.032,
+        1.811,
+        -11.802
       ],
       "state": "loose"
     },
@@ -55,15 +55,15 @@
   ],
   "awakened": {
     "awakened": true,
-    "glyphShownTick": 274
+    "glyphShownTick": 273
   },
   "learnedAfterTrace": [
     "fireball",
     "rain"
   ],
   "powerAfterRain": 40,
-  "burningBefore": 169,
-  "burningAfterRain": 149,
+  "burningBefore": 179,
+  "burningAfterRain": 154,
   "cloud": [
     {
       "id": 18,
@@ -75,16 +75,16 @@
   ],
   "log": [
     "232: grab item 5",
-    "263: release item gentle v=0.0,2.4,0.0",
-    "274: shrine awake",
-    "336: gesture spiral cw",
-    "352: gesture wave",
-    "352: learned rain at the shrine",
-    "352: rain cloud summoned",
-    "353: learned rain",
-    "355: ignite 11 cells",
-    "355: ignite 6 cells",
-    "355: lightning at -12,-29",
-    "441: rain dropped at -36,-40"
+    "262: release item gentle v=0.0,2.4,0.0",
+    "273: shrine awake",
+    "333: gesture spiral cw",
+    "349: gesture wave",
+    "349: learned rain at the shrine",
+    "349: rain cloud summoned",
+    "350: learned rain",
+    "354: ignite 7 cells",
+    "354: ignite 6 cells",
+    "354: lightning at -12,-29",
+    "438: rain dropped at -36,-40"
   ]
 }

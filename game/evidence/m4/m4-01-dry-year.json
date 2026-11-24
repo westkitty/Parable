@@ -1,7 +1,7 @@
 {
   "days": [
     {
-      "tick": 1006,
+      "tick": 1008,
       "day": 1,
       "dryness": 0.118,
       "alive": 12,
@@ -101,9 +101,9 @@
       "power": 100
     },
     {
-      "tick": 11043,
+      "tick": 11047,
       "day": 7,
-      "dryness": 0.933,
+      "dryness": 0.934,
       "alive": 12,
       "food": 14,
       "houses": "ssrsr",
@@ -111,7 +111,7 @@
       "power": 100
     },
     {
-      "tick": 12045,
+      "tick": 12049,
       "day": 7,
       "dryness": 1,
       "alive": 12,
@@ -121,7 +121,7 @@
       "power": 100
     },
     {
-      "tick": 13045,
+      "tick": 13049,
       "day": 8,
       "dryness": 1,
       "alive": 12,
@@ -131,7 +131,7 @@
       "power": 100
     },
     {
-      "tick": 14047,
+      "tick": 14051,
       "day": 8,
       "dryness": 1,
       "alive": 12,
@@ -141,7 +141,7 @@
       "power": 100
     },
     {
-      "tick": 15049,
+      "tick": 15053,
       "day": 9,
       "dryness": 1,
       "alive": 12,
@@ -151,7 +151,7 @@
       "power": 100
     },
     {
-      "tick": 16051,
+      "tick": 16055,
       "day": 9,
       "dryness": 1,
       "alive": 12,
@@ -161,7 +161,7 @@
       "power": 100
     },
     {
-      "tick": 17053,
+      "tick": 17057,
       "day": 10,
       "dryness": 1,
       "alive": 12,
@@ -171,7 +171,7 @@
       "power": 100
     },
     {
-      "tick": 18055,
+      "tick": 18057,
       "day": 11,
       "dryness": 0.1,
       "alive": 12,
