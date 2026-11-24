@@ -14,13 +14,16 @@ Not accepted until you play it. `npm --prefix game ci && npm --prefix game run d
 | M2 Sanctuary | The painted wall teaches Sanctuary; the dome actually saves a house from fire | | |
 | M3 Glyph stones | Each of the five stones' rituals is guessable from the stone and its place | Try at least two | |
 | M4 Seven new gestures | V, line down, line up, line sideways, square, peak, triangle each cast what you meant | 3 tries each; note misfires | |
-| M5 **False casts** | Ordinary mouse movement right after a spiral does NOT cast a line miracle by accident | Known risk: straight strokes in the 5.6 s armed window read as line finishers (~6% in the synthetic corpus) | |
+| M5 **False casts** | Ordinary mouse movement right after a spiral does NOT cast a line miracle by accident | Known risk, reduced: random strokes in the armed window now cast something 2.8% of the time in the synthetic corpus (was 6%) | |
 | M6 Effects read | Each miracle's effect on the land and on villagers is visible without the overlay | | |
 | G1 Golem forms | Laying four logs in the stone ring makes a golem you can see | | |
 | G2 Golem jobs | Setting it down by the woodpile / site / well gives the job you expect | | |
 | G3 Golem cost | You feel the prayer-power cost; at 0 power it sleeps | | |
 | G4 Not a creature | Golems feel like tools, not pets; they never cast | | |
 | T1 Temple | Frieze lights as you learn; brazier teaches Beacon at high faith; stele teaches Golem Wake; records wall reads | | |
+| U1 Neglect hurts | Leave a year alone: houses burn, people die (fire, smoke, famine); tend it with Rain and they live | Play one year hands-off, one year tending | |
+| U2 The land remembers | Next year a cairn stands where each villager fell; the empty hand over it names them and how they died | Restart after a year with deaths | |
+| U3 Scale | Glyph stones read as tall ancient monoliths; at full zoom-out the valley sits in hills, not a void | Zoom all the way out | |
 | Perf | F3 at the default village view: median ≤ 16.7 ms, p95 ≤ 25 ms | | |
 
 Notes:

@@ -40,7 +40,9 @@ Branch `feat/m1-hand-camera-fireball` (PR #1). Never push to main, never force-p
 ## Uplift pass (t324u) — in progress
 - Baseline captured: evidence/uplift/before (tools/uplift-capture.mjs, seed 7, 1280x800, SwiftShader software-only numbers in measure.json).
 - Done: outer lands ring to ±900 m + gorge water + drought/smoke-reactive haze (fixes white void at valley edge).
-- Done (defects): straightness check on line/peak/vee finishers (stray wander casts 30/500 → 14/500); harsher Dry Year — embers jump downwind, smoke hurts at the fire's edge, a second dry storm on day 8 strikes the driest ground, granary fire burns stores, famine bites (0.5/day), roof-catch scalds; seed sweep: unattended loses villagers on every seed (4/12 fail outright), Rain-tended bot wins 12/12; golem upkeep 5 + 4/day (one working golem ≈ half the ~18/day faith).
+- Done (defects): straightness check on line/peak/vee finishers (stray wander casts 30/500 → 14/500); harsher Dry Year — embers jump downwind, smoke hurts at the fire's edge, a second dry storm on day 8 strikes the driest ground, granary fire burns stores, famine bites (0.5/day), roof-catch scalds; seed sweep 1-8 headless: unattended deaths 12/3/6/0/5/1/3/6 (seed 1 wiped out), Rain-tended bot keeps all 12 alive on 12/12 seeds; ember rate tuned to 0.008 after spot fires outran Rain; golem upkeep 5 + 4/day (one working golem ≈ half the ~18/day faith).
 - Done (tests): m5-1, m6-1, m6-2 lay ritual logs by hand carry (green).
 - Done (awe): glyph stones are 6.5 m monoliths in cleared circles with fallen companion stones; the land remembers — records keep the fallen, next year shows a cairn where each fell, the hand over it names them; end card names the dead.
-- Next: full gate; after capture into evidence/uplift/after; Bible entry; PR body.
+- Done: after capture in evidence/uplift/after (+ compare-before-after.jpg); Bible Entry 11; HUMAN_GATE rows U1-U3.
+- Gate fixes: m2-2 samples every 50 ticks; m3-3 holds the calendar early while the mural is painted.
+- Next: confirm the full gate on the final commit; update PR body.

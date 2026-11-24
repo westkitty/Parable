@@ -616,3 +616,37 @@ State After Completion:
 
 Next Step / Handoff:
 - Owner plays both human gates on the Mac. Then tune false casts, drought severity per seed, and golem cost.
+
+### Entry 11 - Uplift pass: a dangerous Dry Year, a valley in a land, stones that look ancient, cairns that remember (t324u)
+
+Commands Run:
+```text
+node game/tools/uplift-capture.mjs game/evidence/uplift/{before,after} 4180   # matched scenes/cameras, seed 7, 1280x800, SwiftShader
+npx vite-node seed sweeps (unattended vs Rain-tended, seeds 1-12)               # scratch scripts, results below
+PW_CHROMIUM_PATH=/usr/bin/google-chrome npm --prefix game run gate              # see BUILD_PROGRESS for the final result
+```
+
+Decisions:
+- Neglect must cost lives, as in Black & White. A dry year left alone now kills through embers that jump downwind, smoke at the fire's edge, a second dry storm on day 8 that strikes the driest ground near the village, a granary that burns, famine that bites inside the year, and roofs that scald whoever is at the door. Seed sweep (1-8, headless): unattended deaths 12/3/6/0/5/1/3/6, one village wiped; a bot that only casts Rain on the nearest fire and parched fields keeps all twelve alive on 12/12 seeds.
+- Golems cost 5 faith a day awake plus 4 with a job. Prayer income averages about 18 a day (seed 7, measured), so one working golem costs half the faith and two cost all of it.
+- Line, peak and V finishers must be ruler-straight (sideways deviation under 4% of the chord; each leg of a ^ or V under 8%). Random strokes in the armed window now cast something 14/500 times (was 30/500); every finisher still reads 28/30 or better.
+- The valley sits in a land: ridged hills to the horizon, the stream leaving through a gorge, and a haze that yellows with drought and darkens with smoke. Procedural, no new files.
+- Glyph stones are 6.5 m monoliths in cleared circles with fallen companion stones (existing Kenney `stone_tallA`/`stone_smallC`).
+- The land remembers: temple records keep each year's fallen (name, cause, where). Next year a cairn stands where each fell; the empty hand over it names them. The end card names the dead.
+- Rejected as spectacle or scope: audio packs, more particles, weather systems, creatures.
+
+Doctrine:
+```text
+A god who looks away should come back to graves, and the graves should have names.
+```
+
+Bugs / Blockers:
+- The browser capture of seed 7 still survives the year (11/12 alive) because rendered frames interleave with sim steps; the headless sweep (same code) loses 3 on seed 7. Outcomes are chaotic across seeds by design.
+- Real-mouse feel and real-GPU frame time remain UNVERIFIED (SwiftShader only).
+- Proposal only, not done: rewrite history to drop `game/evidence/m2/m2-injury-and-care.webm` (58.8 MB).
+
+State After Completion:
+- Branch `feat/m1-hand-camera-fireball`, PR #1. Evidence: `game/evidence/uplift/{before,after,compare-before-after.jpg}`.
+
+Next Step / Handoff:
+- Owner plays U1-U3 in `game/HUMAN_GATE_FIRST_PLAYABLE.md` on the Mac.

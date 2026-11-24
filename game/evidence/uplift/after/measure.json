@@ -1,0 +1,20 @@
+{
+  "note": "Headless Chrome + SwiftShader software WebGL, 1280x800, seed 7. Not hardware numbers.",
+  "loadToReadyMs": 818,
+  "frames": {
+    "n": 22,
+    "medianMs": 450,
+    "p95Ms": 466.6999999999989
+  },
+  "heapMB": 48.8,
+  "simMsPer1800Ticks": 587,
+  "unattendedOutcome": {
+    "survived": true,
+    "alive": 11,
+    "dead": 1,
+    "houses": 1,
+    "title": "The village endured the Dry Year"
+  },
+  "cairns": 1,
+  "cairnLabel": "Maren lies hereburned in the wildfire, in year 1"
+}
