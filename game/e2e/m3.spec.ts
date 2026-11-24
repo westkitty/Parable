@@ -114,10 +114,12 @@ test("m3-2 the shrine: the hand carries the bell stone to the altar, the Rain gl
 
 test("m3-3 the painted wall: believing villagers paint it, the god studies it, and Sanctuary shields a house from fire", async ({ page }) => {
   await boot(page);
-  // The villagers paint as they pray; let the days run (bounded at 8 days; the day-5 wildfire may strike meanwhile).
+  // The villagers paint as they pray; let the days run (bounded at 8 days). The calendar is held in the
+  // early, green part of the year so this test sees the painting, not the (now deadly) wildfire.
   let v = await village(page);
   let days = 0;
   while (v.mural.progress < 1 && days < 8) {
+    await hook(page, "setDay", 2, 0.1);
     await hook(page, "stepTicks", 900);
     days += 0.5;
     v = await village(page);

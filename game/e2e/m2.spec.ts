@@ -50,13 +50,13 @@ test("m2-2 a working day: woodcutters fell trees, haulers move wood, builders ra
   const seen = new Set<string>();
   const lines: string[] = [];
   let lastLen = 0;
-  for (let k = 0; k < 9; k += 1) {
-    await hook(page, "stepTicks", 200);
+  for (let k = 0; k < 36; k += 1) {
+    await hook(page, "stepTicks", 50); // sample every 50 ticks so short jobs (a farmer's 3 s at a plot) are seen
     for (const s of await settlers(page)) seen.add(`${s.job}:${s.state}`);
     const log: string[] = (await state(page)).log;
     lines.push(...log.slice(Math.max(0, log.length - (log.length - lastLen))));
     lastLen = log.length;
-    if (k === 4) {
+    if (k === 18) {
       await frames(page, 3);
       await shot(page, "m2-02-working-midday");
     }

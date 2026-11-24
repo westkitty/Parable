@@ -85,7 +85,7 @@ export const STUDY_MURAL_S = 1.2;
 export const DRY_YEAR_DAYS = 10;
 export const LIGHTNING_DAY = 5;
 export const SECOND_STRIKE_DAY = 8; // a second dry storm late in the year: neglect compounds
-export const EMBER_RATE = 0.05; // per burning cell per second at full drought and wind: spotting fires ahead of the front
+export const EMBER_RATE = 0.008; // spot-fire chance per burning cell per second (scaled by drought above 0.4 and wind)
 export const SMOKE_HURT_PER_S = 0.05; // injury per second standing beside (not in) a burning cell
 export const SURVIVE_MIN_ALIVE = 4;
 
