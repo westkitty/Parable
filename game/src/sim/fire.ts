@@ -1,4 +1,4 @@
-import { FIRE_BURN_S, FIRE_CELL, SIM_DT, SIM_HZ, WORLD_SIZE } from "../config";
+import { EMBER_RATE, FIRE_BURN_S, FIRE_CELL, SIM_DT, SIM_HZ, WORLD_SIZE } from "../config";
 import { nextRandom } from "./rng";
 import { trees } from "./scenery";
 import { LAYOUT, isWater, pathDistance } from "./terrain";
@@ -127,6 +127,22 @@ export function stepFire(world: World): void {
         if (nextRandom(world) < p && !inSanctuary(world, nIdx)) {
           ignitions.push(nIdx);
           causes.push(f.cause[idx]);
+        }
+      }
+    }
+    // Embers: in drought and wind a burning cell can throw a spot fire 3–5 cells downwind, over firebreaks.
+    if (windy && dry > 0.4) {
+      const wl = Math.hypot(wx, wz);
+      if (nextRandom(world) < EMBER_RATE * (dry - 0.4) * wl * 2.5 * SIM_DT) {
+        const reach = 3 + Math.floor(nextRandom(world) * 3);
+        const ei = i + Math.round((wx / wl) * reach);
+        const ej = j + Math.round((wz / wl) * reach);
+        if (ei >= 0 && ej >= 0 && ei < n && ej < n) {
+          const eIdx = ej * n + ei;
+          if (f.burn[eIdx] === 0 && !f.scorched[eIdx] && f.fuel[eIdx] > 0.2 && f.wet[eIdx] === 0 && !inSanctuary(world, eIdx)) {
+            ignitions.push(eIdx);
+            causes.push(f.cause[idx]);
+          }
         }
       }
     }

@@ -48,6 +48,7 @@ export const DAY_TICKS = DAY_S * SIM_HZ;
 export const HUNGER_DAYS = 1.4; // fed -> starving
 export const ENERGY_DAYS = 1.3; // rested -> exhausted while working
 export const HEAL_PER_DAY = 0.15; // natural healing
+export const STARVE_PER_DAY = 0.5; // injury per day once starving (was 0.15: famine never killed inside the year)
 export const TEND_HEAL = 0.25; // one carer visit
 export const LAID_UP_AT = 0.6; // injury at which a villager can no longer work
 export const CHOP_S = 6;
@@ -83,6 +84,9 @@ export const STUDY_MURAL_S = 1.2;
 // ---- M4: the Dry Year ----
 export const DRY_YEAR_DAYS = 10;
 export const LIGHTNING_DAY = 5;
+export const SECOND_STRIKE_DAY = 8; // a second dry storm late in the year: neglect compounds
+export const EMBER_RATE = 0.05; // per burning cell per second at full drought and wind: spotting fires ahead of the front
+export const SMOKE_HURT_PER_S = 0.05; // injury per second standing beside (not in) a burning cell
 export const SURVIVE_MIN_ALIVE = 4;
 
 // ---- M4+: ten miracles and golems ----
@@ -96,6 +100,6 @@ export const BEACON_S = 40;
 export const GLYPH_STONE_TRACE_RADIUS = 12;
 export const GOLEM_WOOD = 4; // logs laid in the golem ring form one dormant wooden golem
 export const GOLEM_SPEED = 0.7; // x a villager's walk: golems are slow
-export const GOLEM_UPKEEP_PER_DAY = 3; // prayer power per awake golem per day
-export const GOLEM_JOB_UPKEEP_PER_DAY = 2; // extra when it has a job (macro complexity)
+export const GOLEM_UPKEEP_PER_DAY = 5; // prayer power per awake golem per day (was 3; prayer income averages ~18/day, measured seed 7)
+export const GOLEM_JOB_UPKEEP_PER_DAY = 4; // extra when it has a job: one working golem costs half the faith, two cost all of it
 export const GOLEM_MAX = 3;

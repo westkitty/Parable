@@ -22,6 +22,8 @@ import {
   SETTLER_WALK_SPEED,
   SIM_DT,
   SIM_HZ,
+  SMOKE_HURT_PER_S,
+  STARVE_PER_DAY,
   TEND_HEAL,
   TEND_S,
   WET_S,
@@ -46,7 +48,7 @@ export function bodyTick(world: World, s: Settler): void {
   s.hunger = Math.min(1, s.hunger + 1 / (HUNGER_DAYS * DAY_TICKS));
   if (WORKING.includes(s.state)) s.energy = Math.max(0, s.energy - 1 / (ENERGY_DAYS * DAY_TICKS));
   if (s.hunger >= 1) {
-    s.injury = Math.min(1, s.injury + 0.15 / DAY_TICKS);
+    s.injury = Math.min(1, s.injury + STARVE_PER_DAY / DAY_TICKS);
     if (s.injury >= 1) s.causeOfDeath = "starved";
   } else if (s.injury > 0) s.injury = Math.max(0, s.injury - HEAL_PER_DAY / DAY_TICKS);
   // Standing in fire burns.
@@ -54,8 +56,27 @@ export function bodyTick(world: World, s: Settler): void {
   if (idx >= 0 && world.fire.burn[idx] > 0 && !inSanctuary(world, idx)) {
     s.injury = Math.min(1, s.injury + 0.15 * SIM_DT);
     if (s.injury >= 1) s.causeOfDeath = world.fire.cause[idx] ? "burned in your fire" : "burned in the wildfire";
+  } else if (idx >= 0 && besideFire(world, idx)) {
+    // Smoke: standing at the fire's edge (fleeing late, or fighting it with buckets) chokes and scalds.
+    s.injury = Math.min(1, s.injury + SMOKE_HURT_PER_S * SIM_DT);
+    if (s.injury >= 1) s.causeOfDeath = "choked on the smoke";
   }
   dieIfFatal(world, s, world.fire.cause[idx] === 1 || s.causeOfDeath === "thrown by the god");
+}
+
+function besideFire(world: World, idx: number): boolean {
+  const f = world.fire;
+  const n = f.n;
+  const i = idx % n;
+  const j = Math.floor(idx / n);
+  for (let dj = -1; dj <= 1; dj += 1) {
+    for (let di = -1; di <= 1; di += 1) {
+      const ni = i + di;
+      const nj = j + dj;
+      if (ni >= 0 && nj >= 0 && ni < n && nj < n && f.burn[nj * n + ni] > 0) return !inSanctuary(world, idx);
+    }
+  }
+  return false;
 }
 
 export function dieIfFatal(world: World, s: Settler, byGod: boolean): boolean {

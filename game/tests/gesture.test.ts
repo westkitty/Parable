@@ -117,9 +117,9 @@ describe("the ten miracle finishers", () => {
     for (let s = 301; s <= 800; s += 1) if (analyzeGesture(wander(s)).kind === "spiral") arm += 1;
     expect(arm).toBeLessThanOrEqual(5);
   });
-  it("inside the 5.6 s armed window, a wander reads as some finisher at most 8 in 100 (known risk: straight moves are lines)", () => {
+  it("inside the 5.6 s armed window, a wander reads as some finisher at most 3 in 100 (was 6 in 100 before the straightness check)", () => {
     let fp = 0;
     for (let s = 301; s <= 800; s += 1) if (miracleFor(analyzeGesture(wander(s)))) fp += 1;
-    expect(fp).toBeLessThanOrEqual(40);
+    expect(fp).toBeLessThanOrEqual(15);
   });
 });

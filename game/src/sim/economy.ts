@@ -5,6 +5,7 @@ import {
   DRY_YEAR_DAYS,
   FIRE_BURN_S,
   LIGHTNING_DAY,
+  SECOND_STRIKE_DAY,
   RAIN_RADIUS,
   REBUILD_WOOD,
   SIM_HZ,
@@ -12,7 +13,7 @@ import {
   WET_S,
 } from "../config";
 import { decayBelief, shiftBelief, villageBelief, witnesses } from "./belief";
-import { extinguish, fireCellCenter, houseCells, igniteAt } from "./fire";
+import { extinguish, fireCellCenter, fireCellIndex, houseCells, igniteAt } from "./fire";
 import { placeName, remember } from "./settler";
 import { LAYOUT } from "./terrain";
 import type { Outcome, World } from "./types";
@@ -30,6 +31,7 @@ export function stepEconomy(world: World): void {
   cropsTick(world);
   sitesTick(world);
   housesTick(world);
+  granaryTick(world);
   miraclesTick(world);
   outcomeTick(world);
 }
@@ -57,6 +59,36 @@ function climateTick(world: World): void {
     igniteAt(world, x, z, 2.5, false);
     world.events.push({ type: "lightning", x, z });
   }
+  // The second dry storm strikes upwind of the village (stateless: fires on one exact tick, so saves need nothing new).
+  if (c.day === SECOND_STRIKE_DAY && c.dayTick === Math.round(DAY_TICKS * 0.45)) {
+    const [x, z] = driestGround(world);
+    igniteAt(world, x, z, 2.5, false);
+    world.events.push({ type: "lightning", x, z });
+  }
+}
+
+/** The second storm finds the dry grass: of a ring of spots around the village, the one with the most unburnt fuel (upwind wins ties). */
+function driestGround(world: World): [number, number] {
+  const vc = LAYOUT.villageCentre;
+  let best: [number, number] = [vc.x - 18, vc.z - 24];
+  let bestFuel = -1;
+  for (let k = 0; k < 12; k += 1) {
+    const a = (k / 12) * Math.PI * 2 + Math.PI * 1.3; // start upwind (wind blows toward +x,+z)
+    const x = vc.x + Math.cos(a) * 30;
+    const z = vc.z + Math.sin(a) * 30;
+    let fuel = 0;
+    for (let dz = -4; dz <= 4; dz += 2) {
+      for (let dx = -4; dx <= 4; dx += 2) {
+        const idx = fireCellIndex(x + dx, z + dz);
+        if (idx >= 0 && !world.fire.scorched[idx] && world.fire.wet[idx] === 0 && world.fire.burn[idx] === 0) fuel += world.fire.fuel[idx];
+      }
+    }
+    if (fuel > bestFuel + 0.5) {
+      bestFuel = fuel;
+      best = [x, z];
+    }
+  }
+  return best;
 }
 
 function cropsTick(world: World): void {
@@ -117,6 +149,12 @@ function housesTick(world: World): void {
     if (h.state === "standing" && burning) {
       h.state = "burning";
       h.builtTick = world.tick; // reuse as "burning since"
+      // Whoever is inside or at the door when the roof catches is scalded before they get out.
+      for (const s of world.settlers) {
+        if (!s.alive || Math.hypot(s.x - h.x, s.z - h.z) > HOUSE_CATCH_R) continue;
+        s.injury = Math.min(1, s.injury + HOUSE_CATCH_HURT);
+        if (s.injury >= 1) s.causeOfDeath = "caught in the burning house";
+      }
     } else if (h.state === "burning" && !burning) {
       const lost = cells.filter((idx) => f.scorched[idx]).length >= cells.length / 2;
       h.state = lost ? "ruin" : "standing";
@@ -136,6 +174,16 @@ function housesTick(world: World): void {
   }
   void FIRE_BURN_S;
   void fireCellCenter;
+}
+
+/** Fire in the granary eats the stores: one measure of food every two seconds while it burns. */
+const HOUSE_CATCH_R = 4.5;
+const HOUSE_CATCH_HURT = 0.55;
+
+function granaryTick(world: World): void {
+  if (world.tick % (SIM_HZ * 2) !== 0 || world.granary.food <= 0) return;
+  const g = world.granary;
+  if (houseCells(g.x, g.z).some((idx) => world.fire.burn[idx] > 0)) g.food = Math.max(0, g.food - 1);
 }
 
 function miraclesTick(world: World): void {

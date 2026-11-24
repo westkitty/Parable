@@ -267,11 +267,13 @@ export function analyzeGesture(raw: GesturePoint[]): GestureResult {
   // Open single strokes: a straight line, a ^ peak or a V.
   const chord = Math.hypot(last.x - first.x, last.y - first.y);
   const corners = simplify(pts, size * 0.1);
-  if (simplify(pts, size * 0.05).length === 2 && chord > 100 && L < chord * 1.08) {
+  // A deliberate line is ruler-straight: short paths that merely drift (a wandering mouse) bow away
+  // from their chord, so cap the widest sideways deviation as well as the length ratio.
+  if (simplify(pts, size * 0.05).length === 2 && chord > 100 && L < chord * LINE_TUNE.ratio && maxDeviation(pts, first, last) < chord * LINE_TUNE.dev) {
     const dx = last.x - first.x;
     const dy = last.y - first.y;
-    if (Math.abs(dy) > Math.abs(dx) * 2) return { kind: "line", dir: dy > 0 ? "down" : "up" };
-    if (Math.abs(dx) > Math.abs(dy) * 2) return { kind: "line", dir: "side" };
+    if (Math.abs(dy) > Math.abs(dx) * LINE_TUNE.axis) return { kind: "line", dir: dy > 0 ? "down" : "up" };
+    if (Math.abs(dx) > Math.abs(dy) * LINE_TUNE.axis) return { kind: "line", dir: "side" };
   }
   if (corners.length === 3 && closure > 0.3) {
     const [a, m, b] = corners;
@@ -280,12 +282,26 @@ export function analyzeGesture(raw: GesturePoint[]): GestureResult {
     const straight = L < (legA + legB) * 1.08 && simplify(pts, size * 0.05).length <= 4;
     const balanced = Math.min(legA, legB) > Math.max(legA, legB) * 0.5 && Math.min(legA, legB) > 60;
     const spread = Math.abs(b.x - a.x) > 0.35 * Math.max(legA, legB);
-    if (straight && balanced && spread) {
+    // Each leg must itself be straight (a drifting arc that happens to bend once is not a ^ or V).
+    const mi = pts.indexOf(m);
+    const legsTrue = mi > 0 && maxDeviation(pts.slice(0, mi + 1), a, m) < legA * LINE_TUNE.legDev && maxDeviation(pts.slice(mi), m, b) < legB * LINE_TUNE.legDev;
+    if (straight && balanced && spread && legsTrue) {
       if (Math.min(a.y, b.y) - m.y > 0.5 * box.h) return { kind: "peak" };
       if (m.y - Math.max(a.y, b.y) > 0.5 * box.h) return { kind: "vee" };
     }
   }
   return { kind: "none", reason: "unrecognised" };
+}
+
+export const LINE_TUNE = { dev: 0.04, ratio: 1.08, axis: 2.75, legDev: 0.08 };
+/** Widest perpendicular distance of any point from the first→last chord. */
+function maxDeviation(pts: readonly GesturePoint[], a: GesturePoint, b: GesturePoint): number {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const len = Math.hypot(dx, dy) || 1;
+  let m = 0;
+  for (const p of pts) m = Math.max(m, Math.abs((p.x - a.x) * dy - (p.y - a.y) * dx) / len);
+  return m;
 }
 
 /** The protected ritual: clockwise spiral arms for RITUAL_ARM_MS; then a vertical zigzag = Fireball, a wave = Rain, a ring = Sanctuary. */
