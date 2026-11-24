@@ -523,3 +523,51 @@ State After Completion:
 
 Next Step / Handoff:
 - Future design work should define the four opening dream paths, their glyphs, their tutorial shrine puzzles, and at least three upgrade tiers for each starter miracle.
+
+### Entry 9 - Milestone 1 implementation: Hand on the Valley (Three.js + Rapier)
+
+Summary:
+- Built Milestone 1 in a new `game/` folder: one valley, the divine hand, the god camera, one settler (Ilse) who hauls logs, the spiral -> zigzag Fireball, persistent scorch, and a temple chamber with Save / Load / Restart tablets.
+
+Reason / Intent:
+- The engine decision (restructure, stay on Three.js r185, Rapier physics, pure-TS sim, JSON saves; Unity 6 as fallback) needed a playable proof before more design work.
+- The user said "go. no creatures tho": no creature companion, no creature training, no golems in M1.
+
+Files Changed:
+- `game/**` (new; no files from the old prototype were changed)
+- `Parable_Bible.md` (this entry)
+
+Commands Run:
+```text
+npm --prefix game run gate   # tsc --noEmit, vitest, vite build, playwright e2e
+```
+
+Command Intent:
+- Prove the control grammar and the core god-game loop in the browser, with automated evidence.
+
+Outputs Generated:
+- `game/evidence/m1/` screenshots, JSON measurements, a video, and RESULTS.md.
+- `game/ASSET_LEDGER.md`: Kenney CC0 kits with SHA-256 hashes. The hand, fireball, fire, terrain and water are original procedural art.
+- `game/HUMAN_GATE_M1.md`: the owner's 10-minute play checklist.
+
+Decisions:
+- Navigation for M1 is a deterministic grid A* (2 m cells). Recast is deferred to M2.
+- The protected ritual is unchanged: a clockwise spiral arms for 5.6 s, then a vertical zigzag gives a Fireball held in the hand. Counter-clockwise does not arm (`ACCEPT_COUNTERCLOCKWISE = false`).
+- Gesture thresholds were retuned from the old prototype. The spiral length is now 3.0× its extent instead of 4.2×, and a spiral must grow in radius (loops don't count). A zigzag must have low net rotation and stay under 480 px tall. Ordinary mouse wandering gave 1 false positive in 500 strokes.
+- Logs use a faceted (rounded-box) collider so they rest on slopes. Gently placed objects settle for 1 s.
+- Ilse switches to a nearer log, such as one the god just laid down, and remembers it as a gift.
+- No HUD. The only text is Ilse's inspect bubble and the F3 overlay.
+
+Doctrine:
+```text
+Every Parable design question moves toward Black & White / B&W2: the hand is the interface, the world is the HUD, and settlers judge the god by what they witness.
+```
+
+Bugs / Blockers:
+- Real-mouse feel, trackpad behaviour and performance on the owner's M1 MacBook Air are UNVERIFIED. All automated runs used headless Chrome with SwiftShader software rendering, at a few fps.
+
+State After Completion:
+- `game/` passes the M1 gate on the build box. M1 is not accepted until the owner plays `game/HUMAN_GATE_M1.md`.
+
+Next Step / Handoff:
+- The owner plays the human gate on the Mac. After that, M2 can add recast navigation, more settlers, and a second miracle (Rain).
