@@ -26,6 +26,15 @@ export const LAYOUT = {
   villageCentre: { x: 21, z: 17 },
   shrine: { x: -48, z: -48 },
   bellStone: { x: -20, z: 40 },
+  // Old-god glyph stones (M4+): each wakes through a physical ritual, then teaches its miracle.
+  glyphStones: [
+    { miracle: "heal", x: -8, z: 34, ritual: "a hurt villager is set down beside it" },
+    { miracle: "lightning", x: 42, z: -30, ritual: "fire touches it" },
+    { miracle: "fertility", x: 52, z: 22, ritual: "rain falls on it" },
+    { miracle: "wind", x: -40, z: 8, ritual: "something is thrown hard past it" },
+    { miracle: "stone", x: 12, z: -42, ritual: "two logs are laid beside it" },
+  ],
+  golemForm: { x: 36, z: 34 }, // a ring of old stones where logs laid by the hand become a golem
   spawnLogs: [
     { x: 4, z: -6 },
     { x: -3, z: 2 },

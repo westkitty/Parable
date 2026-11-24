@@ -35,7 +35,7 @@ const JOBS: Job[] = ["woodcutter", "hauler", "builder", "farmer", "water", "care
 export function createWorld(seed: number, scenario: Scenario = "village"): World {
   const village = scenario === "village";
   const world: World = {
-    version: 2,
+    version: 3,
     scenario,
     seed,
     tick: 0,
@@ -59,6 +59,12 @@ export function createWorld(seed: number, scenario: Scenario = "village"): World
     miraclesCast: 0,
     shrine: { awakened: false, glyphShownTick: -1 },
     mural: { progress: 0, read: false },
+    glyphStones: village ? LAYOUT.glyphStones.map((g) => ({ ...g, awake: false })) : [],
+    beacon: null,
+    gust: null,
+    stoneworks: [],
+    golems: [],
+    golemForm: { x: LAYOUT.golemForm.x, z: LAYOUT.golemForm.z, wood: 0 },
     outcome: null,
     events: [],
   };

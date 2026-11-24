@@ -2,6 +2,7 @@ import { FIRE_IGNITE_RADIUS, MIRACLE_COST, RAIN_S, SANCTUARY_RADIUS, SANCTUARY_S
 import type { PathFn } from "../nav/grid";
 import { shiftBelief, witnesses } from "./belief";
 import { stepEconomy } from "./economy";
+import { stepMiracles } from "./miracles";
 import { burningCount, igniteAt, stepFire } from "./fire";
 import { stepSettler } from "./settler";
 import { LAYOUT, terrainHeight } from "./terrain";
@@ -17,6 +18,7 @@ export function stepWorld(world: World, findPath: PathFn, opts: { settlers?: boo
     item.restTicks = speed < 0.35 ? item.restTicks + 1 : 0;
   }
   stepEconomy(world);
+  if (world.scenario === "village") stepMiracles(world);
   checkShrine(world);
   if (opts.settlers !== false) for (const s of world.settlers) stepSettler(world, s, findPath);
   // Carried items ride on the settler's shoulder.

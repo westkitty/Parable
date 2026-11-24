@@ -81,6 +81,16 @@ export function dieIfFatal(world: World, s: Settler, byGod: boolean): boolean {
   return true;
 }
 
+/** A beacon was raised: villagers drop what they are doing (not fleeing or laid up) and come. */
+export function answerBeacon(world: World): void {
+  for (const s of world.settlers) {
+    if (!s.alive || !WORKING.includes(s.state) || s.task?.kind === "shelter") continue;
+    if (s.carrying != null) dropCarried(world, s);
+    releaseClaims(world, s);
+    finish(world, s);
+  }
+}
+
 export function releaseClaims(world: World, s: Settler): void {
   for (const it of world.items) if (it.claimedBy === s.id) it.claimedBy = null;
   if (s.carryRes === "wood" && s.task?.kind === "build") world.woodpile.count += 1; // drop the plank back
@@ -92,6 +102,12 @@ export function releaseClaims(world: World, s: Settler): void {
 function refuge(world: World, s: Settler): { x: number; z: number } | undefined {
   let best: { x: number; z: number } | undefined;
   let bd = 45;
+  // A beacon is a refuge too, when it is not itself in the fire.
+  if (world.beacon && !nearestBurning(world.fire, world.beacon.x, world.beacon.z, 8)) {
+    bd = Math.hypot(world.beacon.x - s.x, world.beacon.z - s.z);
+    if (bd < 60) best = { x: world.beacon.x, z: world.beacon.z };
+    else bd = 45;
+  }
   for (const sa of world.sanctuaries) {
     const d = Math.hypot(sa.x - s.x, sa.z - s.z);
     if (d < bd) {
@@ -355,6 +371,18 @@ function arrive(world: World, s: Settler, findPath: PathFn): void {
       return startShelter(world, s);
     case "haul_log":
       return finish(world, s);
+    case "gather": {
+      const b = world.beacon;
+      if (!b) return finish(world, s);
+      face(s, b.x, b.z);
+      t.ticks = Math.max(SIM_HZ, b.ttl);
+      if (!s.memories.some((m) => m.kind === "gathered_at_beacon" && world.tick - m.tick < 60 * SIM_HZ)) {
+        remember(world, s, "gathered_at_beacon", placeName(b.x, b.z), true, "awed");
+        shiftBelief(world, s, "we gathered at your beacon", { g: 4, f: 1 });
+        world.power = Math.min(POWER_MAX, world.power + 1);
+      }
+      return setState(world, s, "praying");
+    }
   }
   void findPath;
 }
@@ -362,6 +390,8 @@ function arrive(world: World, s: Settler, findPath: PathFn): void {
 function complete(world: World, s: Settler, findPath: PathFn): void {
   const t = s.task!;
   switch (t.kind) {
+    case "gather":
+      return finish(world, s);
     case "chop": {
       const tr = trees()[t.ref];
       if (!world.felled.includes(t.ref)) {
@@ -620,6 +650,18 @@ export function villageIdle(world: World, s: Settler, findPath: PathFn): void {
     if (beginTask(world, s, { kind: "rest", phase: 0, tx: hx, tz: hz, ref: 1, ticks: 0 }, findPath)) return;
     setState(world, s, "laid_up");
     return;
+  }
+  // The god's beacon: the village leaves its work and gathers to worship.
+  if (world.beacon && s.hunger < 0.9) {
+    const b = world.beacon;
+    const a = (s.id * 2.399) % (Math.PI * 2);
+    const tx = b.x + Math.cos(a) * 3.2;
+    const tz = b.z + Math.sin(a) * 3.2;
+    if (Math.hypot(s.x - tx, s.z - tz) < 1.6) {
+      s.task = { kind: "gather", phase: 1, tx, tz, ref: 0, ticks: 0 };
+      return arrive(world, s, findPath);
+    }
+    if (beginTask(world, s, { kind: "gather", phase: 0, tx, tz, ref: 0, ticks: 0 }, findPath)) return;
   }
   if (s.hunger > 0.6 && world.granary.food > 0) {
     if (beginTask(world, s, { kind: "eat", phase: 0, tx: world.granary.x - 1.8, tz: world.granary.z + 1, ref: 0, ticks: 0 }, findPath)) return;

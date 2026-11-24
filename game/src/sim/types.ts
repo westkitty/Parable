@@ -49,6 +49,10 @@ export type Job = "woodcutter" | "hauler" | "builder" | "farmer" | "water" | "ca
 export type Resource = "wood" | "food" | "water";
 
 export type MemoryKind =
+  | "was_healed"
+  | "struck_by_lightning"
+  | "saw_golem"
+  | "gathered_at_beacon"
   | "saw_fire"
   | "was_carried_gently"
   | "was_thrown"
@@ -109,7 +113,8 @@ export interface Task {
     | "tend"
     | "pray"
     | "paint"
-    | "shelter";
+    | "shelter"
+    | "gather";
   phase: number; // task-specific step
   tx: number;
   tz: number;
@@ -260,8 +265,60 @@ export interface Mural {
   read: boolean; // the god has studied the finished mural
 }
 
+/** An old-god glyph stone: a physical ritual wakes it, then tracing its glyph beside it teaches the miracle. */
+export interface GlyphStone {
+  miracle: string;
+  x: number;
+  z: number;
+  awake: boolean;
+  ritual: string; // what wakes it, in plain words
+}
+
+export interface Beacon {
+  x: number;
+  z: number;
+  ttl: number;
+}
+
+export interface Gust {
+  x: number;
+  z: number;
+  dx: number;
+  dz: number;
+  ttl: number;
+}
+
+export interface StoneWork {
+  id: number;
+  x: number;
+  z: number;
+  r: number;
+}
+
+export type GolemJob = "none" | "haul" | "build" | "douse";
+export type GolemState = "forming" | "dormant" | "idle" | "walking" | "lifting" | "carrying" | "building" | "fetching" | "dousing" | "held";
+
+/** A golem: a vessel of delegated labour. It never casts miracles; it only lifts, carries, builds and douses. */
+export interface Golem {
+  id: number;
+  x: number;
+  y: number;
+  z: number;
+  heading: number;
+  wood: number; // logs in its body (it forms at GOLEM_WOOD)
+  awake: boolean;
+  state: GolemState;
+  job: GolemJob;
+  stateTicks: number;
+  path: [number, number][];
+  carrying: number | null; // an item id (log)
+  carryWater: boolean;
+  target: number | null; // site id or item id
+  workDone: number; // loads moved / build work / cells doused (inspectable)
+}
+
 export interface World {
-  version: 2;
+  version: 3;
   scenario: "solo" | "village";
   seed: number;
   tick: number;
@@ -285,6 +342,12 @@ export interface World {
   miraclesCast: number;
   shrine: Shrine;
   mural: Mural;
+  glyphStones: GlyphStone[];
+  beacon: Beacon | null;
+  gust: Gust | null;
+  stoneworks: StoneWork[];
+  golems: Golem[];
+  golemForm: { x: number; z: number; wood: number };
   outcome: Outcome | null;
   events: WorldEvent[]; // transient, cleared by consumer each frame; not saved
 }
@@ -307,4 +370,10 @@ export type WorldEvent =
   | { type: "lightning"; x: number; z: number }
   | { type: "doused"; settler: number; cells: number }
   | { type: "prayed"; settler: number; power: number }
-  | { type: "outcome"; survived: boolean };
+  | { type: "outcome"; survived: boolean }
+  | { type: "stone_awake"; miracle: string }
+  | { type: "miracle"; miracle: string; x: number; z: number }
+  | { type: "golem_formed"; golem: number }
+  | { type: "golem_woke"; golem: number }
+  | { type: "golem_slept"; golem: number; why: string }
+  | { type: "golem_work"; golem: number; job: GolemJob; what: string };

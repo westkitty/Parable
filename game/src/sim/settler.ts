@@ -85,6 +85,14 @@ function reasonText(world: World, m: Memory): string {
       return "the granary was empty";
     case "was_tended":
       return `${who} tended my wounds`;
+    case "was_healed":
+      return `your light healed me at ${m.place}`;
+    case "struck_by_lightning":
+      return `your lightning struck me at ${m.place}`;
+    case "saw_golem":
+      return `your golem worked at ${m.place}`;
+    case "gathered_at_beacon":
+      return `we gathered at your beacon at ${m.place}`;
   }
 }
 

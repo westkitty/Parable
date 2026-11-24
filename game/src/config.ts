@@ -69,7 +69,7 @@ export const FOOD_PER_HARVEST = 3;
 // ---- M3: belief and miracles ----
 export const START_POWER = 70;
 export const POWER_MAX = 100;
-export const MIRACLE_COST: Record<string, number> = { fireball: 20, rain: 30, sanctuary: 40 };
+export const MIRACLE_COST: Record<string, number> = { fireball: 20, rain: 30, sanctuary: 40, heal: 25, lightning: 20, fertility: 25, wind: 15, stone: 30, beacon: 10, golem: 30 };
 export const PRAY_MIN_BELIEF = 25;
 export const PAINT_MIN_VILLAGE_BELIEF = 30;
 export const RAIN_S = 24;
@@ -84,3 +84,18 @@ export const STUDY_MURAL_S = 1.2;
 export const DRY_YEAR_DAYS = 10;
 export const LIGHTNING_DAY = 5;
 export const SURVIVE_MIN_ALIVE = 4;
+
+// ---- M4+: ten miracles and golems ----
+export const HEAL_RADIUS = 7;
+export const FERTILITY_RADIUS = 12;
+export const LIGHTNING_HURT_RADIUS = 3;
+export const WIND_S = 12;
+export const WIND_RADIUS = 14;
+export const STONE_RADIUS = 3.2;
+export const BEACON_S = 40;
+export const GLYPH_STONE_TRACE_RADIUS = 12;
+export const GOLEM_WOOD = 4; // logs laid in the golem ring form one dormant wooden golem
+export const GOLEM_SPEED = 0.55; // x a villager's walk: golems are slow
+export const GOLEM_UPKEEP_PER_DAY = 3; // prayer power per awake golem per day
+export const GOLEM_JOB_UPKEEP_PER_DAY = 2; // extra when it has a job (macro complexity)
+export const GOLEM_MAX = 3;
