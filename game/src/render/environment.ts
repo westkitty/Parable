@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { Sky } from "three/examples/jsm/objects/Sky.js";
 import { LAYOUT } from "../sim/terrain";
+import { buildOuterLands, gorgeWater } from "./outerlands";
 
 export const SUN_DIR = new THREE.Vector3().setFromSphericalCoords(1, THREE.MathUtils.degToRad(90 - 24), THREE.MathUtils.degToRad(215));
 
@@ -19,7 +20,9 @@ export function buildEnvironment(scene: THREE.Scene, renderer: THREE.WebGLRender
   // black under SwiftShader and costs a cube render; the hemisphere is cheaper on an M1 Air).
   void renderer;
 
-  scene.fog = new THREE.Fog(new THREE.Color("#e9c9a0"), 90, 260);
+  // Haze: the far ridges dissolve into it; the drought and the fire's smoke pull it closer (see updateHaze).
+  scene.fog = new THREE.Fog(new THREE.Color(HAZE_CLEAR), 140, 720);
+  scene.add(buildOuterLands());
 
   const hemi = new THREE.HemisphereLight(new THREE.Color("#ffe9cc"), new THREE.Color("#6b7a45"), 1.35);
   scene.add(hemi);
@@ -40,8 +43,24 @@ export function buildEnvironment(scene: THREE.Scene, renderer: THREE.WebGLRender
   scene.add(sun.target);
 
   const water = new Water();
-  scene.add(water.mesh);
+  scene.add(water.mesh, gorgeWater(water.mesh.material as THREE.Material));
   return { sun, water };
+}
+
+const HAZE_CLEAR = "#e6d9bf";
+const HAZE_DRY = new THREE.Color("#d9b98a");
+const HAZE_SMOKE = new THREE.Color("#8f7f70");
+const hazeTmp = new THREE.Color();
+/** The air of the Dry Year: dust as the land dries, a closing wall of smoke while fire burns. */
+export function updateHaze(scene: THREE.Scene, dryness: number, smoke: number, dt: number): void {
+  const fog = scene.fog as THREE.Fog;
+  hazeTmp.set(HAZE_CLEAR).lerp(HAZE_DRY, dryness).lerp(HAZE_SMOKE, smoke * 0.75);
+  const k = Math.min(1, dt * 0.8);
+  fog.color.lerp(hazeTmp, k);
+  const far = 720 - dryness * 200 - smoke * 380;
+  const near = 140 - dryness * 30 - smoke * 80;
+  fog.far += (far - fog.far) * k;
+  fog.near += (near - fog.near) * k;
 }
 
 /** Keep the shadow frustum centred on what the camera is looking at. */

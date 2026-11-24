@@ -14,7 +14,7 @@ import { MiracleViews } from "./render/miracles";
 import { VillageView } from "./render/village";
 import { buildBuildings } from "./render/buildings";
 import { CameraRig, DEFAULT_CAMERA } from "./render/camera";
-import { buildEnvironment, followSun, type Water } from "./render/environment";
+import { buildEnvironment, followSun, updateHaze, type Water } from "./render/environment";
 import { Particles } from "./render/particles";
 import { TerrainView } from "./render/terrain";
 import { Vegetation, windUniform } from "./render/vegetation";
@@ -845,6 +845,7 @@ async function boot(): Promise<void> {
     smoke.update(dt);
     trace.update(dt);
     followSun(sun, rig.target, rig.dist);
+    updateHaze(scene, village ? world.climate.dryness : 0, village ? Math.min(1, burningCount(world.fire) / 160) : 0, dt);
 
     // Inspect bubble: hover the empty hand over a villager for 0.6 s.
     const hoveredId = hover?.kind === "settler" && !held ? hover.id : null;

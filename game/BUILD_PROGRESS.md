@@ -36,3 +36,8 @@ Branch `feat/m1-hand-camera-fireball` (PR #1). Never push to main, never force-p
 - `npx vite build && PW_CHROMIUM_PATH=/usr/bin/google-chrome npx playwright test e2e/m5.spec.ts -g m6-1`
 - Headless village sim: `npx vite-node /workspace/scratch/vsim.ts <days> <seed>` (scratch may be gone on a fresh box).
 - NOTE: the image viewer may cache by path; write screenshots to new file names when comparing.
+
+## Uplift pass (t324u) — in progress
+- Baseline captured: evidence/uplift/before (tools/uplift-capture.mjs, seed 7, 1280x800, SwiftShader software-only numbers in measure.json).
+- Done: outer lands ring to ±900 m + gorge water + drought/smoke-reactive haze (fixes white void at valley edge at max zoom; evidence/uplift/after-wip/s6-valley-top.jpg).
+- Next: defects (straight-line misfire after spiral, seed-7 fire too gentle, golem upkeep, m5/m6 hook-placed logs → hand carry), then awe layer (monolith glyph stones, cairns for the fallen, groove linking stones, in-fiction end card), full gate.
