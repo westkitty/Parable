@@ -16,7 +16,7 @@ import {
 import { CameraRig, rayTerrain } from "../render/camera";
 import { Ritual, analyzeGesture, pathLength, type GesturePoint, type GestureResult, type Miracle } from "./gesture";
 
-export type Grabbable = { kind: "item" | "settler"; id: number };
+export type Grabbable = { kind: "item" | "settler" | "golem"; id: number };
 export type InputMode = "hover" | "pan" | "orbit" | "carry";
 
 export interface GameApi {

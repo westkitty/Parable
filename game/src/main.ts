@@ -8,6 +8,8 @@ import { buildWalkable, makePathFinder } from "./nav/grid";
 import { readSave, writeSave } from "./persist/storage";
 import { LOG_HALF_LENGTH, LOG_RADIUS, Physics } from "./physics/physics";
 import { ItemViews, FireView, SettlerViews } from "./render/actors";
+import { MIRACLE_NAME } from "./render/glyphs";
+import { WorldMarks } from "./render/marks";
 import { MiracleViews } from "./render/miracles";
 import { VillageView } from "./render/village";
 import { buildBuildings } from "./render/buildings";
@@ -18,10 +20,13 @@ import { TerrainView } from "./render/terrain";
 import { Vegetation, windUniform } from "./render/vegetation";
 import { burningCount, createFireGrid, igniteAt, scorchedCount } from "./sim/fire";
 import { computeOutcome } from "./sim/economy";
+import { dropGolem, grabGolem, wakeGolem } from "./sim/golems";
+import { castBeacon, castFertility, castHeal, castLightning, castStone, castWind } from "./sim/miracles";
 import { beliefSummary, villageBelief } from "./sim/belief";
 import { deserialize, hashWorld, serialize } from "./sim/save";
 import { trees } from "./sim/scenery";
 import { describeAll, describeDetail, describeSettler, grabSettler, releaseSettler } from "./sim/settler";
+import { GLYPH_STONE_TRACE_RADIUS } from "./config";
 import { canAfford, castRain, castSanctuary, dissolveFireball, fireballImpact, learn, spend, stepWorld } from "./sim/step";
 import { LAYOUT, terrainHeight } from "./sim/terrain";
 import type { Item, Settler, World } from "./sim/types";
@@ -82,6 +87,9 @@ async function boot(): Promise<void> {
   const miracles = new MiracleViews(scene);
   const settlerViews = new SettlerViews();
   scene.add(villageView.group, settlerViews.group);
+  const marks = new WorldMarks();
+  await marks.init();
+  scene.add(marks.group);
   const fireView = new FireView(flames, smoke, scene);
   const chamber = new TempleChamber();
   await chamber.init();
@@ -147,10 +155,15 @@ async function boot(): Promise<void> {
       raycaster.ray.copy(ray);
       raycaster.far = 400;
       // Exact hits on meshes win.
-      const hits = raycaster.intersectObjects([settlerViews.group, ...itemViews.pickables()], true);
+      const hits = raycaster.intersectObjects([settlerViews.group, ...itemViews.pickables(), ...marks.golemPickables()], true);
       for (const h of hits) {
         let o: THREE.Object3D | null = h.object;
         while (o) {
+          if (o.userData.golemId != null) {
+            const gm = world.golems.find((x) => x.id === o!.userData.golemId);
+            if (gm) return { kind: "golem", id: gm.id };
+            break;
+          }
           if (o.userData.settlerId != null) {
             const s = settlerOf(o.userData.settlerId as number);
             if (s && pickableSettler(s)) return { kind: "settler", id: s.id };
@@ -174,6 +187,13 @@ async function boot(): Promise<void> {
         if (d < bestD) {
           bestD = d;
           best = { kind: "item", id: it.id };
+        }
+      }
+      for (const gm of world.golems) {
+        const d = Math.hypot(gm.x - ground.x, gm.z - ground.z);
+        if (d < Math.max(2.2, pickRadius()) && d < bestD + 1) {
+          bestD = d;
+          best = { kind: "golem", id: gm.id };
         }
       }
       let bestS = Math.max(1.2, pickRadius() * 0.8);
@@ -204,6 +224,10 @@ async function boot(): Promise<void> {
         it.claimedBy = null;
         it.godTouched = true;
         physics.sync(world);
+      } else if (g.kind === "golem") {
+        const gm = world.golems.find((x) => x.id === g.id);
+        if (!gm) return false;
+        grabGolem(world, gm);
       } else {
         const s = settlerOf(g.id);
         if (!s || !pickableSettler(s)) return false;
@@ -220,6 +244,16 @@ async function boot(): Promise<void> {
       held = null;
       const gp = ground ?? lastGround;
       lastReleasePoint = [gp.x, gp.y, gp.z];
+      if (g.kind === "golem") {
+        // Golems are too heavy to throw: wherever the hand lets go, it is set down, and that place is its work.
+        const gm = world.golems.find((x) => x.id === g.id);
+        if (gm) {
+          const job = dropGolem(world, gm, gp.x, gp.z);
+          note(`golem ${gm.id} set down: ${gm.awake ? job : "dormant"}`);
+        }
+        hand.setPose("open");
+        return;
+      }
       if (g.kind === "settler") {
         const s = settlerOf(g.id);
         if (!s) return;
@@ -360,6 +394,12 @@ async function boot(): Promise<void> {
       learn(world, "rain");
       note("learned rain at the shrine");
     }
+    // Tracing a glyph beside the old-god stone that carries it (once the stone is awake) teaches it.
+    const stone = world.glyphStones.find((g) => g.miracle === kind);
+    if (stone && !world.learned.includes(kind) && stone.awake && Math.hypot(at.x - stone.x, at.z - stone.z) < GLYPH_STONE_TRACE_RADIUS) {
+      learn(world, kind);
+      note(`learned ${kind} at its glyph stone`);
+    }
     if (!world.learned.includes(kind)) {
       fizzle(`${kind} not learned`);
       return false;
@@ -374,12 +414,55 @@ async function boot(): Promise<void> {
       if (held || heldCloud != null) return false;
       heldCloud = castRain(world, lastGround.x, lastGround.z);
       note("rain cloud summoned");
-    } else {
+    } else if (kind === "sanctuary") {
       castSanctuary(world, at.x, at.z);
       note(`sanctuary at ${at.x.toFixed(0)},${at.z.toFixed(0)}`);
+    } else if (kind === "heal") {
+      const r = castHeal(world, at.x, at.z);
+      sparkle(at.x, at.z, 7, [0.6, 1.4, 0.7]);
+      note(`heal at ${at.x.toFixed(0)},${at.z.toFixed(0)}: ${r.healed.length} healed, ${r.regrown} cells green`);
+    } else if (kind === "lightning") {
+      const r = castLightning(world, at.x, at.z);
+      note(`bolt at ${at.x.toFixed(0)},${at.z.toFixed(0)}: ${r.cells} cells, ${r.hurt.length} hurt, ${r.logs} logs`);
+    } else if (kind === "fertility") {
+      const r = castFertility(world, at.x, at.z);
+      sparkle(at.x, at.z, 12, [0.9, 1.3, 0.3]);
+      note(`fertility at ${at.x.toFixed(0)},${at.z.toFixed(0)}: ${r.plots} plots`);
+    } else if (kind === "wind") {
+      const n = stroke.length;
+      const a = stroke[Math.floor(n * 0.75)] ?? at;
+      const b = stroke[n - 1] ?? at;
+      const dx = b.x - a.x || 1;
+      const dz = b.z - a.z;
+      castWind(world, at.x, at.z, dx, dz);
+      note(`wind at ${at.x.toFixed(0)},${at.z.toFixed(0)} toward ${(Math.atan2(dx, dz) * 57.3).toFixed(0)}deg`);
+    } else if (kind === "stone") {
+      const r = castStone(world, at.x, at.z);
+      note(`stone ring at ${at.x.toFixed(0)},${at.z.toFixed(0)}${r.toSite ? ` (+${r.toSite} to the site)` : ""}`);
+    } else if (kind === "beacon") {
+      castBeacon(world, at.x, at.z);
+      note(`beacon at ${at.x.toFixed(0)},${at.z.toFixed(0)}`);
+    } else if (kind === "golem") {
+      const id = wakeGolem(world, at.x, at.z);
+      if (id < 0) {
+        fizzle("no dormant golem within reach");
+        return false;
+      }
+      note(`golem ${id} woke`);
     }
     spend(world, kind);
     return true;
+  }
+
+  /** Coloured motes rising over an area (Healing, Fertility). Procedural particles. */
+  function sparkle(x: number, z: number, r: number, [cr, cg, cb]: [number, number, number]): void {
+    for (let i = 0; i < 90; i += 1) {
+      const a = Math.random() * Math.PI * 2;
+      const d = Math.sqrt(Math.random()) * r;
+      const px = x + Math.cos(a) * d;
+      const pz = z + Math.sin(a) * d;
+      trace.emit(px, Math.max(terrainHeight(px, pz), 0) + 0.3, pz, 0, 1.2 + Math.random(), 0, 0.7, 1.8, cr, cg, cb, 0.8);
+    }
   }
 
   function dropCloud(): void {
@@ -520,6 +603,23 @@ async function boot(): Promise<void> {
       chamber.toggleRecords();
       return;
     }
+    if (a === "beacon") {
+      // The brazier teaches Beacon when the village's faith burns high.
+      if (world.learned.includes("beacon")) return;
+      if (world.scenario === "village" && world.power >= 90) {
+        learn(world, "beacon");
+        note(`learned ${MIRACLE_NAME.beacon} at the brazier`);
+      } else note("the brazier burns too low to teach");
+      return;
+    }
+    if (a === "golem") {
+      if (world.learned.includes("golem")) return;
+      if (world.golems.length > 0) {
+        learn(world, "golem");
+        note(`learned ${MIRACLE_NAME.golem} at the carved stele`);
+      } else note("the stele is silent: no golem has stood in the ring");
+      return;
+    }
     if (a === "save") await doSave();
     else if (a === "load") await doLoad();
     else restart();
@@ -554,6 +654,11 @@ async function boot(): Promise<void> {
       else if (e.type === "died") note(`${nameOf(e.settler)} died (${e.cause})`);
       else if (e.type === "learned") note(`learned ${e.miracle}`);
       else if (e.type === "shrine_awake") note("shrine awake");
+      else if (e.type === "stone_awake") note(`${e.miracle} stone awake`);
+      else if (e.type === "golem_formed") note(`golem ${e.golem} formed in the ring`);
+      else if (e.type === "golem_woke") note(`golem ${e.golem} awake`);
+      else if (e.type === "golem_slept") note(`golem ${e.golem} slept (${e.why})`);
+      else if (e.type === "golem_work") note(`golem ${e.golem} ${e.what}`);
       else if (e.type === "mural_done") note("mural finished");
       else if (e.type === "day") note(`day ${e.day} dryness ${e.dryness.toFixed(2)}`);
       else if (e.type === "doused") note(`${nameOf(e.settler)} doused ${e.cells}`);
@@ -567,6 +672,15 @@ async function boot(): Promise<void> {
   function updateHeld(): void {
     if (!held) return;
     const yaw = rig.yaw + Math.PI;
+    if (held.kind === "golem") {
+      const gm = world.golems.find((x) => x.id === held!.id);
+      if (gm) {
+        gm.x = handTarget.x;
+        gm.z = handTarget.z;
+        gm.y = handTarget.y - 4.2;
+      }
+      return;
+    }
     if (held.kind === "settler") {
       const s = settlerOf(held.id);
       if (!s) return;
@@ -658,7 +772,7 @@ async function boot(): Promise<void> {
 
     // Hand: follows this frame's touch point; lower to reach over a grabbable; higher when carrying.
     const hover = templeMode === "world" ? controller.hover : null;
-    const lift = held ? HAND_CARRY_HEIGHT + (held.kind === "settler" ? 1.6 : 0) : hover ? HAND_HOVER_HEIGHT * 0.75 : HAND_HOVER_HEIGHT;
+    const lift = held ? HAND_CARRY_HEIGHT + (held.kind === "settler" ? 1.6 : held.kind === "golem" ? 3.4 : 0) : hover ? HAND_HOVER_HEIGHT * 0.75 : HAND_HOVER_HEIGHT;
     handTarget.set(lastGround.x, lastGround.y + lift + 0.35, lastGround.z);
     if (!held) hand.setPose(hover ? "reach" : "open");
     hand.setArmed(controller.armed() ? 1 : 0);
@@ -724,6 +838,7 @@ async function boot(): Promise<void> {
     vegetation.updateFire(world.fire, dt, world.felled);
     if (village) villageView.update(world, dt);
     miracles.update(world, dt);
+    marks.update(world, dt);
     buildings.woodpile.setCount(world.woodpile.count);
     water.update(time);
     flames.update(dt);
@@ -909,7 +1024,28 @@ async function boot(): Promise<void> {
         endCardVisible: endCard.style.display !== "none",
         bubbleDetail: currentBubbleDetail,
         alive: world.settlers.filter((x) => x.alive).length,
+        glyphStones: world.glyphStones.map((g) => ({ miracle: g.miracle, awake: g.awake })),
+        beacon: world.beacon,
+        gust: world.gust,
+        stoneworks: world.stoneworks.length,
+        golemForm: { ...world.golemForm },
+        golems: world.golems.map((g) => ({ id: g.id, x: g.x, z: g.z, awake: g.awake, state: g.state, job: g.job, workDone: g.workDone, carryWater: g.carryWater, carrying: g.carrying })),
+        plots: world.plots.map((p) => +p.growth.toFixed(2)),
       }),
+      stoneScreen: (m: string) => {
+        const p = marks.stonePoint(m);
+        return p ? screenOf(p.x, p.y, p.z) : null;
+      },
+      golemScreen: (id: number) => {
+        const g = world.golems.find((x) => x.id === id);
+        return g ? screenOf(g.x, g.y + 2, g.z) : null;
+      },
+      addLog: (x: number, z: number) => {
+        const it = addItem(world, "log", x, Math.max(terrainHeight(x, z), 0) + 0.4, z);
+        physics.sync(world);
+        physics.place(it.id, it.p, false);
+        return it.id;
+      },
       settlers: () =>
         world.settlers.map((x) => ({
           id: x.id,

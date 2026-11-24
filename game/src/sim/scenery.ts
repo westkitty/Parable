@@ -38,6 +38,9 @@ function clearOfBuildings(x: number, z: number, margin: number): boolean {
   if (Math.abs(x - f.x) < f.w / 2 + 2 + margin && Math.abs(z - f.z) < f.d / 2 + 2 + margin) return false;
   if (Math.hypot(x - LAYOUT.mural.x, z - LAYOUT.mural.z) < LAYOUT.mural.len / 2 + 2 + margin) return false;
   if (Math.hypot(x - LAYOUT.shrine.x, z - LAYOUT.shrine.z) < 6 + margin) return false;
+  // Old-god glyph stones and the golem ring (M5).
+  for (const g of LAYOUT.glyphStones) if (Math.hypot(x - g.x, z - g.z) < 2.5 + margin) return false;
+  if (Math.hypot(x - LAYOUT.golemForm.x, z - LAYOUT.golemForm.z) < 5 + margin) return false;
   return true;
 }
 

@@ -120,14 +120,16 @@ test("m4-3 save and load the whole village at the temple: twelve villagers, hous
   await enterTemple(page);
   await touch(page, "load");
   await waitFor(page, `window.__parable.state().templeMode === "world"`, 60_000);
-  const loadedHash = await hook<string>(page, "hash");
+  // The hash at the moment of loading (the world keeps living during the fade back out).
+  const loadedLine = (await state(page)).log.filter((l: string) => /loaded /.test(l)).pop()!;
+  const loadedHash = loadedLine.split("loaded ")[1];
   const after = await village(page);
   await page.reload();
   await page.waitForFunction(() => (window as P).__parable?.ready === true, null, { timeout: 120_000 });
   await enterTemple(page);
   await touch(page, "load");
   await waitFor(page, `window.__parable.state().templeMode === "world"`, 60_000);
-  const reloadedHash = await hook<string>(page, "hash");
+  const reloadedHash = (await state(page)).log.filter((l: string) => /loaded /.test(l)).pop()!.split("loaded ")[1];
   writeResult("m4-03-village-save", { savedHash, changed, loadedHash, reloadedHash, before: { day: before.day, alive: before.alive, food: before.food, belief: before.belief }, after: { day: after.day, alive: after.alive, food: after.food, belief: after.belief } });
   expect(changed).not.toBe(savedHash);
   expect(loadedHash).toBe(savedHash);

@@ -2,9 +2,11 @@
 // No words anywhere: each tablet carries a glyph (keep = closed spiral, return = open hand, renew = rising sun).
 import * as THREE from "three";
 import { Hand } from "../hand/hand";
+import { MIRACLES } from "../input/gesture";
 import { TOWN, loadGLB } from "../render/assets";
+import { MIRACLE_COLOUR, drawGesture } from "../render/glyphs";
 
-export type TabletAction = "save" | "load" | "restart" | "door" | "records";
+export type TabletAction = "save" | "load" | "restart" | "door" | "records" | "beacon" | "golem";
 
 /** One finished Dry Year, as carved on the records wall. */
 export interface TempleRecord {
@@ -121,25 +123,28 @@ export class TempleChamber {
       s.add(l);
       this.torches.push(l);
     }
-    // Learned miracles: three round plaques above the tablets, dark until the god knows the glyph.
-    const learnedGlyphs: [string, (g: CanvasRenderingContext2D) => void][] = [
-      ["fireball", drawFireGlyph],
-      ["rain", drawRainGlyph],
-      ["sanctuary", drawRingGlyph],
-    ];
-    learnedGlyphs.forEach(([name, draw], i) => {
+    // Learned miracles: a frieze of ten round plaques above the tablets, dark until the god knows the glyph.
+    // Each shows the gesture itself: the waking spiral, then that miracle's finishing stroke.
+    MIRACLES.forEach((name, i) => {
+      const draw = (g: CanvasRenderingContext2D) => {
+        g.scale(1.1, 1.1);
+        drawGesture(g, name);
+      };
       const mat = new THREE.MeshStandardMaterial({
         color: "#7d705c",
         roughness: 0.9,
         map: glyphTexture(draw, true),
-        emissive: new THREE.Color(name === "rain" ? "#7fc8ff" : name === "sanctuary" ? "#ffd27a" : "#ff8a3a"),
+        emissive: new THREE.Color(MIRACLE_COLOUR[name]),
         emissiveMap: glyphTexture(draw, false),
         emissiveIntensity: 0,
       });
-      const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.12, 40), [stone, mat, stone]);
+      const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.1, 36), stone);
       disc.rotation.x = Math.PI / 2;
-      disc.position.set((i - 1) * 3, 3.55, -3.75);
+      disc.position.set((i - 4.5) * 0.92, 3.62, -3.78);
       s.add(disc);
+      const face = new THREE.Mesh(new THREE.CircleGeometry(0.37, 36), mat); // flat face: the glyph reads upright
+      face.position.set((i - 4.5) * 0.92, 3.62, -3.72);
+      s.add(face);
       this.plaques.set(name, mat);
     });
     // Prayer power: a brazier in the middle of the floor; its fire is the villagers' faith.
@@ -152,6 +157,37 @@ export class TempleChamber {
     this.brazier = new THREE.PointLight(new THREE.Color("#ffb060"), 6, 9, 1.4);
     this.brazier.position.set(0, 1.8, -1.6);
     s.add(bowl, stem, this.brazierFlame, this.brazier);
+    // Touching the brazier when the village's faith burns high (power 90+) teaches Beacon.
+    this.tablets.push({ mesh: bowl, action: "beacon", glow: 0 });
+    // A wooden stele carved with a figure of logs: once a golem has stood in the old ring, touching it teaches Golem Wake.
+    const wood = new THREE.MeshStandardMaterial({ color: "#7a5636", roughness: 0.9 });
+    const golemFace = new THREE.MeshStandardMaterial({
+      color: "#b08a5e",
+      roughness: 0.9,
+      map: glyphTexture(drawGolemCarving, true),
+      emissive: new THREE.Color("#ffb453"),
+      emissiveMap: glyphTexture(drawGolemCarving, false),
+      emissiveIntensity: 0.15,
+    });
+    const stele = new THREE.Mesh(new THREE.BoxGeometry(1, 1.5, 0.25), [wood, wood, wood, wood, golemFace, wood]);
+    stele.position.set(-2.9, 0.75, -1.3);
+    stele.rotation.y = 0.45;
+    s.add(stele);
+    this.tablets.push({ mesh: stele, action: "golem", glow: 0 });
+    // A small lectern of years: touch it to turn to the records wall.
+    const lecternFace = new THREE.MeshStandardMaterial({
+      color: "#d8c7a4",
+      roughness: 0.85,
+      map: glyphTexture(drawYears, true),
+      emissive: new THREE.Color("#ffb453"),
+      emissiveMap: glyphTexture(drawYears, false),
+      emissiveIntensity: 0.15,
+    });
+    const lectern = new THREE.Mesh(new THREE.BoxGeometry(1, 1.5, 0.25), [stone, stone, stone, stone, lecternFace, stone]);
+    lectern.position.set(2.9, 0.75, -1.3);
+    lectern.rotation.y = -0.45;
+    s.add(lectern);
+    this.tablets.push({ mesh: lectern, action: "records", glow: 0 });
     // Records: a carved wall on the right; touch it to step closer and read the years.
     this.recordsCanvas = document.createElement("canvas");
     this.recordsCanvas.width = 512;
@@ -162,7 +198,7 @@ export class TempleChamber {
     wall.position.set(6.4, 1.8, -1.4);
     wall.rotation.y = -Math.PI / 2;
     s.add(wall);
-    this.tablets.push({ mesh: wall, action: "records", glow: 0 });
+    this.tablets.push({ mesh: wall, action: "records", glow: 0 }); // touching the wall turns back
     this.drawRecords([]);
     this.camera.position.set(0, 1.9, 3.4);
     this.camera.lookAt(0, 1.5, -3.6);
@@ -192,8 +228,8 @@ export class TempleChamber {
   tabletNdc(action: TabletAction): THREE.Vector2 {
     const t = this.tablets.find((x) => x.action === action)!;
     const p = t.mesh.getWorldPosition(new THREE.Vector3());
-    if (action !== "door" && action !== "records") p.z += 0.2;
-    if (action === "records") p.x -= 0.05;
+    if (action === "save" || action === "load" || action === "restart") p.z += 0.2;
+    if (action === "beacon") p.y += 0.1;
     p.project(this.camera);
     return new THREE.Vector2(p.x, p.y);
   }
@@ -298,7 +334,7 @@ export class TempleChamber {
       tb.glow += ((this.hovered === tb.action ? 1 : 0) - tb.glow) * Math.min(1, dt * 8);
       const mats = Array.isArray(tb.mesh.material) ? tb.mesh.material : [tb.mesh.material];
       const m = mats[4] as THREE.MeshStandardMaterial | undefined;
-      if (m && "emissiveIntensity" in m && tb.action !== "door" && tb.action !== "records") m.emissiveIntensity = 0.15 + tb.glow * 1.4;
+      if (m && "emissiveIntensity" in m && tb.action !== "door") m.emissiveIntensity = 0.15 + tb.glow * 1.4;
     }
     this.torches.forEach((l, i) => (l.intensity = 8 + Math.sin(this.t * 11 + i * 2) * 0.8 + Math.sin(this.t * 4.3 + i) * 0.6));
     this.hand.update(dt);
@@ -426,49 +462,42 @@ function stoneTexture(): THREE.Texture {
   return t;
 }
 
-function drawFireGlyph(g: CanvasRenderingContext2D): void {
-  // Spiral, then the zigzag that throws it.
+function drawGolemCarving(g: CanvasRenderingContext2D): void {
+  // A figure built of logs, and the triangle that wakes it.
   g.beginPath();
-  for (let a = 0; a < Math.PI * 4; a += 0.05) {
-    const r = 4 + a * 4;
-    const x = Math.cos(a) * r - 30;
-    const y = Math.sin(a) * r - 40;
-    if (a === 0) g.moveTo(x, y);
-    else g.lineTo(x, y);
+  g.rect(-28, -110, 56, 40); // head
+  g.rect(-45, -62, 90, 80); // body
+  g.moveTo(-45, -55);
+  g.lineTo(-80, 10); // arms
+  g.moveTo(45, -55);
+  g.lineTo(80, 10);
+  g.moveTo(-25, 18);
+  g.lineTo(-30, 70); // legs
+  g.moveTo(25, 18);
+  g.lineTo(30, 70);
+  g.stroke();
+  g.beginPath();
+  g.moveTo(0, 90);
+  g.lineTo(32, 140);
+  g.lineTo(-32, 140);
+  g.closePath();
+  g.stroke();
+}
+
+function drawYears(g: CanvasRenderingContext2D): void {
+  // Rows of little figures under a sun: the years of the village.
+  g.beginPath();
+  g.arc(0, -90, 24, 0, Math.PI * 2);
+  g.stroke();
+  for (let row = 0; row < 3; row += 1) {
+    for (let k = 0; k < 5; k += 1) {
+      const x = -72 + k * 36;
+      const y = -20 + row * 62;
+      g.beginPath();
+      g.arc(x, y, 7, 0, Math.PI * 2);
+      g.moveTo(x, y + 7);
+      g.lineTo(x, y + 32);
+      g.stroke();
+    }
   }
-  g.stroke();
-  g.beginPath();
-  g.moveTo(-20, 40);
-  for (let k = 0; k < 5; k += 1) g.lineTo(-20 + (k % 2 ? 50 : 0), 40 + k * 22);
-  g.stroke();
-}
-
-function drawRainGlyph(g: CanvasRenderingContext2D): void {
-  // Cloud over a wave.
-  g.beginPath();
-  g.arc(-30, -40, 30, Math.PI, 0);
-  g.arc(25, -45, 36, Math.PI, 0);
-  g.lineTo(60, -20);
-  g.lineTo(-60, -20);
-  g.closePath();
-  g.stroke();
-  g.beginPath();
-  g.moveTo(-90, 60);
-  for (let k = 1; k <= 6; k += 1) g.lineTo(-90 + k * 30, 60 + (k % 2 ? -26 : 0));
-  g.stroke();
-}
-
-function drawRingGlyph(g: CanvasRenderingContext2D): void {
-  // A closed ring around a small house.
-  g.beginPath();
-  g.arc(0, 0, 95, 0, Math.PI * 2);
-  g.stroke();
-  g.beginPath();
-  g.moveTo(-30, 35);
-  g.lineTo(-30, -5);
-  g.lineTo(0, -35);
-  g.lineTo(30, -5);
-  g.lineTo(30, 35);
-  g.closePath();
-  g.stroke();
 }

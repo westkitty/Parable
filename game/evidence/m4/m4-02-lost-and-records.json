@@ -2,7 +2,7 @@
   "lost": {
     "ended": true,
     "survived": false,
-    "tick": 902,
+    "tick": 900,
     "day": 8,
     "alive": 6,
     "dead": 6,
@@ -47,7 +47,7 @@
     "rain": true,
     "sanctuary": false
   },
-  "recordsOpen": false,
+  "recordsOpen": true,
   "records": [
     {
       "survived": true,

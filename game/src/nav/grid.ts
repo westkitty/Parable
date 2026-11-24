@@ -34,6 +34,7 @@ export function buildWalkable(extraBlocked: [number, number, number][] = []): Ui
       if (Math.hypot(x - LAYOUT.granary.x, z - LAYOUT.granary.z) < 1.6) ok = false;
       if (Math.hypot(x - LAYOUT.well.x, z - LAYOUT.well.z) < 1.4) ok = false;
       if (Math.hypot(x - LAYOUT.shrine.x, z - LAYOUT.shrine.z) < 1.6) ok = false;
+      for (const g of LAYOUT.glyphStones) if (Math.hypot(x - g.x, z - g.z) < 1.1) ok = false;
       const m = LAYOUT.mural;
       if (Math.abs(x - m.x) < 1.2 && Math.abs(z - m.z) < m.len / 2 + 0.2) ok = false;
       if (Math.hypot(x - t.x, z - t.z) < t.r) ok = false;
