@@ -8,103 +8,169 @@
     "fireball",
     "sanctuary"
   ],
+  "protected": {
+    "id": 1,
+    "state": "standing",
+    "x": 29,
+    "z": 3
+  },
   "sanctuary": {
     "id": 46,
-    "x": 4.705214319536973,
-    "z": 26.44324851116373,
+    "x": 28.718759626677514,
+    "z": 2.4661803717129196,
     "ttl": 1196
   },
-  "houses": [
+  "housesAtCast": [
     {
       "id": 0,
-      "state": "standing"
+      "state": "standing",
+      "x": 14,
+      "z": 12
     },
     {
       "id": 1,
-      "state": "standing"
+      "state": "standing",
+      "x": 29,
+      "z": 3
     },
     {
       "id": 2,
-      "state": "ruin"
+      "state": "ruin",
+      "x": 5,
+      "z": 27
     },
     {
       "id": 3,
-      "state": "ruin"
+      "state": "ruin",
+      "x": 31,
+      "z": 23
     },
     {
       "id": 4,
-      "state": "standing"
+      "state": "standing",
+      "x": 21,
+      "z": 33
+    }
+  ],
+  "houses": [
+    {
+      "id": 0,
+      "state": "standing",
+      "x": 14,
+      "z": 12
+    },
+    {
+      "id": 1,
+      "state": "standing",
+      "x": 29,
+      "z": 3
+    },
+    {
+      "id": 2,
+      "state": "ruin",
+      "x": 5,
+      "z": 27
+    },
+    {
+      "id": 3,
+      "state": "ruin",
+      "x": 31,
+      "z": 23
+    },
+    {
+      "id": 4,
+      "state": "standing",
+      "x": 21,
+      "z": 33
     }
   ],
   "causes": [
-    "Ilse: wildfire at the meadow",
+    "Ilse: wildfire at the village",
     "Ilse: you raised a sanctuary",
     "Ilse: wildfire at the meadow",
     "Ilse: wildfire at the meadow",
     "Ilse: wildfire at the village",
     "Ilse: wildfire at the village",
-    "Bram: wildfire at the meadow",
+    "Bram: wildfire at the village",
     "Bram: wildfire at the meadow",
     "Bram: wildfire at the meadow",
     "Bram: wildfire at the village",
     "Bram: wildfire at the new house",
     "Bram: the wildfire took our home",
+    "Oda: wildfire at the village",
+    "Oda: you raised a sanctuary",
     "Oda: wildfire at the meadow",
     "Oda: wildfire at the meadow",
     "Oda: wildfire at the meadow",
     "Oda: wildfire at the village",
-    "Oda: wildfire at the village",
-    "Oda: the wildfire took our home",
-    "Tamsin: your sanctuary kept us safe",
-    "Tamsin: wildfire at the meadow",
-    "Tamsin: you raised a sanctuary",
+    "Tamsin: wildfire at my cottage",
     "Tamsin: wildfire at the meadow",
     "Tamsin: wildfire at the meadow",
     "Tamsin: wildfire at the wheat field",
+    "Tamsin: wildfire at the village",
+    "Tamsin: wildfire at the village",
+    "Corin: wildfire at the village",
+    "Corin: you raised a sanctuary",
     "Corin: wildfire at the meadow",
     "Corin: wildfire at the meadow",
     "Corin: wildfire at the village",
     "Corin: wildfire at the village",
-    "Corin: wildfire at the village",
-    "Corin: wildfire at the meadow",
+    "Wil: wildfire at the village",
+    "Wil: you raised a sanctuary",
     "Wil: wildfire at the meadow",
     "Wil: wildfire at the village",
     "Wil: wildfire at the meadow",
-    "Maren: your sanctuary kept us safe",
-    "Maren: wildfire at the meadow",
-    "Maren: you raised a sanctuary",
+    "Maren: wildfire at the village",
     "Maren: wildfire at the meadow",
     "Maren: wildfire at the village",
     "Maren: the wildfire took our home",
-    "Hob: your sanctuary kept us safe",
-    "Hob: wildfire at the meadow",
+    "Maren: wildfire at the village",
+    "Maren: wildfire at my cottage",
+    "Hob: wildfire at my cottage",
     "Hob: you raised a sanctuary",
     "Hob: wildfire at the meadow",
     "Hob: wildfire at the village",
     "Hob: the wildfire took our home",
-    "Ness: your sanctuary kept us safe",
-    "Ness: wildfire at the meadow",
+    "Hob: wildfire at the painted wall",
+    "Ness: wildfire at my cottage",
     "Ness: you raised a sanctuary",
     "Ness: wildfire at the meadow",
     "Ness: wildfire at the meadow",
     "Ness: wildfire at the village",
+    "Ness: wildfire at the painted wall",
+    "Edda: wildfire at the village",
+    "Edda: you raised a sanctuary",
     "Edda: wildfire at the meadow",
     "Edda: wildfire at the meadow",
     "Edda: wildfire at the wheat field",
     "Edda: the wildfire took our home",
-    "Edda: wildfire at the meadow",
-    "Edda: wildfire at the new house",
-    "Pell: wildfire at the meadow",
+    "Pell: wildfire at the village",
     "Pell: you raised a sanctuary",
     "Pell: wildfire at the meadow",
     "Pell: wildfire at the meadow",
     "Pell: wildfire at the wheat field",
     "Pell: the wildfire took our home",
-    "Rafe: wildfire at the meadow",
-    "Rafe: wildfire at the meadow",
-    "Rafe: wildfire at the meadow",
-    "Rafe: the wildfire took our home",
     "Rafe: wildfire at the village",
-    "Rafe: wildfire at the new house"
+    "Rafe: you raised a sanctuary",
+    "Rafe: wildfire at the meadow",
+    "Rafe: wildfire at the meadow",
+    "Rafe: wildfire at the meadow",
+    "Rafe: the wildfire took our home"
+  ],
+  "log": [
+    "4102: house 4 finished",
+    "7740: ignite 6 cells",
+    "7740: lightning at -12,-29",
+    "8700: house 0 burned",
+    "9335: house 4 burned",
+    "9497: house 2 burned",
+    "10218: house 3 burned",
+    "13240: house 0 finished",
+    "14465: learned sanctuary from the mural",
+    "14466: learned sanctuary",
+    "14472: house 4 finished",
+    "14505: sanctuary at 29,2",
+    "14510: ignite 4 cells",
+    "14510: ignite 4 cells"
   ]
 }

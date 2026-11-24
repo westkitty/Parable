@@ -896,7 +896,7 @@ async function boot(): Promise<void> {
         learned: world.learned.slice(),
         food: world.granary.food,
         woodpile: world.woodpile.count,
-        houses: world.houses.map((h) => ({ id: h.id, state: h.state })),
+        houses: world.houses.map((h) => ({ id: h.id, state: h.state, x: h.x, z: h.z })),
         sites: world.sites.map((x) => ({ id: x.id, have: x.have, need: x.need, work: x.work, done: x.done })),
         felled: world.felled.length,
         clouds: world.clouds.map((c) => ({ id: c.id, x: c.x, z: c.z, held: c.held, ttl: c.ttl })),

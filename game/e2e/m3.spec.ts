@@ -114,7 +114,7 @@ test("m3-2 the shrine: the hand carries the bell stone to the altar, the Rain gl
 
 test("m3-3 the painted wall: believing villagers paint it, the god studies it, and Sanctuary shields a house from fire", async ({ page }) => {
   await boot(page);
-  // The villagers paint as they pray; let the days run (bounded at 4 days).
+  // The villagers paint as they pray; let the days run (bounded at 8 days; the day-5 wildfire may strike meanwhile).
   let v = await village(page);
   let days = 0;
   while (v.mural.progress < 1 && days < 8) {
@@ -130,17 +130,20 @@ test("m3-3 the painted wall: believing villagers paint it, the god studies it, a
   await page.mouse.move(m.x, m.y);
   await waitFor(page, `window.__parable.village().learned.includes("sanctuary")`, 60_000);
   const learned = await village(page);
-  // A wildfire comes at house 2; raise Sanctuary over it first.
+  // A wildfire comes at a standing house; raise Sanctuary over it first.
+  const pre = await village(page);
+  const house = pre.houses.find((x: P) => x.state === "standing" && x.id !== 0) ?? pre.houses.find((x: P) => x.state === "standing");
   await hook(page, "setPower", 100);
-  await hook(page, "setDay", 8, 0.2);
-  await hook(page, "setCamera", { tx: 5, tz: 30, yaw: 0.6, dist: 36 });
+  await hook(page, "setDay", 8, 0.6);
+  await hook(page, "setCamera", { tx: house.x, tz: house.z + 3, yaw: 0.6, dist: 36 });
   await frames(page, 3);
-  const h = await hook<{ x: number; y: number }>(page, "groundScreen", 5, 27);
+  const h = await hook<{ x: number; y: number }>(page, "groundScreen", house.x, house.z);
   await ritual(page, h.x, h.y, ringPts(h.x, h.y, 90));
   await waitFor(page, `window.__parable.village().sanctuaries.length > 0`, 20_000);
-  const sanct = (await village(page)).sanctuaries[0];
-  await hook(page, "igniteAt", 5, 40, 3);
-  await hook(page, "igniteAt", -6, 27, 3);
+  const atCast = await village(page);
+  const sanct = atCast.sanctuaries[0];
+  await hook(page, "igniteAt", house.x, house.z + 13, 3);
+  await hook(page, "igniteAt", house.x - 11, house.z, 3);
   await hook(page, "stepTicks", 200);
   await frames(page, 4);
   await shot(page, "m3-03-sanctuary-holds-the-fire");
@@ -148,11 +151,12 @@ test("m3-3 the painted wall: believing villagers paint it, the god studies it, a
   const after = await village(page);
   const ss: P[] = await hook(page, "settlers");
   const causes = ss.flatMap((s) => s.belief.causes.map((c: P) => `${s.name}: ${c.text}`));
-  writeResult("m3-03-mural-sanctuary", { daysToPaint: days, mural: v.mural, learned: learned.learned, sanctuary: sanct, houses: after.houses, causes });
+  writeResult("m3-03-mural-sanctuary", { daysToPaint: days, mural: v.mural, learned: learned.learned, protected: house, sanctuary: sanct, housesAtCast: atCast.houses, houses: after.houses, causes, log: (await state(page)).log.filter((l: string) => /house|lightning|ignite|sanctuary/.test(l)) });
   expect(v.mural.progress).toBeGreaterThanOrEqual(1);
   expect(learned.learned).toContain("sanctuary");
-  expect(Math.hypot(sanct.x - 5, sanct.z - 27)).toBeLessThan(6);
-  expect(after.houses.find((x: P) => x.id === 2).state).toBe("standing");
+  expect(Math.hypot(sanct.x - house.x, sanct.z - house.z)).toBeLessThan(6);
+  expect(atCast.houses.find((x: P) => x.id === house.id).state).toBe("standing");
+  expect(after.houses.find((x: P) => x.id === house.id).state).toBe("standing");
   expect(causes.some((c) => /sanctuary/.test(c))).toBe(true);
 });
 
