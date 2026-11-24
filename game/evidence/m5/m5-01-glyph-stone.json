@@ -1,0 +1,28 @@
+{
+  "learned": "96: learned stone at its glyph stone",
+  "stoneworks": 1,
+  "power": 76.5,
+  "burning": 0,
+  "stones": [
+    {
+      "miracle": "heal",
+      "awake": false
+    },
+    {
+      "miracle": "lightning",
+      "awake": false
+    },
+    {
+      "miracle": "fertility",
+      "awake": false
+    },
+    {
+      "miracle": "wind",
+      "awake": false
+    },
+    {
+      "miracle": "stone",
+      "awake": true
+    }
+  ]
+}

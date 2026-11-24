@@ -1,0 +1,14 @@
+{
+  "before": 0.7,
+  "after": 0.09999999999999998,
+  "memories": [
+    "was_healed"
+  ],
+  "mood": {
+    "mood": "grateful",
+    "score": 47,
+    "top": "your light healed me",
+    "recent": "your light healed me"
+  },
+  "log": "38: heal at 6,8: 1 healed, 0 cells green"
+}

@@ -15,6 +15,41 @@ async function obj(url: string, scale: number): Promise<THREE.Object3D> {
   return o;
 }
 
+/** A Kenney piece re-fitted so its longest axis is vertical (Y), `length` long and `thick` across, centred on the origin. */
+function fitLong(proto: THREE.Object3D, length: number, thick: number): THREE.Group {
+  const box = new THREE.Box3().setFromObject(proto);
+  const size = box.getSize(new THREE.Vector3());
+  const centre = box.getCenter(new THREE.Vector3());
+  const o = proto.clone(true);
+  const axis = size.x >= size.y && size.x >= size.z ? "x" : size.z >= size.y ? "z" : "y";
+  const long = size[axis];
+  const others = (["x", "y", "z"] as const).filter((a) => a !== axis);
+  const inner = new THREE.Group();
+  o.position.copy(centre).multiplyScalar(-1);
+  inner.add(o);
+  inner.scale.set(1, 1, 1);
+  inner.scale[axis] = length / long;
+  for (const a of others) inner.scale[a] = thick / Math.max(1e-3, size[a]);
+  const wrap = new THREE.Group();
+  if (axis === "x") inner.rotation.z = Math.PI / 2;
+  else if (axis === "z") inner.rotation.x = Math.PI / 2;
+  wrap.add(inner);
+  return wrap;
+}
+
+/** Scale a piece so its largest dimension is `size`, resting on y = 0. */
+function fitSize(proto: THREE.Object3D, size: number): THREE.Object3D {
+  const box = new THREE.Box3().setFromObject(proto);
+  const s = box.getSize(new THREE.Vector3());
+  const o = proto.clone(true);
+  const k = size / Math.max(s.x, s.y, s.z);
+  o.scale.multiplyScalar(k);
+  o.position.y = -box.min.y * k;
+  const g = new THREE.Group();
+  g.add(o);
+  return g;
+}
+
 function glyphFace(m: Miracle): THREE.MeshBasicMaterial {
   const c = document.createElement("canvas");
   c.width = 256;
@@ -79,7 +114,7 @@ export class WorldMarks {
     // The old golem ring: six low stones.
     const r = LAYOUT.golemForm;
     this.ringPoint.set(r.x, terrainHeight(r.x, r.z), r.z);
-    const small = await obj(`${NATURE}stone_smallC.glb`, 2.2);
+    const small = fitSize(await obj(`${NATURE}stone_smallC.glb`, 1), 1.1);
     for (let k = 0; k < 6; k += 1) {
       const a = (k / 6) * Math.PI * 2;
       const s = small.clone(true);
@@ -121,46 +156,54 @@ export class WorldMarks {
     root.userData.golemId = g.id;
     const body = new THREE.Group();
     root.add(body);
-    const log = (len: number, x: number, y: number, z: number, rx: number, rz = 0) => {
-      const l = this.logProto.clone(true);
-      l.scale.set(1.4, 1.4, len);
+    // Sized to stand a little taller than a villager's house door (about 3.8 m).
+    const log = (len: number, thick: number, x: number, y: number, z: number) => {
+      const l = fitLong(this.logProto, len, thick);
       l.position.set(x, y, z);
-      l.rotation.set(rx, 0, rz);
       return l;
     };
-    // Torso: two upright logs; head: a rock; arms and legs: logs on pivots.
-    body.add(log(2.2, -0.35, 1.9, 0, Math.PI / 2), log(2.2, 0.35, 1.9, 0, Math.PI / 2));
-    const head = this.rockProto.clone(true);
-    head.scale.setScalar(1.3);
-    head.position.set(0, 3.1, 0);
+    // Torso: two upright logs; hips and shoulders: logs across; head: a rock; arms and legs: logs on pivots.
+    body.add(log(1.9, 0.6, -0.33, 2.35, 0), log(1.9, 0.6, 0.33, 2.35, 0));
+    const shoulders = log(1.9, 0.45, 0, 3.25, 0);
+    shoulders.rotation.z = Math.PI / 2;
+    const hips = log(1.3, 0.45, 0, 1.45, 0);
+    hips.rotation.z = Math.PI / 2;
+    body.add(shoulders, hips);
+    const head = fitSize(this.rockProto, 0.95);
+    head.position.set(0, 3.4, 0);
     body.add(head);
     const eyes = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.1, 0.08, 0.05) });
     for (const k of [-1, 1]) {
       const e = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 6), eyes);
-      e.position.set(k * 0.18, 3.25, 0.42);
+      e.position.set(k * 0.2, 3.85, 0.45);
       body.add(e);
     }
     const legs: THREE.Object3D[] = [];
     const arms: THREE.Object3D[] = [];
     for (const k of [-1, 1]) {
       const legPivot = new THREE.Group();
-      legPivot.position.set(k * 0.4, 1.0, 0);
-      legPivot.add(log(1.6, 0, -0.5, 0, Math.PI / 2));
+      legPivot.position.set(k * 0.42, 1.45, 0);
+      legPivot.add(log(1.5, 0.5, 0, -0.72, 0));
       root.add(legPivot);
       legs.push(legPivot);
       const armPivot = new THREE.Group();
-      armPivot.position.set(k * 0.95, 2.7, 0);
-      armPivot.add(log(1.7, 0, -0.75, 0.1, Math.PI / 2));
+      armPivot.position.set(k * 1.05, 3.2, 0);
+      armPivot.add(log(1.7, 0.42, 0, -0.8, 0.05));
       body.add(armPivot);
       arms.push(armPivot);
     }
     const water = new THREE.Mesh(new THREE.SphereGeometry(0.55, 14, 10), new THREE.MeshStandardMaterial({ color: "#5aa7e6", transparent: true, opacity: 0.75, roughness: 0.2 }));
-    water.position.set(0, 1.9, 1.0);
+    water.position.set(0, 2.2, 1.1);
     water.visible = false;
     body.add(water);
     root.traverse((o) => {
       o.castShadow = true;
     });
+    // An invisible hit box so the hand can take hold of the whole body (the log limbs leave gaps).
+    const proxy = new THREE.Mesh(new THREE.BoxGeometry(2.2, 4, 2.4), new THREE.MeshBasicMaterial({ visible: false }));
+    proxy.position.set(0, 2, 0.3);
+    proxy.castShadow = false;
+    root.add(proxy);
     this.group.add(root);
     return { root, body, legs, arms, eyes, water, phase: 0 };
   }

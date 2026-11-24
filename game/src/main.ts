@@ -1040,6 +1040,23 @@ async function boot(): Promise<void> {
         const g = world.golems.find((x) => x.id === id);
         return g ? screenOf(g.x, g.y + 2, g.z) : null;
       },
+      hurt: (id: number, amount: number) => {
+        const s = settlerOf(id);
+        if (s) s.injury = Math.min(0.95, s.injury + amount);
+      },
+      treeNear: (x: number, z: number) => {
+        let best: { x: number; z: number; i: number } | null = null;
+        let bd = Infinity;
+        trees().forEach((t, i) => {
+          if (world.felled.includes(i)) return;
+          const d = Math.hypot(t.x - x, t.z - z);
+          if (d < bd) {
+            bd = d;
+            best = { x: t.x, z: t.z, i };
+          }
+        });
+        return best;
+      },
       addLog: (x: number, z: number) => {
         const it = addItem(world, "log", x, Math.max(terrainHeight(x, z), 0) + 0.4, z);
         physics.sync(world);
