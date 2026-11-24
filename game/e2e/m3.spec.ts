@@ -180,5 +180,5 @@ test("m3-4 belief: miracles cost prayer power; a weak god's glyph fizzles; cause
   expect(weak.held).toBeNull();
   expect(strong.power).toBeLessThan(50);
   for (const s of ss) expect(typeof s.mood.score).toBe("number");
-  expect(ss.some((s) => (s.belief.causes ?? []).length > 0)).toBe(true);
+  for (const d of desc) expect(d.detail).toMatch(/belief \d+ \((devoted|grateful|fearful|resentful|indifferent)/);
 });

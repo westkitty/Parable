@@ -14,7 +14,7 @@ import {
   THROW_VERTICAL_LIFT,
 } from "../config";
 import { CameraRig, rayTerrain } from "../render/camera";
-import { Ritual, analyzeGesture, pathLength, type GesturePoint, type GestureResult } from "./gesture";
+import { Ritual, analyzeGesture, pathLength, type GesturePoint, type GestureResult, type Miracle } from "./gesture";
 
 export type Grabbable = { kind: "item" | "settler"; id: number };
 export type InputMode = "hover" | "pan" | "orbit" | "carry";
@@ -26,8 +26,8 @@ export interface GameApi {
   /** Release whatever is held; gentle = set down at `ground`, otherwise thrown with `v`. */
   release(v: [number, number, number], gentle: boolean, ground: THREE.Vector3 | null, safe: boolean): void;
   holding(): Grabbable | null;
-  /** A completed ritual: spiral then zigzag = Fireball, spiral then wave = Rain, spiral then ring = Sanctuary. */
-  cast(kind: "fireball" | "rain" | "sanctuary"): boolean;
+  /** A completed ritual (spiral, then the miracle's finisher). `stroke` is the finisher's path on the land. */
+  cast(kind: Miracle, stroke: THREE.Vector3[]): boolean;
   interact(ray: THREE.Ray, ground: THREE.Vector3 | null): boolean;
   blocked(): boolean; // temple transition / chamber: world input off
   chamberPointer(ndc: THREE.Vector2, click: boolean): void;
@@ -301,7 +301,7 @@ export class Controller {
     if (outcome === "armed") {
       this.game.onTrace(pts.filter((p) => p.w).map((p) => p.w!), "armed");
     } else if (outcome) {
-      if (this.game.cast(outcome)) {
+      if (this.game.cast(outcome, pts.filter((p) => p.w).map((p) => p.w!))) {
         if (outcome === "fireball") this.mode = this.rightHeld ? "carry" : "hover";
         this.game.onTrace(pts.filter((p) => p.w).map((p) => p.w!), "cast");
       }

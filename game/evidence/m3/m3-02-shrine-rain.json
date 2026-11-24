@@ -1,0 +1,90 @@
+{
+  "hops": [
+    {
+      "held": {
+        "kind": "item",
+        "id": 5
+      },
+      "gentle": true,
+      "at": [
+        -28,
+        -1.85,
+        16
+      ],
+      "state": "loose"
+    },
+    {
+      "held": {
+        "kind": "item",
+        "id": 5
+      },
+      "gentle": true,
+      "at": [
+        -38.033,
+        1.813,
+        -11.817
+      ],
+      "state": "loose"
+    },
+    {
+      "held": {
+        "kind": "item",
+        "id": 5
+      },
+      "gentle": true,
+      "at": [
+        -45.904,
+        2.08,
+        -40.001
+      ],
+      "state": "loose"
+    },
+    {
+      "held": {
+        "kind": "item",
+        "id": 5
+      },
+      "gentle": true,
+      "at": [
+        -48,
+        3.043,
+        -48
+      ],
+      "state": "stacked"
+    }
+  ],
+  "awakened": {
+    "awakened": true,
+    "glyphShownTick": 274
+  },
+  "learnedAfterTrace": [
+    "fireball",
+    "rain"
+  ],
+  "powerAfterRain": 40,
+  "burningBefore": 169,
+  "burningAfterRain": 149,
+  "cloud": [
+    {
+      "id": 18,
+      "x": -36.00000002769127,
+      "z": -40.00000170403206,
+      "held": false,
+      "ttl": 391
+    }
+  ],
+  "log": [
+    "232: grab item 5",
+    "263: release item gentle v=0.0,2.4,0.0",
+    "274: shrine awake",
+    "336: gesture spiral cw",
+    "352: gesture wave",
+    "352: learned rain at the shrine",
+    "352: rain cloud summoned",
+    "353: learned rain",
+    "355: ignite 11 cells",
+    "355: ignite 6 cells",
+    "355: lightning at -12,-29",
+    "441: rain dropped at -36,-40"
+  ]
+}

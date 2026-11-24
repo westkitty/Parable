@@ -12,7 +12,91 @@ export type GestureResult =
   | { kind: "zigzag"; turns: number }
   | { kind: "wave"; turns: number } // horizontal zigzag: the Rain glyph's second stroke
   | { kind: "ring"; rotation: number } // one closed loop: the Sanctuary glyph's second stroke
+  | { kind: "line"; dir: "down" | "up" | "side" } // one straight stroke: Lightning (down), Fertility (up), Wind Lash (side)
+  | { kind: "peak" } // ^ : Beacon
+  | { kind: "vee" } // V : Healing
+  | { kind: "square" } // closed, four corners: Stone Shape
+  | { kind: "triangle" } // closed, three corners: Golem Wake
   | { kind: "none"; reason: string };
+
+/** The ten miracles. Every finisher follows the arming spiral. */
+export type Miracle = "fireball" | "rain" | "sanctuary" | "heal" | "lightning" | "fertility" | "wind" | "stone" | "beacon" | "golem";
+export const MIRACLES: Miracle[] = ["fireball", "rain", "sanctuary", "heal", "lightning", "fertility", "wind", "stone", "beacon", "golem"];
+
+export function miracleFor(r: GestureResult): Miracle | null {
+  switch (r.kind) {
+    case "zigzag":
+      return "fireball";
+    case "wave":
+      return "rain";
+    case "ring":
+      return "sanctuary";
+    case "vee":
+      return "heal";
+    case "line":
+      return r.dir === "down" ? "lightning" : r.dir === "up" ? "fertility" : "wind";
+    case "square":
+      return "stone";
+    case "peak":
+      return "beacon";
+    case "triangle":
+      return "golem";
+    default:
+      return null;
+  }
+}
+
+/** Ramer-Douglas-Peucker simplification: the stroke's corners. */
+export function simplify(pts: GesturePoint[], eps: number): GesturePoint[] {
+  if (pts.length < 3) return pts.slice();
+  const a = pts[0];
+  const b = pts[pts.length - 1];
+  let best = -1;
+  let bestD = 0;
+  const L = Math.hypot(b.x - a.x, b.y - a.y);
+  for (let i = 1; i < pts.length - 1; i += 1) {
+    const p = pts[i];
+    const d = L < 1e-6 ? Math.hypot(p.x - a.x, p.y - a.y) : Math.abs((b.x - a.x) * (a.y - p.y) - (a.x - p.x) * (b.y - a.y)) / L;
+    if (d > bestD) {
+      bestD = d;
+      best = i;
+    }
+  }
+  if (bestD <= eps) return [a, b];
+  const left = simplify(pts.slice(0, best + 1), eps);
+  const right = simplify(pts.slice(best), eps);
+  return [...left.slice(0, -1), ...right];
+}
+
+/** Corners of a closed stroke (the start/end join counts once). */
+function closedCorners(pts: GesturePoint[], eps: number): number {
+  // Split at the point farthest from the start so RDP sees two open halves.
+  let far = 0;
+  let farD = 0;
+  pts.forEach((p, i) => {
+    const d = Math.hypot(p.x - pts[0].x, p.y - pts[0].y);
+    if (d > farD) {
+      farD = d;
+      far = i;
+    }
+  });
+  const a = simplify(pts.slice(0, far + 1), eps);
+  const b = simplify(pts.slice(far), eps);
+  const ring = [...a.slice(0, -1), ...b.slice(0, -1)];
+  // Drop near-straight vertices (turn < 35 degrees).
+  let n = 0;
+  for (let i = 0; i < ring.length; i += 1) {
+    const p0 = ring[(i - 1 + ring.length) % ring.length];
+    const p1 = ring[i];
+    const p2 = ring[(i + 1) % ring.length];
+    const a1 = Math.atan2(p1.y - p0.y, p1.x - p0.x);
+    const a2 = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+    let d = Math.abs(a2 - a1);
+    if (d > Math.PI) d = TAU - d;
+    if (d > 0.61) n += 1;
+  }
+  return n;
+}
 
 const TAU = Math.PI * 2;
 
@@ -171,8 +255,35 @@ export function analyzeGesture(raw: GesturePoint[]): GestureResult {
   // Closes: the end comes back near the start (it may overshoot a little past it).
   let gap = Infinity;
   for (let i = 0; i < Math.ceil(pts.length * 0.3); i += 1) gap = Math.min(gap, Math.hypot(last.x - pts[i].x, last.y - pts[i].y));
+  const closedish = gap / size < 0.22 && aspect > 0.45 && aspect < 2.2 && L > size * 2.2;
+  if (closedish) {
+    const corners = closedCorners(pts, size * 0.07);
+    if (corners === 4 && roundness(pts) > 0.06) return { kind: "square" };
+    if (corners === 3) return { kind: "triangle" };
+  }
   if (Math.abs(rotation) > TAU * 0.8 && Math.abs(rotation) < TAU * 1.45 && gap / size < 0.22 && aspect > 0.6 && aspect < 1.66 && L > size * 2.4 && radialGrowth(pts) < 1.35 && roundness(pts) < 0.12) {
     return { kind: "ring", rotation };
+  }
+  // Open single strokes: a straight line, a ^ peak or a V.
+  const chord = Math.hypot(last.x - first.x, last.y - first.y);
+  const corners = simplify(pts, size * 0.1);
+  if (simplify(pts, size * 0.05).length === 2 && chord > 100 && L < chord * 1.08) {
+    const dx = last.x - first.x;
+    const dy = last.y - first.y;
+    if (Math.abs(dy) > Math.abs(dx) * 2) return { kind: "line", dir: dy > 0 ? "down" : "up" };
+    if (Math.abs(dx) > Math.abs(dy) * 2) return { kind: "line", dir: "side" };
+  }
+  if (corners.length === 3 && closure > 0.3) {
+    const [a, m, b] = corners;
+    const legA = Math.hypot(m.x - a.x, m.y - a.y);
+    const legB = Math.hypot(b.x - m.x, b.y - m.y);
+    const straight = L < (legA + legB) * 1.08 && simplify(pts, size * 0.05).length <= 4;
+    const balanced = Math.min(legA, legB) > Math.max(legA, legB) * 0.5 && Math.min(legA, legB) > 60;
+    const spread = Math.abs(b.x - a.x) > 0.35 * Math.max(legA, legB);
+    if (straight && balanced && spread) {
+      if (Math.min(a.y, b.y) - m.y > 0.5 * box.h) return { kind: "peak" };
+      if (m.y - Math.max(a.y, b.y) > 0.5 * box.h) return { kind: "vee" };
+    }
   }
   return { kind: "none", reason: "unrecognised" };
 }
@@ -190,13 +301,13 @@ export class Ritual {
   disarm(): void {
     this.armedUntil = 0;
   }
-  feed(r: GestureResult, now: number): "armed" | "fireball" | "rain" | "sanctuary" | null {
+  feed(r: GestureResult, now: number): "armed" | Miracle | null {
     if (r.kind === "spiral" && (r.clockwise || this.acceptCounterClockwise)) {
       this.armedUntil = now + this.armMs;
       return "armed";
     }
     if (!this.armed(now)) return null;
-    const cast = r.kind === "zigzag" ? "fireball" : r.kind === "wave" ? "rain" : r.kind === "ring" ? "sanctuary" : null;
+    const cast = miracleFor(r);
     if (cast) this.armedUntil = 0;
     return cast;
   }

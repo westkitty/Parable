@@ -1,0 +1,110 @@
+{
+  "daysToPaint": 8,
+  "mural": {
+    "progress": 1,
+    "read": false
+  },
+  "learned": [
+    "fireball",
+    "sanctuary"
+  ],
+  "sanctuary": {
+    "id": 46,
+    "x": 3.3811125637435424,
+    "z": 21.780713314281495,
+    "ttl": 1196
+  },
+  "houses": [
+    {
+      "id": 0,
+      "state": "standing"
+    },
+    {
+      "id": 1,
+      "state": "standing"
+    },
+    {
+      "id": 2,
+      "state": "ruin"
+    },
+    {
+      "id": 3,
+      "state": "ruin"
+    },
+    {
+      "id": 4,
+      "state": "standing"
+    }
+  ],
+  "causes": [
+    "Ilse: wildfire at the meadow",
+    "Ilse: you raised a sanctuary",
+    "Ilse: wildfire at the meadow",
+    "Ilse: wildfire at the meadow",
+    "Ilse: wildfire at the village",
+    "Ilse: wildfire at the village",
+    "Bram: wildfire at the meadow",
+    "Bram: wildfire at the meadow",
+    "Bram: wildfire at the meadow",
+    "Bram: wildfire at the village",
+    "Bram: wildfire at the new house",
+    "Bram: the wildfire took our home",
+    "Oda: wildfire at the meadow",
+    "Oda: wildfire at the meadow",
+    "Oda: wildfire at the meadow",
+    "Oda: wildfire at the village",
+    "Oda: wildfire at the village",
+    "Oda: the wildfire took our home",
+    "Tamsin: your sanctuary kept us safe",
+    "Tamsin: wildfire at the meadow",
+    "Tamsin: you raised a sanctuary",
+    "Tamsin: wildfire at the meadow",
+    "Tamsin: wildfire at the meadow",
+    "Tamsin: wildfire at the wheat field",
+    "Corin: wildfire at the meadow",
+    "Corin: wildfire at the meadow",
+    "Corin: wildfire at the village",
+    "Corin: wildfire at the village",
+    "Corin: wildfire at the village",
+    "Corin: wildfire at the meadow",
+    "Wil: wildfire at the meadow",
+    "Wil: wildfire at the village",
+    "Wil: wildfire at the meadow",
+    "Maren: your sanctuary kept us safe",
+    "Maren: wildfire at the meadow",
+    "Maren: you raised a sanctuary",
+    "Maren: wildfire at the meadow",
+    "Maren: wildfire at the village",
+    "Maren: the wildfire took our home",
+    "Hob: your sanctuary kept us safe",
+    "Hob: wildfire at the meadow",
+    "Hob: you raised a sanctuary",
+    "Hob: wildfire at the meadow",
+    "Hob: wildfire at the village",
+    "Hob: the wildfire took our home",
+    "Ness: your sanctuary kept us safe",
+    "Ness: wildfire at the meadow",
+    "Ness: you raised a sanctuary",
+    "Ness: wildfire at the meadow",
+    "Ness: wildfire at the meadow",
+    "Ness: wildfire at the village",
+    "Edda: wildfire at the meadow",
+    "Edda: wildfire at the meadow",
+    "Edda: wildfire at the wheat field",
+    "Edda: the wildfire took our home",
+    "Edda: wildfire at the meadow",
+    "Edda: wildfire at the new house",
+    "Pell: wildfire at the meadow",
+    "Pell: you raised a sanctuary",
+    "Pell: wildfire at the meadow",
+    "Pell: wildfire at the meadow",
+    "Pell: wildfire at the wheat field",
+    "Pell: the wildfire took our home",
+    "Rafe: wildfire at the meadow",
+    "Rafe: wildfire at the meadow",
+    "Rafe: wildfire at the meadow",
+    "Rafe: the wildfire took our home",
+    "Rafe: wildfire at the village",
+    "Rafe: wildfire at the new house"
+  ]
+}

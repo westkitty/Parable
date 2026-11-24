@@ -3,7 +3,7 @@ import { CAM_MAX_DIST, HAND_CARRY_HEIGHT, HAND_HOVER_HEIGHT, HAND_HOVER_PICK_RAD
 import { DebugOverlay, FrameStats } from "./debug/overlay";
 import { Hand } from "./hand/hand";
 import { Controller, type GameApi, type Grabbable } from "./input/controller";
-import type { GestureResult } from "./input/gesture";
+import type { GestureResult, Miracle } from "./input/gesture";
 import { buildWalkable, makePathFinder } from "./nav/grid";
 import { readSave, writeSave } from "./persist/storage";
 import { LOG_HALF_LENGTH, LOG_RADIUS, Physics } from "./physics/physics";
@@ -262,8 +262,8 @@ async function boot(): Promise<void> {
       note(`release ${g.kind} ${gentle ? "gentle" : "throw"} v=${v.map((x) => x.toFixed(1)).join(",")}`);
     },
     holding: () => held,
-    cast(kind) {
-      return castMiracle(kind);
+    cast(kind, stroke) {
+      return castMiracle(kind, stroke);
     },
     interact(_ray, ground) {
       if (heldCloud != null) {
@@ -346,7 +346,14 @@ async function boot(): Promise<void> {
     return world.shrine.awakened && Math.hypot(lastGround.x - LAYOUT.shrine.x, lastGround.z - LAYOUT.shrine.z) < 14;
   }
 
-  function castMiracle(kind: "fireball" | "rain" | "sanctuary"): boolean {
+  function castMiracle(kind: Miracle, stroke: THREE.Vector3[] = []): boolean {
+    // Closed glyphs (ring, square, triangle) act on what they encircle; the rest act under the hand.
+    const at = lastGround.clone();
+    if ((kind === "sanctuary" || kind === "stone" || kind === "golem") && stroke.length > 4) {
+      at.set(0, 0, 0);
+      for (const p of stroke) at.add(p);
+      at.divideScalar(stroke.length);
+    }
     if (templeMode !== "world" || world.outcome?.ended) return false;
     if (kind === "rain" && !world.learned.includes("rain") && nearShrine()) {
       // Tracing the shrine's glyph beside it teaches Rain.
@@ -368,8 +375,8 @@ async function boot(): Promise<void> {
       heldCloud = castRain(world, lastGround.x, lastGround.z);
       note("rain cloud summoned");
     } else {
-      castSanctuary(world, lastGround.x, lastGround.z);
-      note(`sanctuary at ${lastGround.x.toFixed(0)},${lastGround.z.toFixed(0)}`);
+      castSanctuary(world, at.x, at.z);
+      note(`sanctuary at ${at.x.toFixed(0)},${at.z.toFixed(0)}`);
     }
     spend(world, kind);
     return true;
@@ -932,7 +939,7 @@ async function boot(): Promise<void> {
         world.power = n;
       },
       learn: (m: string) => learn(world, m),
-      castMiracle: (k: "fireball" | "rain" | "sanctuary") => castMiracle(k),
+      castMiracle: (k: Miracle) => castMiracle(k),
       setDay: (day: number, frac = 0) => {
         world.climate.day = day;
         world.climate.dayTick = Math.floor(frac * DAY_TICKS);

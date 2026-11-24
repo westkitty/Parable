@@ -1,0 +1,201 @@
+{
+  "fizzled": true,
+  "heldAfterWeak": null,
+  "powerAfterCast": 40,
+  "beliefs": [
+    {
+      "name": "Ilse",
+      "mood": {
+        "mood": "grateful",
+        "score": 33,
+        "top": null,
+        "recent": null
+      },
+      "belief": {
+        "gratitude": 28,
+        "fear": 8,
+        "resentment": 0,
+        "causes": []
+      }
+    },
+    {
+      "name": "Bram",
+      "mood": {
+        "mood": "grateful",
+        "score": 32,
+        "top": null,
+        "recent": null
+      },
+      "belief": {
+        "gratitude": 27,
+        "fear": 8,
+        "resentment": 0,
+        "causes": []
+      }
+    },
+    {
+      "name": "Oda",
+      "mood": {
+        "mood": "grateful",
+        "score": 34,
+        "top": null,
+        "recent": null
+      },
+      "belief": {
+        "gratitude": 29,
+        "fear": 8,
+        "resentment": 0,
+        "causes": []
+      }
+    },
+    {
+      "name": "Tamsin",
+      "mood": {
+        "mood": "grateful",
+        "score": 31,
+        "top": null,
+        "recent": null
+      },
+      "belief": {
+        "gratitude": 26,
+        "fear": 8,
+        "resentment": 0,
+        "causes": []
+      }
+    },
+    {
+      "name": "Corin",
+      "mood": {
+        "mood": "grateful",
+        "score": 30,
+        "top": null,
+        "recent": null
+      },
+      "belief": {
+        "gratitude": 25,
+        "fear": 8,
+        "resentment": 0,
+        "causes": []
+      }
+    },
+    {
+      "name": "Wil",
+      "mood": {
+        "mood": "grateful",
+        "score": 30,
+        "top": null,
+        "recent": null
+      },
+      "belief": {
+        "gratitude": 25,
+        "fear": 8,
+        "resentment": 0,
+        "causes": []
+      }
+    },
+    {
+      "name": "Maren",
+      "mood": {
+        "mood": "grateful",
+        "score": 36,
+        "top": null,
+        "recent": null
+      },
+      "belief": {
+        "gratitude": 31,
+        "fear": 8,
+        "resentment": 0,
+        "causes": []
+      }
+    },
+    {
+      "name": "Hob",
+      "mood": {
+        "mood": "grateful",
+        "score": 33,
+        "top": null,
+        "recent": null
+      },
+      "belief": {
+        "gratitude": 28,
+        "fear": 8,
+        "resentment": 0,
+        "causes": []
+      }
+    },
+    {
+      "name": "Ness",
+      "mood": {
+        "mood": "grateful",
+        "score": 36,
+        "top": null,
+        "recent": null
+      },
+      "belief": {
+        "gratitude": 31,
+        "fear": 8,
+        "resentment": 0,
+        "causes": []
+      }
+    },
+    {
+      "name": "Edda",
+      "mood": {
+        "mood": "grateful",
+        "score": 34,
+        "top": null,
+        "recent": null
+      },
+      "belief": {
+        "gratitude": 29,
+        "fear": 8,
+        "resentment": 0,
+        "causes": []
+      }
+    },
+    {
+      "name": "Pell",
+      "mood": {
+        "mood": "grateful",
+        "score": 31,
+        "top": null,
+        "recent": null
+      },
+      "belief": {
+        "gratitude": 26,
+        "fear": 8,
+        "resentment": 0,
+        "causes": []
+      }
+    },
+    {
+      "name": "Rafe",
+      "mood": {
+        "mood": "grateful",
+        "score": 32,
+        "top": null,
+        "recent": null
+      },
+      "belief": {
+        "gratitude": 27,
+        "fear": 8,
+        "resentment": 0,
+        "causes": []
+      }
+    }
+  ],
+  "details": [
+    "belief 33 (grateful) · lives with Bram and Oda",
+    "belief 32 (grateful) · lives with Ilse and Oda",
+    "belief 34 (grateful) · lives with Ilse and Bram",
+    "belief 31 (grateful) · lives with Corin and Wil",
+    "belief 30 (grateful) · lives with Tamsin and Wil",
+    "belief 30 (grateful) · lives with Tamsin and Corin",
+    "belief 36 (grateful) · lives with Hob and Ness",
+    "belief 33 (grateful) · lives with Maren and Ness",
+    "belief 36 (grateful) · lives with Maren and Hob",
+    "belief 34 (grateful) · lives with Pell and Rafe",
+    "belief 31 (grateful) · lives with Edda and Rafe",
+    "belief 32 (grateful) · lives with Edda and Pell"
+  ]
+}

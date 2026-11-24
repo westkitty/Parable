@@ -101,3 +101,73 @@ export function ring(seed: number): GesturePoint[] {
   }
   return pts;
 }
+
+/** A hand-drawn polyline through corners, with jitter and uneven speed. */
+function polyline(seed: number, corners: [number, number][], n = 60): GesturePoint[] {
+  const r = rng(seed);
+  const segs: number[] = [];
+  let total = 0;
+  for (let i = 1; i < corners.length; i += 1) {
+    const d = Math.hypot(corners[i][0] - corners[i - 1][0], corners[i][1] - corners[i - 1][1]);
+    segs.push(d);
+    total += d;
+  }
+  const pts: GesturePoint[] = [];
+  for (let k = 0; k < n; k += 1) {
+    let d = (k / (n - 1)) * total;
+    let i = 0;
+    while (i < segs.length - 1 && d > segs[i]) {
+      d -= segs[i];
+      i += 1;
+    }
+    const f = Math.min(1, d / segs[i]);
+    const [ax, ay] = corners[i];
+    const [bx, by] = corners[i + 1];
+    pts.push({ x: ax + (bx - ax) * f + (r() - 0.5) * 4, y: ay + (by - ay) * f + (r() - 0.5) * 4, t: k * 16 });
+  }
+  return pts;
+}
+
+export function line(seed: number, dir: "down" | "up" | "side"): GesturePoint[] {
+  const r = rng(seed);
+  const cx = 300 + r() * 400;
+  const cy = 250 + r() * 300;
+  const len = 120 + r() * 160;
+  const lean = (r() - 0.5) * 0.5;
+  const [dx, dy] = dir === "side" ? [len * (r() < 0.5 ? 1 : -1), len * lean] : [len * lean, dir === "down" ? len : -len];
+  return polyline(seed + 7, [
+    [cx, cy],
+    [cx + dx, cy + dy],
+  ], 40);
+}
+
+export function peak(seed: number, flip = false): GesturePoint[] {
+  const r = rng(seed);
+  const cx = 300 + r() * 400;
+  const cy = 300 + r() * 200;
+  const w = 90 + r() * 120;
+  const h = (90 + r() * 120) * (flip ? -1 : 1);
+  return polyline(seed + 3, [
+    [cx - w / 2, cy + h / 2],
+    [cx + (r() - 0.5) * w * 0.3, cy - h / 2],
+    [cx + w / 2, cy + h / 2 + (r() - 0.5) * 20],
+  ]);
+}
+
+export const vee = (seed: number) => peak(seed, true);
+
+export function closedPoly(seed: number, sides: 3 | 4): GesturePoint[] {
+  const r = rng(seed);
+  const cx = 300 + r() * 400;
+  const cy = 250 + r() * 300;
+  const rad = 60 + r() * 70;
+  const rot = sides === 4 ? Math.PI / 4 + (r() - 0.5) * 0.4 : -Math.PI / 2 + (r() - 0.5) * 0.4;
+  const dir = r() < 0.5 ? 1 : -1;
+  const c: [number, number][] = [];
+  for (let i = 0; i <= sides; i += 1) {
+    const a = rot + dir * (i / sides) * Math.PI * 2;
+    c.push([cx + Math.cos(a) * rad * (1 + (r() - 0.5) * 0.15), cy + Math.sin(a) * rad * (1 + (r() - 0.5) * 0.15)]);
+  }
+  c[sides] = [c[0][0] + (r() - 0.5) * 10, c[0][1] + (r() - 0.5) * 10];
+  return polyline(seed + 11, c, 80);
+}

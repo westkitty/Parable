@@ -27,7 +27,9 @@ describe("ritual gesture recogniser", () => {
   });
   it("gives at most 1 false positive per 100 ordinary mouse wanders (tested over 500)", () => {
     let fp = 0;
-    for (let s = 301; s <= 800; s += 1) if (analyzeGesture(wander(s)).kind !== "none") fp += 1;
+    // M1 glyph shapes only (spiral arms; zigzag/wave/ring finish). The M4 straight-line/peak/vee finishers
+    // are checked separately below: a straight mouse move IS a line, so those rely on the arming spiral.
+    for (let s = 301; s <= 800; s += 1) if (["spiral", "zigzag", "wave", "ring"].includes(analyzeGesture(wander(s)).kind)) fp += 1;
     expect(fp).toBeLessThanOrEqual(5);
   });
   it("resample returns exactly n points", () => {
@@ -74,5 +76,50 @@ describe("ritual gesture recogniser", () => {
       r.feed(analyzeGesture(spiral(s, true)), 3000);
       expect(r.feed(analyzeGesture(ring(500 + s)), 4000)).toBe("sanctuary");
     }
+  });
+});
+
+import { MIRACLES, miracleFor } from "../src/input/gesture";
+import { closedPoly, line, peak, vee } from "./gestureCorpus";
+
+describe("the ten miracle finishers", () => {
+  const cases: [string, (s: number) => ReturnType<typeof zigzag>, string][] = [
+    ["fireball", zigzag, "zigzag"],
+    ["rain", wave, "wave"],
+    ["sanctuary", ring, "ring"],
+    ["heal", vee, "vee"],
+    ["lightning", (s) => line(s, "down"), "line"],
+    ["fertility", (s) => line(s, "up"), "line"],
+    ["wind", (s) => line(s, "side"), "line"],
+    ["stone", (s) => closedPoly(s, 4), "square"],
+    ["beacon", peak, "peak"],
+    ["golem", (s) => closedPoly(s, 3), "triangle"],
+  ];
+  it("covers exactly ten miracles", () => {
+    expect(MIRACLES.length).toBe(10);
+    expect(cases.map((c) => c[0]).sort()).toEqual([...MIRACLES].sort());
+  });
+  for (const [m, gen] of cases) {
+    it(`reads at least 28/30 drawn ${m} finishers as ${m}, and never as another miracle`, () => {
+      let ok = 0;
+      let wrong = 0;
+      for (let s = 1000; s < 1030; s += 1) {
+        const got = miracleFor(analyzeGesture(gen(s)));
+        if (got === m) ok += 1;
+        else if (got) wrong += 1;
+      }
+      expect(ok).toBeGreaterThanOrEqual(28);
+      expect(wrong).toBe(0);
+    });
+  }
+  it("wanders almost never arm the ritual (at most 1 in 100), so a stray finisher alone casts nothing", () => {
+    let arm = 0;
+    for (let s = 301; s <= 800; s += 1) if (analyzeGesture(wander(s)).kind === "spiral") arm += 1;
+    expect(arm).toBeLessThanOrEqual(5);
+  });
+  it("inside the 5.6 s armed window, a wander reads as some finisher at most 8 in 100 (known risk: straight moves are lines)", () => {
+    let fp = 0;
+    for (let s = 301; s <= 800; s += 1) if (miracleFor(analyzeGesture(wander(s)))) fp += 1;
+    expect(fp).toBeLessThanOrEqual(40);
   });
 });
