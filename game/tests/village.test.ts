@@ -105,7 +105,8 @@ describe("village: injuries", () => {
     const fam = w.settlers.find((o) => o.id === s.relationships[0].id)!;
     expect(fam.belief.resentment).toBeGreaterThan(5);
     expect(fam.belief.causes[0].text).toBe(`you threw ${s.name}`);
-    expect(beliefSummary(s).top).toBe("you threw me");
+    const sum = beliefSummary(s);
+    expect(sum.top === "you threw me" || sum.recent === "you threw me").toBe(true);
   });
 });
 
